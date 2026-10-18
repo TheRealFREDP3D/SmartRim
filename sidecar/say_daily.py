@@ -1,73 +1,62 @@
 import json, requests
 
+URL = "http://localhost:8787/"
+
+
 def call(name, args=None):
-    payload = {'jsonrpc':'2.0','id':1,'method':'tools/call','params':{'name':name,'arguments':args or {}}}
-    resp = requests.post('http://localhost:8787/', json=payload, timeout=5)
-    return json.loads(resp.json()['result']['content'][0]['text'])
+    payload = {"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": name, "arguments": args or {}}}
+    resp = requests.post(URL, json=payload, timeout=5)
+    data = resp.json()
+    text = data["result"]["content"][0]["text"]
+    try:
+        return json.loads(text)
+    except (json.JSONDecodeError, TypeError):
+        return {"text": text}
 
-cond = call('get_conditions')
-status = call('get_status')
-alerts = call('get_alerts')
 
-day = cond.get('dayOfSeason', '?')
-hour = cond.get('hour', '?')
-temp = cond.get('temperature', {}).get('outdoorC', '?')
-weather = cond.get('weather', {}).get('current', '?')
-season = cond.get('seasonLabel', '?')
+def main():
+    cond = call("get_conditions")
+    status = call("get_status")
+    alerts = call("get_alerts")
+    research = call("get_research")
+    res = call("get_resources")
 
-colonists = status['bundled']['list_colonists']['colonists']
-names = ', '.join(f"{c['name']} (HP:{c['health']}% Mood:{c['mood']}%)" for c in colonists)
+    day = cond.get("dayOfSeason", "?")
+    hour = cond.get("hour", "?")
+    temp = cond.get("temperature", {}).get("outdoorC", "?") if isinstance(cond.get("temperature"), dict) else "?"
+    weather = cond.get("weather", {}).get("current", "?") if isinstance(cond.get("weather"), dict) else "?"
+    season = cond.get("seasonLabel", "?")
 
-alert_list = [a['label'] for a in alerts.get('activeAlerts', [])]
-alerts_str = ', '.join(alert_list) if alert_list else 'None'
+    colonists = []
+    if isinstance(status, dict):
+        colonists = status.get("bundled", {}).get("list_colonists", {}).get("colonists", [])
+    if not colonists:
+        cr = call("list_colonists")
+        if isinstance(cr, dict):
+            colonists = cr.get("colonists", [])
+    names = ", ".join(f"{c.get('name')} (HP:{c.get('health')}% Mood:{c.get('mood')}%)" for c in colonists)
 
-r = call('get_research')
-cur = r.get('current')
+    alert_list = [a.get("label") for a in (alerts.get("activeAlerts", []) if isinstance(alerts, dict) else [])]
+    alerts_str = ", ".join(alert_list) if alert_list else "None"
 
-r2 = call('get_resources')
-res_str = ', '.join(f"{res['label']}:{res['count']}" for res in r2.get('resources', []))
+    cur = research.get("current") if isinstance(research, dict) else None
+    research_str = f"{cur.get('label', 'NONE')} ({cur.get('progressPercent', 0)}%)" if cur else "NONE"
 
-# Check cotton maturity
-cotton_growth = 'N/A'
-for x in range(140, 165, 5):
-    for z in range(96, 120, 5):
-        r3 = call('inspect_thing', {'x': x, 'z': z})
-        if 'cotton' in r3.get('label', '').lower():
-            cotton_growth = r3.get('growth', 'N/A')
-            break
-    if cotton_growth != 'N/A':
-        break
+    res_str = ", ".join(f"{r.get('label')}:{r.get('count')}" for r in (res.get("resources", []) if isinstance(res, dict) else []))
 
-# Check for raid threats
-threat = status.get('_threatWarning', {})
-threat_str = f"Hostiles: {threat.get('count', 0)}" if threat else "No hostiles nearby"
+    message = (
+        f"=== DAY {day} OVERVIEW (Hour {hour}) ===\n"
+        f"Weather: {weather} | Temp: {temp}C | Season: {season}\n"
+        f"Colonists: {names}\n"
+        f"Alerts: {alerts_str}\n"
+        f"Research: {research_str}\n"
+        f"Resources: {res_str}\n"
+    )
 
-message = f"""=== DAY {day} OVERVIEW (Hour {hour}) ===
-Weather: {weather} | Temp: {temp}C | Season: {season}
-Colonists: {names}
-Alerts: {alerts_str}
-Threat: {threat_str}
-Research: {cur.get('label', 'NONE') if cur else 'NONE'} ({cur.get('progressPercent', 0) if cur else 0}%)
-Resources: {res_str}
-Cotton growth: {cotton_growth}%
+    result = call("say", {"text": message})
+    print(f"Displayed: {result.get('shown', False)} ({result.get('chars', 0)} chars)")
+    print(message)
 
-STATUS:
-- Day 9 = Raid window Day 2 (Days 8-15)
-- No sandbags yet (cotton at {cotton_growth}% - need 100%)
-- Smithing at 25% (Freya 5x buff active)
-- 13 packaged meals (emergency food)
-- 0 simple meals (need cooking)
-- Freya pregnant - HP 100%, resting
 
-PRIORITY ACTIONS:
-1. Wait for cotton to mature -> harvest -> cloth -> sandbags
-2. Continue Smithing research (Freya's buff)
-3. Get Zack to cook simple meals from rice
-4. Monitor for raid (could come any day 8-15)
-5. Ambrosia sprout - sell to traders
-6. Mechanoid Signal quest - evaluate
-"""
-
-result = call('say', {'text': message})
-print(f"Displayed: {result.get('shown', False)} ({result.get('chars', 0)} chars)")
-print(message)
+if __name__ == "__main__":
+    main()

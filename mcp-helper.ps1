@@ -34,11 +34,15 @@ function Send-McpRequest {
 
 function Get-GameStatus {
     $status = Send-McpRequest "tools/call" @{ name = "get_status"; arguments = @{} }
+    if (-not $status -or -not ($status -is [pscustomobject])) {
+        return $status
+    }
     Write-Host "=== $($status.colonyName) ==="
     Write-Host "Day: $($status.daysPassed) | Storyteller: $($status.storyteller) | Difficulty: $($status.difficulty)"
     Write-Host "Colonists: $($status.colonistCount) | Wealth: $($status.wealthTotal)"
     Write-Host ""
-    foreach ($pawn in $status.bundled.list_colonists.colonists) {
+    $colonists = $status.bundled.list_colonists.colonists
+    foreach ($pawn in $colonists) {
         $mental = if ($pawn.mentalState) { " [MENTAL: $($pawn.mentalState)]" } else { "" }
         Write-Host "  $($pawn.name): HP $($pawn.health)% | Mood $($pawn.mood)% | $($pawn.job)$mental"
     }
@@ -49,6 +53,7 @@ function Get-GameStatus {
             Write-Host "  ! $($alert.label)"
         }
     }
+    return $status
 }
 
 function Get-Colonists {
@@ -129,13 +134,21 @@ function Resume-Game {
 
 function Wait-Days {
     param([int]$Days = 1)
-    Resume-Game
-    $startDay = (Get-GameStatus).daysPassed
-    while ((Get-GameStatus).daysPassed -lt ($startDay + $Days)) {
-        Start-Sleep -Seconds 5
+    # Never bare-unpause: advance via wait_for_event (server caps at 1 game-hour during crises).
+    $status = Get-GameStatus
+    $targetDay = $status.daysPassed + $Days
+    $iterations = 0
+    $maxIterations = [math]::Max(1, $Days * 24 + 10)
+    while ($iterations -lt $maxIterations) {
+        $cur = (Send-McpRequest "tools/call" @{ name = "get_status"; arguments = @{} }).daysPassed
+        if ($cur -ge $targetDay) { break }
+        Send-McpRequest "tools/call" @{ name = "wait_for_event"; arguments = @{ maxGameHours = 24; pause = "always" } } | Out-Null
+        $iterations++
     }
     Pause-Game
-    Write-Host "Waited $Days day(s). Now Day $((Get-GameStatus).daysPassed)."
+    $final = (Send-McpRequest "tools/call" @{ name = "get_status"; arguments = @{} }).daysPassed
+    Write-Host "Waited $Days day(s). Now Day $final."
+    return $final
 }
 
 # === BUILDING ===
@@ -147,15 +160,21 @@ function Build-Thing {
         [int]$Z,
         [string]$Material = $null
     )
-    $args = @{ def = $Thing; x = $X; z = $Z }
-    if ($Material) { $args.stuff = $Material }
-    $result = Send-McpRequest "tools/call" @{ name = "build"; arguments = $args }
+    $buildArgs = @{ def = $Thing; x = $X; z = $Z }
+    if ($Material) { $buildArgs.stuff = $Material }
+    $result = Send-McpRequest "tools/call" @{ name = "build"; arguments = $buildArgs }
     if ($result.placed) {
         Write-Host "Built $Thing at ($X,$Z)"
     } else {
         Write-Host "Failed: $($result.error)$($result.reason)"
     }
     return $result
+}
+
+function Build-Room {
+    param([int]$X1, [int]$Z1, [int]$X2, [int]$Z2, [string]$Material = "WoodLog")
+    # Walls only; place a door separately with Build-Thing.
+    return (Build-Wall -X1 $X1 -Z1 $Z1 -X2 $X2 -Z2 $Z2 -Material $Material)
 }
 
 function Build-Wall {
@@ -189,15 +208,19 @@ function New-StockpileZone {
 
 function New-GrowingZone {
     param([int]$X1, [int]$Z1, [int]$X2, [int]$Z2, [string]$Plant = "Plant_Rice")
+    $beforeZones = Send-McpRequest "tools/call" @{ name = "list_zones"; arguments = @{} }
+    $beforeIds = @($beforeZones.zones | Where-Object { $_.kind -eq "growing" } | ForEach-Object { $_.id })
     $result = Send-McpRequest "tools/call" @{ name = "designate"; arguments = @{
         designator = "Designator_ZoneAdd_Growing"; minX = $X1; minZ = $Z1; maxX = $X2; maxZ = $Z2
     }}
     Write-Host "Growing zone created: $($result.cells) cells"
-    # Set plant type
     $zones = Send-McpRequest "tools/call" @{ name = "list_zones"; arguments = @{} }
-    $growingZone = $zones.zones | Where-Object { $_.kind -eq "growing" } | Select-Object -Last 1
-    if ($growingZone) {
-        Send-McpRequest "tools/call" @{ name = "set_growing_zone"; arguments = @{ id = $growingZone.id; plant = $Plant } }
+    $newZone = $zones.zones | Where-Object { $_.kind -eq "growing" -and ($beforeIds -notcontains $_.id) } | Select-Object -First 1
+    if (-not $newZone) {
+        $newZone = $zones.zones | Where-Object { $_.kind -eq "growing" } | Select-Object -Last 1
+    }
+    if ($newZone) {
+        Send-McpRequest "tools/call" @{ name = "set_growing_zone"; arguments = @{ id = $newZone.id; plant = $Plant } } | Out-Null
         Write-Host "Plant set to $Plant"
     }
     return $result

@@ -1,14 +1,25 @@
 import os
 
-MCP_URL = "http://localhost:8787/"
-POLL_INTERVAL = 10  # seconds, real-time
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
+MCP_URL = os.getenv("MCP_URL", "http://localhost:8787/")
+POLL_INTERVAL = int(os.getenv("POLL_INTERVAL", "10"))
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ALERTS_DIR = os.path.join(BASE_DIR, "memory", "alerts")
 SNAPSHOTS_DIR = os.path.join(BASE_DIR, "memory", "snapshots")
 DEBRIEFS_DIR = os.path.join(BASE_DIR, "memory", "debriefs")
 
-HEALTH_THRESHOLD = 50
-MOOD_THRESHOLD = 25
+HEALTH_THRESHOLD = int(os.getenv("HEALTH_THRESHOLD", "50"))
+MOOD_THRESHOLD = int(os.getenv("MOOD_THRESHOLD", "25"))
 
 URGENT_KEYWORDS = ["fire", "predator", "raid", "attack", "downed", "berserk", "pyromaniac"]
+
+# Optional LLM provider for debrief generation (Phase 1 optional)
+LLM_API_KEY = os.getenv("LLM_API_KEY") or os.getenv("OPENAI_API_KEY") or os.getenv("ANTHROPIC_API_KEY")
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openai")  # openai | anthropic
+LLM_MODEL = os.getenv("LLM_MODEL", "gpt-4o-mini")

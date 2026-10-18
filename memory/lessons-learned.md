@@ -13,9 +13,9 @@
    - Fix: Build 1-2 beds designated as medical early (Bed → toggle to medical)
    - Fix: Assign doctor work type to best medicine pawn
 
-3. **Ignoring animal threats** — guinea pig killed Vlad
+3. **Ignoring animal threats** — guinea pig killed Vlad; timber wolf killed Shin (Session 2)
    - Fix: Check wildlife tab for predators; draft colonists if dangerous animals near
-   - Fix: Hunt aggressive animals before they attack
+   - Fix: Do NOT hunt predators; avoid or fight only with a fighter escort + medic nearby
    - Fix: Build walls around growing zones and work areas
 
 4. **Not burying corpses** — -10 mood debuff per corpse
@@ -26,7 +26,7 @@
    - Fix: Monitor colonist relationships; watch for grief debuffs
    - Fix: Have recreation and food ready during crises
 
-11. **Hunter killed by predator** — Shin was mauled to death by a timber wolf while hunting the deer herd (Session 2, Day 5)
+6. **Hunter killed by predator** — Shin was mauled to death by a timber wolf while hunting the deer herd (Session 2, Day 5)
     - Fix: Before hunting, check wildlife tab for predators near the hunting ground
     - Fix: Never hunt alone at the map edge — draft a fighter escort or keep the bonded animal released nearby
     - Fix: Pause and watch when a hunt starts; a downed hunter at 9% HP is unrecoverable if unattended
@@ -34,21 +34,21 @@
 
 ### Important Mistakes (Caused Mood Problems)
 
-6. **No freezer early** — food rots, colonists eat raw food
+7. **No freezer early** — food rots, colonists eat raw food
    - Fix: Build 7x7 freezer room by Day 4-7, set cooler to -5°C
    - Fix: Place near kitchen for short hauling routes
 
-7. **Eating without table** — -3 mood debuff
+8. **Eating without table** — -3 mood debuff
    - Fix: Place table + chairs in shelter on Day 1
 
-8. **Sleeping outside/cold** — multiple mood debuffs
+9. **Sleeping outside/cold** — multiple mood debuffs
    - Fix: Build enclosed shelter with roof before nightfall
 
-9. **No recreation variety** — mood stagnates
+10. **No recreation variety** — mood stagnates
    - Fix: Build horseshoe pin Day 1; add chess table and TV later
    - Fix: 4 different recreation types prevent diminishing returns
 
-10. **Cooking in dirty area** — food poisoning risk
+11. **Cooking in dirty area** — food poisoning risk
     - Fix: Separate kitchen from workshop; floor the kitchen
 
 ## What Worked Well
@@ -185,9 +185,10 @@
 ## MCP Tool Gotchas (Session 2 — CRITICAL)
 
 ### Work Type Names
-- Valid work types include: `Firefighting`, `Patient`, `Bed Rest`, `Basic`, `Hauling`, `Cleaning`, `Warden`, `Handling`, `Cooking`, `Hunting`, `Construction`, `Growing`, `Mining`, `PlantCutting`, `Smithing`, `Tailoring`, `Art`, `Crafting`, `Research`
-- Use exact names with spaces where applicable (e.g., "Bed Rest" not "BedRest", "Firefighting" not "Firefight")
+- Empirically valid names (Session 2): `Firefighter` (not Firefighting), `Patient`, `Doctor`, `Research`, `Construction`, `Mining`, `Growing`, `Cooking`, `Crafting`, `Hauling` (not Haul), `Cleaning`, `Handling`, `Hunting`, `Art`, `Warden`
+- `Bed Rest` appears unsettable via MCP; `Basic` unverified; `PlantCutting` unverified
 - Colonists may be incapable of certain work types (e.g., "incapable of Dumb labor" → can't haul or clean)
+- Names vary by RimWorld build — re-run `scratchpad/check_worktypes3.py` against a live colony to confirm
 1. **`set_speed` takes only `action=pause|unpause`** — numeric `speed` param is silently ignored; unpause resumes at the LAST selected speed (usually Superfast). `Resume-Game -Speed 1` does NOT slow anything down
 2. **Never advance time with bare unpause** — use `wait_for_event` with `maxGameHours` + `pause="always"`; it has a 1-game-hour crisis cap when hostiles/fire/life-threatening conditions exist, and returns letters/damage deltas
 3. **`draft`** requires `action="draft"` + `ids` (comma-separated ThingIDs, not names)

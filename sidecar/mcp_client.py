@@ -2,6 +2,10 @@ import requests
 import json
 
 
+class McpError(Exception):
+    pass
+
+
 class McpClient:
     def __init__(self, url):
         self.url = url
@@ -17,13 +21,18 @@ class McpClient:
         }
         try:
             resp = requests.post(self.url, json=payload, timeout=10)
+            resp.raise_for_status()
             result = resp.json()
-            if "result" in result and "content" in result["result"]:
-                text = result["result"]["content"][0]["text"]
-                try:
-                    return json.loads(text)
-                except (json.JSONDecodeError, TypeError):
-                    return text
-            return result
-        except requests.exceptions.RequestException as e:
-            return {"error": str(e)}
+        except (requests.exceptions.RequestException, ValueError) as e:
+            raise McpError(f"transport/parse error calling {name}: {e}") from e
+
+        if "error" in result:
+            # JSON-RPC level error
+            return {"error": result["error"]}
+        if "result" in result and "content" in result["result"]:
+            text = result["result"]["content"][0]["text"]
+            try:
+                return json.loads(text)
+            except (json.JSONDecodeError, TypeError):
+                return {"text": text}
+        return result

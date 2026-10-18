@@ -9,7 +9,7 @@ This project uses a Model Context Protocol (MCP) server running inside RimWorld 
 Load the helper at the start of each session:
 
 ```powershell
-. C:\Users\fred\Rimworld_MCP\mcp-helper.ps1
+. C:\Users\fred\Desktop\RimWorld Consellor\RimAutonomous\mcp-helper.ps1
 ```
 
 Then use natural commands:
@@ -19,7 +19,7 @@ Get-GameStatus          # See colony status
 Get-Conditions          # Date, weather, temperature
 Get-ColonistNeeds "Roni" # Check colonist mood/needs
 Pause-Game              # Pause the game
-Resume-Game -Speed 3    # Superfast speed
+Resume-Game             # Resume (speed controlled in-game; use Wait-Days for safe advance)
 Build-Thing "Bed" 106 86 # Build a bed at coordinates
 New-GrowingZone 112 82 120 87 # Create rice field
 Set-Research "Smithing" # Start research
@@ -263,7 +263,6 @@ New-DailySummary        # Generate daily summary
 | `window_action` | Respond to a pop-up. |
 | `learning_helper` | Learning helper topics. |
 | `list_policies` | Assignable policies. |
-| `list_bills` | Bills on a work table. |
 | `say` | Display text to the human watching. |
 | `get_live_chat` | YouTube live chat comments (experimental). |
 
@@ -357,3 +356,18 @@ Sources: earlyguides.com, jeu.video, roguewiki.com, rimworldwiki.com
 - New world, Tile 17 (flat, 12.3°C, rainfall 857); ideoligion "Neo-Womanism" (fluid, generated defaults)
 - New colonist team: Noah Watkins (builder/doctor), Shinua 'Shin' Asahi (fighter/researcher), Aenne 'Peachy' Schumann (grower/cook)
 - Full log: memory/session-logs/session-2.md
+
+### Session 3 — 2026-10-03
+- New colony "Session3-Day3" (Classic ideoligion, world tile 203, Temperate Forest, Permanent Summer)
+- Colonists: Larian Lorall, Nils 'Nilz' Martens, Sammy 'Sunshine' Mitchell
+- Paused/saved Day 3 (~Hour 15): Nilz + Sammy downed by wild sparrow inside base; Larian tending Nilz
+- DangerRating: High; pirate raid alert active (first raid window Days 8-15)
+- Full log: memory/session-logs/session-3.md
+- Outcome: paused/saved; final outcome not recorded
+
+### Session 4 — 2026-10-18 (in progress)
+- Colony "Doder Coalition", map "Hypnotist's Inlet", Cassandra Classic, Community Builder difficulty
+- Colonists: Zack Buckley, Freya 'Tail' Fairwing, Creedance 'Creed' Osgood (all healthy, Day 9 at last snapshot)
+- Status at last snapshot (Day 9, Hour 0): Low food alert (3 days of food); Smithing 25%; 13 packaged meals; Ambrosia sprout + Mechanoid Signal quest active
+- Monitor running; snapshots day-1..day-8 stored in memory/snapshots/
+- No session log file yet

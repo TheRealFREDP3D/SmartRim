@@ -2,7 +2,7 @@
 
 ## Work Priorities (Manual Mode)
 - Enable manual work priorities immediately
-- Firefighting, Patient, Bed Rest, Basic → set to 1 for everyone
+- Firefighter, Patient → set to 1 for everyone (Bed Rest appears unsettable via MCP; verify)
 - Assign specialized roles:
   - One pawn: Cooking priority 1 (most important job)
   - One pawn: Growing + Construction priority 1

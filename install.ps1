@@ -3,18 +3,24 @@ $ErrorActionPreference = "Stop"
 
 Write-Host "=== RimWorld Counselor Sidecar Installer ===" -ForegroundColor Cyan
 
-# Check Python
-$python = Get-Command python -ErrorAction SilentlyContinue
-if (-not $python) {
-    Write-Host "ERROR: Python not found. Install Python 3.10+ from python.org" -ForegroundColor Red
-    exit 1
+# Prefer the project venv if present
+$venvPython = Join-Path $PSScriptRoot ".venv\Scripts\python.exe"
+if (Test-Path $venvPython) {
+    $pythonExe = $venvPython
+} else {
+    $python = Get-Command python -ErrorAction SilentlyContinue
+    if (-not $python) {
+        Write-Host "ERROR: Python not found. Install Python 3.10+ from python.org" -ForegroundColor Red
+        exit 1
+    }
+    $pythonExe = "python"
 }
-$version = python --version 2>&1
+$version = & $pythonExe --version 2>&1
 Write-Host "Found: $version"
 
 # Install dependencies
 Write-Host "`nInstalling dependencies..." -ForegroundColor Yellow
-pip install -r sidecar/requirements.txt
+& $pythonExe -m pip install -r sidecar/requirements.txt
 if ($LASTEXITCODE -ne 0) {
     Write-Host "ERROR: pip install failed" -ForegroundColor Red
     exit 1

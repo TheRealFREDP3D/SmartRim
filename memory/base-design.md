@@ -2,8 +2,9 @@
 
 ## Shelter (Day 1)
 
-- Small enclosed room (4x4 or larger)
+- Default shelter: 7x7 room (fits 3 beds, table, chairs, stove)
 - Walls + door minimum
+- Smaller (4x4-5x5) only for emergency starter shacks; larger needs more materials/time
 - Use existing ruins/mountains as walls to save resources
 - Keep home area compact (cleaning/fire management)
 

@@ -11,13 +11,26 @@ def ensure_dirs():
     os.makedirs(SNAPSHOTS_DIR, exist_ok=True)
 
 
+def _is_urgent_label(label):
+    low = (label or "").lower()
+    return any(kw in low for kw in URGENT_KEYWORDS)
+
+
 def run_reflex_checks(client):
     alerts = []
     timestamp = datetime.now().isoformat()
 
     try:
         status = client.call_tool("get_status")
-        if not status or not isinstance(status, dict):
+        if not status or not isinstance(status, dict) or status.get("error"):
+            alerts.append(
+                {
+                    "type": "error",
+                    "category": "system",
+                    "message": f"get_status failed: {status}",
+                    "timestamp": timestamp,
+                }
+            )
             return alerts
 
         colonists = (
@@ -25,10 +38,27 @@ def run_reflex_checks(client):
             .get("list_colonists", {})
             .get("colonists", [])
         )
+        # Fallback if not bundled
+        if not colonists:
+            cr = client.call_tool("list_colonists")
+            if isinstance(cr, dict):
+                colonists = cr.get("colonists", [])
+
         for colonist in colonists:
             name = colonist.get("name", "Unknown")
             mood = colonist.get("mood")
             health = colonist.get("health")
+            downed = colonist.get("downed")
+
+            if downed:
+                alerts.append(
+                    {
+                        "type": "urgent",
+                        "category": "downed",
+                        "message": f"{name} is DOWNED",
+                        "timestamp": timestamp,
+                    }
+                )
 
             if mood is not None and mood < MOOD_THRESHOLD:
                 alerts.append(
@@ -50,16 +80,30 @@ def run_reflex_checks(client):
                     }
                 )
 
-        game_alerts = (
-            status.get("bundled", {}).get("get_alerts", {}).get("activeAlerts", [])
+        # Game alerts (danger rating, active alerts)
+        bundled_alerts = (
+            status.get("bundled", {}).get("get_alerts", {})
         )
-        for alert in game_alerts:
+        if not bundled_alerts:
+            bundled_alerts = client.call_tool("get_alerts") or {}
+
+        danger_by_map = bundled_alerts.get("dangerByMap", [])
+        for d in danger_by_map:
+            rating = d.get("dangerRating", "None")
+            if rating and rating.lower() not in ("none", "null"):
+                urgent = rating.lower() in ("high", "extreme", "danger")
+                alerts.append(
+                    {
+                        "type": "urgent" if urgent else "warning",
+                        "category": "danger_rating",
+                        "message": f"Map {d.get('mapIndex')} danger rating: {rating}",
+                        "timestamp": timestamp,
+                    }
+                )
+
+        for alert in bundled_alerts.get("activeAlerts", []):
             label = alert.get("label", "")
-            alert_type = (
-                "urgent"
-                if any(kw in label.lower() for kw in URGENT_KEYWORDS)
-                else "warning"
-            )
+            alert_type = "urgent" if _is_urgent_label(label) else "warning"
             alerts.append(
                 {
                     "type": alert_type,
@@ -68,6 +112,30 @@ def run_reflex_checks(client):
                     "timestamp": timestamp,
                 }
             )
+
+        # Hostile proximity: any pawn reported as hostile near the base.
+        try:
+            pawns_resp = client.call_tool("list_things", {"category": "pawn"})
+            things = []
+            if isinstance(pawns_resp, dict):
+                things = pawns_resp.get("things", []) or pawns_resp.get("pawns", [])
+            for t in things:
+                hostile = (
+                    t.get("hostile")
+                    or t.get("isHostile")
+                    or (str(t.get("faction", "")).lower() in ("hostile", "enemy", "raider"))
+                )
+                if hostile:
+                    alerts.append(
+                        {
+                            "type": "urgent",
+                            "category": "hostile",
+                            "message": f"Hostile pawn nearby: {t.get('label') or t.get('name') or t.get('def')}",
+                            "timestamp": timestamp,
+                        }
+                    )
+        except Exception:
+            pass
 
         # Colony death detection
         colonist_count = status.get("colonistCount", 0)
@@ -94,9 +162,9 @@ def run_reflex_checks(client):
     return alerts
 
 
-def write_snapshot(client, day):
+def write_snapshot(client, day_label):
     snapshot = {
-        "day": day,
+        "day": day_label,
         "timestamp": datetime.now().isoformat(),
         "status": client.call_tool("get_status"),
         "conditions": client.call_tool("get_conditions"),
@@ -106,7 +174,8 @@ def write_snapshot(client, day):
         "alerts": client.call_tool("get_alerts"),
     }
 
-    path = os.path.join(SNAPSHOTS_DIR, f"day-{day}.json")
+    safe = str(day_label).replace("/", "-").replace("\\", "-")
+    path = os.path.join(SNAPSHOTS_DIR, f"day-{safe}.json")
     with open(path, "w") as f:
         json.dump(snapshot, f, indent=2, default=str)
     return path
@@ -115,8 +184,8 @@ def write_snapshot(client, day):
 def main():
     ensure_dirs()
     client = McpClient(MCP_URL)
-    last_hour = None
     last_day = None
+    snapshotted_day = None
 
     print(f"Reflex monitor started. Polling every {POLL_INTERVAL}s")
     print(f"Alerts: {ALERTS_DIR}")
@@ -125,30 +194,44 @@ def main():
     while True:
         try:
             conditions = client.call_tool("get_conditions")
-            if not conditions or not isinstance(conditions, dict):
+            if not conditions or not isinstance(conditions, dict) or conditions.get("error"):
                 time.sleep(POLL_INTERVAL)
                 continue
 
-            current_hour = conditions.get("hour")
             current_day = conditions.get("date")
+            current_hour = conditions.get("hour")
 
-            # Day rollover -> snapshot
-            if current_day != last_day and current_day is not None:
-                if last_day is not None:
+            # Day rollover -> snapshot the day that just ended (label = previous day).
+            # Contents still carry conditions.date, so the exact timestamp is preserved.
+            if current_day is not None and current_day != last_day:
+                if last_day is not None and snapshotted_day != last_day:
                     path = write_snapshot(client, last_day)
                     print(f"Snapshot written: {path}")
+                    snapshotted_day = last_day
                 last_day = current_day
 
             # Hour change -> reflex checks
-            if current_hour != last_hour and current_hour is not None:
-                alerts = run_reflex_checks(client)
-                alert_path = os.path.join(ALERTS_DIR, "current.json")
-                with open(alert_path, "w") as f:
-                    json.dump(alerts, f, indent=2)
-                if alerts:
-                    urgent = [a for a in alerts if a["type"] == "urgent"]
-                    print(f"{len(alerts)} alert(s) ({len(urgent)} urgent)")
-                last_hour = current_hour
+            # Run every poll? Keep hourly trigger but also run on first poll.
+            alerts = run_reflex_checks(client)
+            alert_path = os.path.join(ALERTS_DIR, "current.json")
+            with open(alert_path, "w") as f:
+                json.dump(alerts, f, indent=2)
+
+            urgent = [a for a in alerts if a.get("type") == "urgent"]
+            if urgent:
+                print(f"{len(alerts)} alert(s) ({len(urgent)} urgent) - pausing game")
+                try:
+                    client.call_tool("set_speed", {"action": "pause"})
+                except Exception:
+                    pass
+                # Colony death -> snapshot current day
+                if any(a.get("category") == "colony_death" for a in alerts):
+                    if snapshotted_day != current_day:
+                        path = write_snapshot(client, current_day)
+                        print(f"Death snapshot written: {path}")
+                        snapshotted_day = current_day
+            elif alerts:
+                print(f"{len(alerts)} alert(s) ({len(urgent)} urgent)")
 
         except Exception as e:
             print(f"Error: {e}")

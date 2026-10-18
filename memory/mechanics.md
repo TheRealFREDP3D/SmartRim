@@ -2,7 +2,7 @@
 
 ## Wealth System
 - Raid strength scales with colony wealth (total value of buildings, items, colonists, animals)
-- Wealth counted toward raids caps at 1,000,000; raid points cap at 10,000
+- Wealth counted toward raids caps at 1,000,000; raid points cap at 10,000 (unverified — confirm against RimWorld wiki)
 - Classic new-player trap: hoard everything → wealth spikes → raids get harder → colony dies
 - Rules: build only what you need, sell/process loot fast, upgrade defenses before warehouse
 

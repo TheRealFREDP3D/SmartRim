@@ -31,7 +31,7 @@
 ## Weapons (Early Game)
 - Starting weapons: rifle, knife, pistol
 - Raider guns often better than starting gear
-- Sniper Rifle: first major upgrade (45 tile range)
+- Sniper Rifle: first major upgrade (long range; exact tile range unverified)
 - Careful Shooter trait adds huge value
 
 ## Tiers

@@ -4,6 +4,9 @@ $ErrorActionPreference = "Stop"
 $monitorScript = "sidecar\monitor.py"
 $logFile = "memory\monitor.log"
 
+$venvPython = Join-Path $PSScriptRoot ".venv\Scripts\python.exe"
+$pythonExe = if (Test-Path $venvPython) { $venvPython } else { "python" }
+
 # Check if already running
 $existing = Get-CimInstance Win32_Process -Filter "Name='python.exe'" |
     Where-Object { $_.CommandLine -like "*monitor.py*" }
@@ -26,8 +29,8 @@ try {
 
 # Start monitor in background
 Write-Host "Starting reflex monitor..." -ForegroundColor Cyan
-Start-Process -FilePath "python" -ArgumentList "-u", $monitorScript -RedirectStandardOutput $logFile -RedirectStandardError "memory\monitor.err.log" -NoNewWindow -PassThru | Select-Object Id, StartTime
+Start-Process -FilePath $pythonExe -ArgumentList "-u", $monitorScript -RedirectStandardOutput $logFile -RedirectStandardError "memory\monitor.err.log" -NoNewWindow -PassThru | Select-Object Id, StartTime
 
 Write-Host "Monitor started. Alerts: memory\alerts\current.json" -ForegroundColor Green
 Write-Host "Log: $logFile"
-Write-Host "Stop with: Get-Process python | Where-Object { `$_.CommandLine -like '*monitor.py*' } | Stop-Process"
+Write-Host "Stop with: .\stop-monitor.ps1"

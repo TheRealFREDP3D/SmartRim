@@ -7,7 +7,7 @@
 - Ghoul companions
 
 ## Key Mechanics
-<!-- Add anomaly mechanics as we learn them -->
+<!-- Placeholder: not yet populated. "Ghoul companions" mention above is unverified. -->
 
 ## Tips
 <!-- Add anomaly tips from web research or gameplay -->

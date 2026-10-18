@@ -39,7 +39,7 @@
   - No steam geysers spotted in coarse scan (recheck at full res)
 - **Starting gear**: Crashlanded package (weapons, packaged meals, steel, wood, medicine) — needs unforbid
 
-## Day 0 Priorities (from AGENT.md checklist)
+## Day 0 Priorities (from MCP-REFERENCE.md checklist)
 
 1. Unforbid all starting resources
 2. Survey map at full resolution (geysers, rich soil)

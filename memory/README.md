@@ -25,3 +25,7 @@ This directory maintains a growing knowledge base from web research and gameplay
 - Append new findings at the end of relevant sections
 - Date-stamp entries when adding new information
 - Cross-reference between files with `see [filename](#section)`
+
+## Run data (gitignored)
+- `memory/snapshots/` and `memory/debriefs/` are gitignored (runtime data).
+- Archive a completed run by copying its snapshots + debrief into `memory/session-logs/` or a dated folder before starting the next colony, so the survival baseline is preserved.
