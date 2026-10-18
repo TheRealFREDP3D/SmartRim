@@ -261,7 +261,7 @@ def write_snapshot(client, day_label):
 
 def main():
     ensure_dirs()
-    client = McpClient(MCP_URL)
+    client = McpClient(MCP_URL, delay=MCP_DELAY)
     last_day = None
     snapshotted_day = None
 

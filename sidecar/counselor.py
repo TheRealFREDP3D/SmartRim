@@ -7,10 +7,11 @@ import sys
 from mcp_client import McpClient, McpError
 
 try:
-    from config import MCP_URL
+    from config import MCP_URL, MCP_DELAY
 except Exception:
     MCP_URL = "http://localhost:8787/"
-_client = McpClient(MCP_URL)
+    MCP_DELAY = 0.15
+_client = McpClient(MCP_URL, delay=MCP_DELAY)
 
 
 def _call(name, arguments=None):
@@ -84,8 +85,17 @@ def resume():
 
 
 def wait(hours=1):
-    """Safely advance time by N game hours. Auto-pauses after."""
-    return _call("wait_for_event", {"maxGameHours": hours, "pause": "always"})
+    """Safely advance time by N game hours. Auto-pauses after.
+
+    Retries once if a wait is already in progress (server-side stuck wait).
+    """
+    r = _call("wait_for_event", {"maxGameHours": hours, "pause": "always"})
+    if isinstance(r, dict) and "already in progress" in str(r.get("error", "")).lower():
+        _call("set_speed", {"action": "pause"})
+        import time
+        time.sleep(0.5)
+        r = _call("wait_for_event", {"maxGameHours": hours, "pause": "always"})
+    return r
 
 
 def save(name=None):

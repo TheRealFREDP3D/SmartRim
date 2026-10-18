@@ -8,6 +8,7 @@ except ImportError:
 
 MCP_URL = os.getenv("MCP_URL", "http://localhost:8787/")
 POLL_INTERVAL = int(os.getenv("POLL_INTERVAL", "10"))
+MCP_DELAY = float(os.getenv("MCP_DELAY", "0.15"))
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ALERTS_DIR = os.path.join(BASE_DIR, "memory", "alerts")
