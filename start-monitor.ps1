@@ -26,7 +26,7 @@ try {
 
 # Start monitor in background
 Write-Host "Starting reflex monitor..." -ForegroundColor Cyan
-Start-Process -FilePath "python" -ArgumentList $monitorScript -RedirectStandardOutput $logFile -RedirectStandardError "memory\monitor.err.log" -NoNewWindow -PassThru | Select-Object Id, StartTime
+Start-Process -FilePath "python" -ArgumentList "-u", $monitorScript -RedirectStandardOutput $logFile -RedirectStandardError "memory\monitor.err.log" -NoNewWindow -PassThru | Select-Object Id, StartTime
 
 Write-Host "Monitor started. Alerts: memory\alerts\current.json" -ForegroundColor Green
 Write-Host "Log: $logFile"
