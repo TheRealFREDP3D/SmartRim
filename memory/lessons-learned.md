@@ -182,6 +182,16 @@
   - `order_pawn` command list is specific ("Fire at sparrow", not "Auto attack (AI)" in that context)
 - 2x/day colony summaries posted in-game via `say` (background pwsh loop, triggered at hours 6/18)
 
+### 2026-10-18 — Session 4 (Doder Coalition, in progress)
+- **Colony**: Doder Coalition (Hypnotist's Inlet, tile 4, temperate forest, flat, 16.6C)
+- **Difficulty**: Community Builder (Easy) — Phoebe Chillax (confounds comparison with Adventure Story / Cassandra baseline)
+- **Result (so far)**: Day 9+, all 3 colonists alive and healthy; low food alert on Day 8 (3 days remaining)
+- **Key lessons**:
+  - Food: rice field too small / cooking inconsistent → low food by Day 8. Fix: plant 40-60 tiles rice on Day 1, cook simple meals steadily, keep >=2 weeks of food
+  - Construction: "Need defenses" alert persisted Days 3-6; 13 wall blueprints sat unbuilt for 3+ days (RimMolt message). Fix: assign Construction priority 1 to a capable pawn early; verify blueprints actually get built
+  - Medical: "Medical treatment needed" on Day 6 despite 30 medicine — injuries happen even on easy. Fix: keep doctor assigned, medicine stocked, medical bed ready
+  - Research: "Need research project" Days 4-5 — bench placement/assignment issue. Fix: place research bench indoors with light; assign a dedicated researcher
+
 ## MCP Tool Gotchas (Session 2 — CRITICAL)
 
 ### Work Type Names

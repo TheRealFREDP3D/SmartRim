@@ -137,6 +137,44 @@ def run_reflex_checks(client):
         except Exception:
             pass
 
+        # Resource checks (food, medicine, raw materials)
+        try:
+            res = client.call_tool("get_resources")
+            if isinstance(res, dict) and not res.get("error"):
+                res_list = res.get("resources", [])
+                res_map = {r.get("defName") or r.get("label"): r.get("count", 0) for r in res_list}
+                # Medicine
+                med = 0
+                for k, v in res_map.items():
+                    if "medicine" in str(k).lower():
+                        med += v
+                if med < 5:
+                    alerts.append(
+                        {
+                            "type": "warning" if med > 0 else "urgent",
+                            "category": "medicine_low",
+                            "message": f"Medicine stock low ({med})",
+                            "timestamp": timestamp,
+                        }
+                    )
+                # Food: packaged meals + raw food
+                food = 0
+                for k, v in res_map.items():
+                    kl = str(k).lower()
+                    if "meal" in kl or "rice" in kl or "corn" in kl or "potato" in kl or "berry" in kl or "meat" in kl:
+                        food += v
+                if food < 20:
+                    alerts.append(
+                        {
+                            "type": "warning" if food > 5 else "urgent",
+                            "category": "food_low",
+                            "message": f"Food stock low ({food} units)",
+                            "timestamp": timestamp,
+                        }
+                    )
+        except Exception:
+            pass
+
         # Colony death detection
         colonist_count = status.get("colonistCount", 0)
         if colonist_count == 0:
@@ -162,6 +200,45 @@ def run_reflex_checks(client):
     return alerts
 
 
+def normalize_snapshot(snapshot):
+    """Flatten key metrics into a stable 'summary' block for downstream analysis."""
+    try:
+        status = snapshot.get("status", {}) or {}
+        conditions = snapshot.get("conditions", {}) or {}
+        colonists_wrap = snapshot.get("colonists", {}) or {}
+        colonists = colonists_wrap.get("colonists", []) if isinstance(colonists_wrap, dict) else []
+        resources_wrap = snapshot.get("resources", {}) or {}
+        res_list = resources_wrap.get("resources", []) if isinstance(resources_wrap, dict) else []
+        alerts_wrap = snapshot.get("alerts", {}) or {}
+        active_alerts = alerts_wrap.get("activeAlerts", []) if isinstance(alerts_wrap, dict) else []
+
+        moods = [c.get("mood") for c in colonists if isinstance(c, dict) and c.get("mood") is not None]
+        healths = [c.get("health") for c in colonists if isinstance(c, dict) and c.get("health") is not None]
+        downed = [c.get("name") for c in colonists if isinstance(c, dict) and c.get("downed")]
+
+        res_map = {}
+        for r in res_list:
+            if isinstance(r, dict):
+                res_map[r.get("defName") or r.get("label")] = r.get("count", 0)
+
+        snapshot["summary"] = {
+            "day": conditions.get("date") or snapshot.get("day"),
+            "hour": conditions.get("hour"),
+            "season": conditions.get("seasonLabel"),
+            "temp": (conditions.get("temperature", {}) or {}).get("outdoorC") if isinstance(conditions.get("temperature"), dict) else None,
+            "colonist_count": status.get("colonistCount"),
+            "min_mood": min(moods) if moods else None,
+            "min_health": min(healths) if healths else None,
+            "downed": downed,
+            "alerts": [a.get("label") for a in active_alerts if isinstance(a, dict)],
+            "resources": res_map,
+            "wealth": status.get("wealthTotal") or (resources_wrap.get("wealthTotal") if isinstance(resources_wrap, dict) else None),
+        }
+    except Exception:
+        snapshot["summary"] = {"error": "normalization failed"}
+    return snapshot
+
+
 def write_snapshot(client, day_label):
     snapshot = {
         "day": day_label,
@@ -173,6 +250,7 @@ def write_snapshot(client, day_label):
         "research": client.call_tool("get_research"),
         "alerts": client.call_tool("get_alerts"),
     }
+    normalize_snapshot(snapshot)
 
     safe = str(day_label).replace("/", "-").replace("\\", "-")
     path = os.path.join(SNAPSHOTS_DIR, f"day-{safe}.json")
