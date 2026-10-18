@@ -1,0 +1,98 @@
+# Colonist Management
+
+## Work Priorities (Manual Mode)
+- Enable manual work priorities immediately
+- Firefighting, Patient, Bed Rest, Basic → set to 1 for everyone
+- Assign specialized roles:
+  - One pawn: Cooking priority 1 (most important job)
+  - One pawn: Growing + Construction priority 1
+  - One pawn: Research + Crafting priority 1
+
+## Critical Role Assignments (Day 1)
+
+### Every Colonist Should Have:
+| Work Type | Priority | Why |
+|-----------|----------|-----|
+| Firefighting | 1 | Prevents base destruction |
+| Patient | 1 | Heals when sick |
+| Bed Rest | 1 | Recovers in bed |
+| Basic | 1 | General tasks |
+
+### Specialized Roles:
+| Role | Primary Work | Priority | Requirements |
+|------|-------------|----------|--------------|
+| Cook | Cooking | 1 | Cooking skill 4+ |
+| Builder | Construction | 1 | Construction skill 5+ |
+| Grower | Growing | 1 | Growing skill 8+ (for healroot) |
+| Researcher | Research | 1 | Intellectual skill 5+ |
+| Doctor | Medicine | 1 | Medicine skill 4+ |
+| Hunter | Hunting | 1 | Shooting skill 5+ |
+
+### Common Mistakes:
+- Setting all work types to 1 (colonists do everything poorly)
+- Not having dedicated cook (food crisis)
+- Not having dedicated grower (food shortage)
+- Not having dedicated doctor (untreated injuries)
+
+## Skills to Prioritize
+| Skill | Why |
+|-------|-----|
+| Shooting | Combat survival |
+| Construction | Base building, furniture, defenses |
+| Plants | Food production |
+| Medical | Tending wounds, surgery |
+| Cooking | Food preparation (mood + survival) |
+| Intellectual | Research speed |
+
+## Skills That Can Wait
+- Animals (least important early)
+- Artistic (luxury, not survival)
+- Crafting (useful later, not day 1)
+
+## Traits to Avoid
+- **Pyromaniac** — will set base on fire during mental break
+- **Incapable of Dumb Labor** — can't haul, clean, or haul
+- **Incapable of Violence** — can't fight in raids
+- Major health issues — limits productivity
+
+## Scheduling
+- Default "Anything" schedule works fine
+- Colonists auto-manage needs when allowed
+- Avoid working in darkness (mood + speed penalty)
+
+## Gear Management
+- Equip weapons based on combat skills
+- Best shooter → rifle
+- Best melee → knife
+- Remaining capable colonist → pistol
+- Strip raider weapons after fights (better than starting gear)
+
+## Mood Management Checklist
+- [ ] Beds for everyone (no sleeping on ground)
+- [ ] Table + chairs (no eating without table)
+- [ ] Enclosed shelter (no sleeping outside)
+- [ ] Temperature controlled (16-26°C)
+- [ ] Lit rooms (no darkness debuff)
+- [ ] Recreation variety (horseshoes, chess, TV)
+- [ ] Clean cooking area (no food poisoning)
+- [ ] Bury/butcher corpses (-10 mood each!)
+- [ ] Monitor relationships (breakups cause grief)
+- [ ] Watch for mental breaks below 25% mood
+
+## Mental Break Prevention
+| Mood | Risk | Action |
+|------|------|--------|
+| 50%+ | Safe | Continue working |
+| 25-50% | Warning | Check needs, fix biggest penalty |
+| 10-25% | Critical | Emergency recreation, food, rest |
+| <10% | Break imminent | Draft and isolate if violent |
+
+### Common Mental Breaks:
+- **Food binge**: Colonist eats all food (mood 15-25%)
+- **Hide in room**: Colonist locks self in bedroom
+- **Wandering**: Colonist ignores work
+- **Berserk**: Colonist attacks others (mood <10%)
+- **Pyromaniac fire**: Sets fire to base (DANGEROUS!)
+
+## Notes
+<!-- Add colonist management observations here -->
