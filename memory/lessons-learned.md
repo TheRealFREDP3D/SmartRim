@@ -183,6 +183,11 @@
 - 2x/day colony summaries posted in-game via `say` (background pwsh loop, triggered at hours 6/18)
 
 ## MCP Tool Gotchas (Session 2 — CRITICAL)
+
+### Work Type Names
+- Valid work types include: `Firefighting`, `Patient`, `Bed Rest`, `Basic`, `Hauling`, `Cleaning`, `Warden`, `Handling`, `Cooking`, `Hunting`, `Construction`, `Growing`, `Mining`, `PlantCutting`, `Smithing`, `Tailoring`, `Art`, `Crafting`, `Research`
+- Use exact names with spaces where applicable (e.g., "Bed Rest" not "BedRest", "Firefighting" not "Firefight")
+- Colonists may be incapable of certain work types (e.g., "incapable of Dumb labor" → can't haul or clean)
 1. **`set_speed` takes only `action=pause|unpause`** — numeric `speed` param is silently ignored; unpause resumes at the LAST selected speed (usually Superfast). `Resume-Game -Speed 1` does NOT slow anything down
 2. **Never advance time with bare unpause** — use `wait_for_event` with `maxGameHours` + `pause="always"`; it has a 1-game-hour crisis cap when hostiles/fire/life-threatening conditions exist, and returns letters/damage deltas
 3. **`draft`** requires `action="draft"` + `ids` (comma-separated ThingIDs, not names)
