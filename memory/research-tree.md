@@ -18,6 +18,20 @@
 - Don't remove the only cook during shortage
 - Research the next concrete need: preservation → power → defense → production
 
+## Pre-Researched (Community Builder Mode)
+These are already unlocked at game start in Community Builder difficulty:
+- Electricity
+- Stonecutting
+- Passive Cooler
+- Complex Furniture
+- Complex Clothing
+- Air Conditioning
+- Nutrient Paste
+
+## Research Name Notes
+- "Medicine" research is actually called "Drug Production" in this game
+- Drug lab crafting: healroot + cloth + neutroamine → herbal medicine
+
 ## Key Techs
 | Tech | Unlocks |
 |------|---------|
