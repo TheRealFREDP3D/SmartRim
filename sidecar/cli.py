@@ -29,6 +29,10 @@ COMMANDS = {
     "power": lambda args: c.power(),
     "world": lambda args: c.world(),
     "wildlife": lambda args: c.wildlife(),
+    "unforbid_all": lambda args: c.unforbid_all(),
+    "survey": lambda args: c.survey(int(args[0]), int(args[1]), int(args[2]), int(args[3])),
+    "raid_status": lambda args: c.raid_status(),
+    "equip": lambda args: c.equip(args[0], args[1] if len(args) > 1 else None, args[2] if len(args) > 2 else None),
 }
 
 

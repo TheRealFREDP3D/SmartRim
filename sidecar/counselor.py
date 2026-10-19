@@ -272,6 +272,95 @@ def world():
     return _call("get_world", {})
 
 
+# === Consolidated tools (from scratchpad scripts) ===
+
+def unforbid_all():
+    """Unforbid every forbidden item on the map. Returns count."""
+    r = _call("list_unmanaged_items", {"limit": 500, "confirm": True})
+    ids = [t["id"] for t in (r.get("items", []) if isinstance(r, dict) else []) if t.get("forbidden")]
+    done = 0
+    for iid in ids:
+        _call("do_thing_action", {"id": iid, "label": "Allow"})
+        done += 1
+    return {"unforbidden": done, "total_found": len(ids)}
+
+
+def survey(x1, z1, x2, z2):
+    """Survey an area: terrain, tree count, razor wire count."""
+    a = _call("get_area", {"minX": x1, "minZ": z1, "maxX": x2, "maxZ": z2, "summary": True})
+    tg = a.get("thingGroups", []) if isinstance(a, dict) else []
+    trees = sum(g.get("count", 0) for g in tg if "Tree" in g.get("def", ""))
+    razor = sum(g.get("count", 0) for g in tg if "Razor" in g.get("def", ""))
+    return {
+        "terrain": a.get("terrainSummary", {}),
+        "trees": trees,
+        "razor_wire": razor,
+        "thing_groups": tg,
+    }
+
+
+def find_rich_soil():
+    """Find 10x10 areas containing rich soil. Returns list of (x,z,cells)."""
+    results = []
+    for x in range(0, 250, 10):
+        for z in range(0, 250, 10):
+            a = _call("get_area", {"minX": x, "minZ": z, "maxX": x + 9, "maxZ": z + 9, "summary": True})
+            ts = a.get("terrainSummary", {}) if isinstance(a, dict) else {}
+            if ts.get("SoilRich", 0) > 0:
+                results.append({"x": x, "z": z, "rich_cells": ts.get("SoilRich", 0)})
+    return results
+
+
+def chop_trees(x1, z1, x2, z2):
+    """Designate trees in an area for harvesting."""
+    return _call("designate", {"designator": "Designator_PlantsHarvestWood", "minX": x1, "minZ": z1, "maxX": x2, "maxZ": z2})
+
+
+def raid_status():
+    """Check for hostiles and raid alerts."""
+    pawns = _call("list_things", {"category": "pawn", "limit": 200})
+    hostiles = [t for t in (pawns.get("things", []) if isinstance(pawns, dict) else []) if t.get("hostile")]
+    alerts = _call("get_alerts")
+    active = alerts.get("activeAlerts", []) if isinstance(alerts, dict) else []
+    raid_alerts = [a for a in active if any(k in a.get("label", "").lower() for k in ("raid", "enemy", "attack"))]
+    return {
+        "hostile_count": len(hostiles),
+        "hostiles": [{"label": h.get("label"), "x": h.get("x"), "z": h.get("z"), "downed": h.get("downed")} for h in hostiles],
+        "raid_alerts": raid_alerts,
+    }
+
+
+def equip(colonist, weapon=None, apparel=None):
+    """Equip a weapon and/or apparel on a colonist."""
+    results = {}
+    if weapon:
+        results["weapon"] = _call("manage_gear", {"name": colonist, "op": "equip", "item": weapon})
+    if apparel:
+        for item in (apparel if isinstance(apparel, list) else [apparel]):
+            results[f"wear_{item}"] = _call("manage_gear", {"name": colonist, "op": "wear", "item": item})
+    return results
+
+
+def find_corpses():
+    """Find unburied human corpses on the map."""
+    # Use inspect on a grid is too slow; rely on list_things with category
+    r = _call("list_things", {"category": "item", "limit": 200})
+    things = r.get("things", []) if isinstance(r, dict) else []
+    return [t for t in things if "corpse" in str(t.get("label", "")).lower() or "corpse" in str(t.get("def", "")).lower()]
+
+
+def scan_area(x1, z1, x2, z2):
+    """Scan a grid of cells, returning non-terrain items (weapons, gear, etc.)."""
+    results = []
+    for z in range(z1, z2 + 1):
+        for x in range(x1, x2 + 1):
+            r = _call("inspect_thing", {"x": x, "z": z})
+            lab = r.get("label") or ""
+            if lab and "Plant" not in lab and "Chunk" not in lab and "Grass" not in lab and "Rubble" not in lab:
+                results.append({"x": x, "z": z, "label": lab, "id": r.get("id")})
+    return results
+
+
 # === Compound Operations ===
 
 def _safe(fn, *a, **kw):
