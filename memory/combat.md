@@ -3,6 +3,13 @@
 ## First Raid (day range unverified; Session 5 raid came Day 5 under Phoebe)
 - Most runs: first raid arrives in this window
 - Have weapons + sandbags ready before it hits
+- Cut down all trees and remove stone chunks in kill box area (enemies use them for cover) (community tip)
+- Turrets: put a wall between them so one explosion doesn't chain (community tip)
+- Single door frame chokepoint: 3 pawns holding the line (community tip)
+- Friendly fire: pawns don't hit adjacent pawns; max 2 lines deep (community tip)
+- Boomalopes: separate area away from everyone (community tip)
+- Sappers avoid turrets; set turrets on other side of walls to redirect them (community tip)
+- Walls block explosions (community tip)
 - If behind: pause and re-prioritize immediately
 
 ## Raid Response Protocol

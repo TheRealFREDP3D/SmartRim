@@ -5,7 +5,9 @@
 2. **Electricity** — power for coolers, lights, turrets
 3. **Batteries** — store excess wind power
 4. **Air Conditioning** — freezer for food preservation
-5. **Machining** — advanced weapons and components
+5. **Machining** - advanced weapons and components
+6. **Nutrient paste** - produces meals from raw feedstock without labor (requires Electricity) (wiki: Nutrient_paste)
+7. **Penoxycyline** - disease prevention drug (wiki: Research)
 
 ## Mid Game
 - **Microelectronics** — advanced power, comms

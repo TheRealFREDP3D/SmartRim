@@ -33,6 +33,10 @@
 - Potatoes: average soil is fine
 - Simple meals: cook raw food before eating (mood bonus)
 - Freezer: below 0°C prevents all spoilage
+- Nutrient paste dispenser: efficient early food, no cooking skill needed, requires Electricity research (wiki: Nutrient_paste)
+- Main stockpile as freezer: prevents perishable spoilage (community tip)
+- Cleanliness affects research speed, surgery success, food poisoning chance, gene assembler speed (wiki: Bedroom, Research)
+- Turn off unused workstations to save power (community tip)
 
 ## Combat
 - Cover: sandbags, rock chunks give hit penalties to enemies

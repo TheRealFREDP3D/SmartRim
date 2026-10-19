@@ -3,7 +3,7 @@
 ## Recommended Setup
 
 - **Scenario**: Crashlanded (3 colonists, balanced start)
-- **Storyteller**: Cassandra Classic (predictable escalation)
+- **Storyteller**: Cassandra Classic (predictable escalation) — note: one community guide recommends Randy Random for learning to expect the unexpected; Cassandra is safer for measured runs
 - **Difficulty**: Medium / Adventure Story
 - **Biome**: Temperate Forest (long growing season, wood, fertile soil)
 
@@ -31,6 +31,7 @@ A room can serve multiple roles but mixing kitchen/workshop with living spaces c
 ## Day 1
 
 1. Build fueled stove + cook simple meal bill (Do until you have 10)
+   - Alternative: nutrient paste dispenser (requires Electricity research) - produces meals from raw feedstock without labor, no cooking skill needed (wiki: Nutrient_paste)
 2. Build research bench
 3. Plant rice (40-60 tiles) on rich soil if available
 4. Harvest wild healroot (for herbal medicine)
@@ -124,6 +125,7 @@ The wiki does not give a "Days 8-15" first-raid window. Storyteller and raid poi
 - Bury/butcher bodies — unburied colonist corpses cause a "left unburied" thought after 4 days (wiki)
 - Sandbags before first raid (wiki: 55% cover, built from Fabric or Leathery material, 5 units each; raid day is unverified)
 - Don't hoard — wealth scales raid difficulty
+- Keep early wealth under ~10K; spend on research before expanding (community tip)
 - No pyromaniacs — they burn bases down
 - Rice first — fastest food crop
 - Cook meals — raw food = mood penalty

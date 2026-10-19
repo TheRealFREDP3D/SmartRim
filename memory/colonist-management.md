@@ -52,6 +52,8 @@
 ## Traits to Avoid
 - **Pyromaniac** — will set base on fire during mental break
 - **Incapable of Dumb Labor** — can't haul, clean, or haul
+- **Incapable of Violent** — can't equip weapons, hunt, or fight (wiki: Incapable)
+- Outfit rule: only wear apparel 51-100% durable; burn 50% and below (community tip)
 - **Incapable of Violence** — can't fight in raids
 - Major health issues — limits productivity
 
@@ -59,6 +61,11 @@
 - Default "Anything" schedule works fine
 - Colonists auto-manage needs when allowed
 - Avoid working in darkness (mood + speed penalty)
+- Synchronize sleep schedules: consistent wake/sleep for all (except night owls). Recreation 2h after waking, 1h before bed (community tip)
+- Night owls: assign to hauling/cleaning at night (community tip)
+- Light work areas: darkness slows movement and work speed, reduces surgery success (community tip, wiki: lighting)
+- Passions and traits matter more than raw skill for long-term value (community tip)
+- Two doctors recommended for backup (community tip)
 
 ## Gear Management
 - Equip weapons based on combat skills

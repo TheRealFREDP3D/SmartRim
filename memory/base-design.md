@@ -2,8 +2,10 @@
 
 ## Shelter (Day 1)
 
-- Default starter shelter: 7x7 room with walls + door. This is a TEMPORARY shelter only.
-- Do NOT pack everything into one room. Separate room roles per the wiki (Room_roles):
+- Default starter shelter: 7x7 room with walls + door. Temporary only.
+- Early game: combo barracks + dining + rec room into one large room to save work (community tip). Separate as colony grows.
+- Horseshoe pin: place chairs in throwing area; pawns sit and play for extra comfort (community tip)
+- Do NOT pack everything into one room long-term. Separate room roles per the wiki (Room_roles):
   - Bedroom: bed only (mood from impressiveness). One per colonist.
   - Dining room: table + chairs (mood from impressiveness).
   - Kitchen: stove (cleanliness affects food poisoning and work speed).
@@ -14,6 +16,15 @@
 - A room can serve multiple roles (e.g., bedroom + dining room) but mixing kitchen/workshop with living spaces causes problems.
 - Smaller (4x4-5x5) only for emergency starter shacks; larger needs more materials/time
 - Use existing ruins/mountains as walls to save resources
+- Pathing: wood or steel floor gives 100% movement speed; bare ground slows pawns. Metal floors clean at 60% speed vs carpet 200% (community tip)
+- Rooms without corners save materials (walls block explosions) (community tip)
+- 11x11 rooms are a good sweet spot for most purposes (community tip)
+- Keep power supplies and storage off the beaten path (raiders target them)
+- Batteries separate from generators (explosion cascade risk)
+- Main stockpile as freezer: prevents perishable spoilage (community tip)
+- Turn off unused workstations to save power (community tip)
+- Keep doors open inside base for hauling efficiency; close during raids/infestations (community tip)
+- Roofs held up in 6-tile radius by a single wall/column (community tip)
 - Keep home area compact (cleaning/fire management)
 
 ## Freezer
