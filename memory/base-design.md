@@ -1,5 +1,13 @@
 # Base Design
 
+## Site Selection (before building)
+
+- Check terrain fertility near the base location (wiki: Growing). Rich soil > normal soil > stoney soil.
+- Place the main growing zone on rich soil if available within ~20 tiles of the shelter. Normal soil is acceptable for secondary crops.
+- Stony soil only for plants with low fertility requirements.
+- Also consider: water source (river), mountain cover (defense), geysers (power), flat ground.
+- Terrain fertility affects growth speed, not yield. Planting on normal soil is roughly as work-efficient, just slower.
+
 ## Shelter (Day 1)
 
 - Default starter shelter: 7x7 room with walls + door. Temporary only.

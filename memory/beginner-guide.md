@@ -9,6 +9,8 @@
 
 ## Day 0 (Pause Immediately!)
 
+NOTE: Site selection matters. Check terrain fertility nearby (wiki: Growing). Place base near rich soil if available. Rich soil > normal soil > stoney soil for growing zones.
+
 NOTE: Do NOT pack everything into one room. Separate room roles per wiki (Room_roles):
 - Bedroom: bed only (mood from impressiveness). One per colonist.
 - Dining room: table + chairs (mood from impressiveness).
