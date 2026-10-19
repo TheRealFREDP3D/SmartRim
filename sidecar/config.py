@@ -35,5 +35,7 @@ LLM_MODEL = os.getenv("LLM_MODEL", "gpt-4o-mini")
 RUN_ID = os.getenv("RUN_ID", "current-run")
 
 # Fixed run length for comparable runs (see RUN-PROTOCOL.md).
-# A run ends when daysPassed (from get_status) reaches RUN_DAYS.
-RUN_DAYS = int(os.getenv("RUN_DAYS", "10"))
+# Definition: the 1st day is Day 1, then 10 full days must complete after it.
+# get_status.daysPassed counts elapsed days from 0 on the 1st day, so the run ends
+# when daysPassed reaches 11 (1 + 10).
+RUN_DAYS = int(os.getenv("RUN_DAYS", "11"))

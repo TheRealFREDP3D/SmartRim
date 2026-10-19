@@ -42,7 +42,8 @@ class TestRunLength(unittest.TestCase):
 
     def test_default_is_config_value(self):
         from config import RUN_DAYS
-        self.assertEqual(RUN_DAYS, 10)
+        self.assertEqual(RUN_DAYS, 11)
+        self.assertFalse(run_length_reached(RUN_DAYS - 1))
         self.assertTrue(run_length_reached(RUN_DAYS))
 
 
