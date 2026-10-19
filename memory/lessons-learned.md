@@ -7,7 +7,7 @@
 1. **No herbal medicine** — colonists died from injuries no one could treat
    - Fix: Harvest wild healroot on Day 1-2; plant healroot growing zone (needs Growing skill 8+)
    - Fix: Start with 30 medicine (Crashlanded scenario) — preserve it, don't waste on bruises
-   - Fix: Build drug lab early to craft medicine from healroot + cloth + neutroamine
+   - Fix: Research Drug production early (drug lab). Herbal medicine comes from healroot; industrial medicine needs Medicine production research plus cloth 3 + herbal 1 + neutroamine 1 (wiki: Herbal_medicine, Research)
 
 2. **Not building medical bed** — downed colonists can't heal
    - Fix: Build 1-2 beds designated as medical early (Bed → toggle to medical)
@@ -18,7 +18,7 @@
    - Fix: Do NOT hunt predators; avoid or fight only with a fighter escort + medic nearby
    - Fix: Build walls around growing zones and work areas
 
-4. **Not burying corpses** — -10 mood debuff per corpse
+4. **Not burying corpses** — an unburied colonist corpse triggers the "left unburied" thought after 4 game days (wiki: Thoughts). The -10 per corpse figure is unverified
    - Fix: Designate dumping stockpile for corpses, or butcher them
    - Fix: Set hauling priority high for corpse removal
 
@@ -46,7 +46,7 @@
 
 10. **No recreation variety** — mood stagnates
    - Fix: Build horseshoe pin Day 1; add chess table and TV later
-   - Fix: 4 different recreation types prevent diminishing returns
+   - Fix: vary recreation types. The number needed depends on wealth expectations (2 to 6 types, wiki: Wealth). Recreation tolerance builds with repetition (wiki: Recreation)
 
 11. **Cooking in dirty area** — food poisoning risk
     - Fix: Separate kitchen from workshop; floor the kitchen
@@ -110,7 +110,7 @@
 5. Plant healroot growing zone (needs Growing 8+)
 6. Build drug lab for medicine crafting
 
-### Day 8-15 (First Raid Window)
+### Early raid window (day range unverified; Session 5 raid came Day 5)
 1. All colonists armed with weapons
 2. Sandbag line with cover positions
 3. Focus-fire one enemy at a time
@@ -133,10 +133,10 @@
 5. Machining (turrets, better weapons) — Day 15+
 
 ## Medicine Strategy
-- Day 1: Harvest wild healroot (60% potency)
+- Day 1: Harvest wild healroot (the "60% potency" figure is unverified against the wiki)
 - Day 2: Plant healroot growing zone
 - Day 3: Build drug lab
-- Day 5+: Craft herbal medicine from healroot + cloth
+- Day 5+: Craft herbal medicine from healroot (cloth + neutroamine are for industrial medicine)
 - Buy standard medicine from traders when possible
 - Restrict colonists to herbal medicine for minor injuries
 
@@ -224,5 +224,5 @@
 6. **`set_schedule` with no hours sets the WHOLE day** — always pass explicit `hourStart`/`hourEnd`/`hours`
 7. **Corpse search**: `defName="Corpse_Human"`; `category="corpse"` is wrong (returns rocks)
 8. **Designator names differ**: `Designator_ZoneAdd_Growing` (with underscore), `Designator_PlantsHarvestWood`, `Designator_PlantsHarvest`, `Designator_Hunt`, `Designator_Cancel` — wrong name returns "Unknown designator" with a hint to use list_architect
-9. **Sandbags stuff=Cloth only** — no cloth in stock means a stalled blueprint; plant cotton early or test stuff options before placing
+9. **Sandbags stuff=Cloth only (tool behaviour, conflicts with wiki)** — wiki (Sandbags) says 5 units of Fabric or Leathery material. The MCP build call only accepted cloth in our tests. Plant cotton early, and re-test other Fabric/Leathery stuffs in-game before placing
 10. **`save_game` can return `saved=False`** (window open / game shutting down) — verify, and know autosave names `Autosave-N.rws` in `%USERPROFILE%\AppData\LocalLow\Ludeon Studios\RimWorld by Ludeon Studios\Saves`

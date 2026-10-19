@@ -517,7 +517,7 @@
   "Psychic_ship": {
     "url": "https://rimworldwiki.com/wiki/Psychic_ship",
     "fetched": "2026-10-18",
-    "size": 40442
+    "size": 39899
   },
   "Psychic_soothe_pulser": {
     "url": "https://rimworldwiki.com/wiki/Psychic_soothe_pulser",
@@ -733,5 +733,35 @@
     "url": "https://rimworldwiki.com/wiki/Zones",
     "fetched": "2026-10-18",
     "size": 52015
+  },
+  "AI_Storytellers": {
+    "url": "https://rimworldwiki.com/wiki/AI_Storytellers",
+    "fetched": "2026-10-18",
+    "size": 84100
+  },
+  "Difficulty": {
+    "url": "https://rimworldwiki.com/wiki/Difficulty",
+    "fetched": "2026-10-18",
+    "size": 84524
+  },
+  "Rice": {
+    "url": "https://rimworldwiki.com/wiki/Rice",
+    "fetched": "2026-10-18",
+    "size": 50246
+  },
+  "Guinea_pig": {
+    "url": "https://rimworldwiki.com/wiki/Guinea_pig",
+    "fetched": "2026-10-18",
+    "size": 93684
+  },
+  "Incapable": {
+    "url": "https://rimworldwiki.com/wiki/Incapable",
+    "fetched": "2026-10-18",
+    "size": 74632
+  },
+  "Pyromaniac": {
+    "url": "https://rimworldwiki.com/wiki/Pyromaniac",
+    "fetched": "2026-10-18",
+    "size": 188688
   }
 }

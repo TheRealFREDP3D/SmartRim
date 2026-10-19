@@ -50,7 +50,8 @@
 5. Build drug lab for medicine crafting
 6. Build wind turbine or solar panel for power
 
-## Days 8-15 (First Raid Window!)
+## Early raid window (UNVERIFIED day range)
+The wiki does not give a "Days 8-15" first-raid window. Storyteller and raid points set threat size (wiki: AI_Storytellers, Raid_points). Session 5 (Phoebe, Community builder) had its first raid on Day 5. Plan defenses by Day 5 to be safe.
 
 1. All colonists armed with weapons
 2. Sandbag line with cover positions
@@ -58,7 +59,7 @@
 4. Focus-fire ONE enemy at a time (critical!)
 5. Retreat non-combatants to safe zone
 6. Treat wounded immediately after fight
-7. Bury/haul ALL corpses (-10 mood each!)
+7. Bury/haul ALL corpses (wiki: "Colonist left unburied" thought after 4 game days in the open; per-corpse -10 is unverified)
 
 ## Days 16-30
 
@@ -84,7 +85,7 @@
 - **Day 1**: Harvest wild healroot (any colonist with Plant Cut)
 - **Day 2**: Plant healroot growing zone (needs Growing skill 8+)
 - **Day 3**: Build drug lab
-- **Day 5+**: Craft herbal medicine from healroot + cloth
+- **Day 5+**: Craft herbal medicine from healroot (wiki: herbal medicine is extracted from healroot; cloth + neutroamine + herbal are for industrial medicine, which needs Medicine production research)
 - **Always**: Buy standard medicine from traders
 - **Rule**: Restrict colonists to herbal medicine for minor injuries
 
@@ -110,15 +111,15 @@
 
 - Pause often — spacebar is free
 - Freeze food — cooler at -5°C to -10°C
-- Bury/butcher bodies — corpses tank mood (-10 each!)
-- Sandbags before first raid — days 8-15 window
+- Bury/butcher bodies — unburied colonist corpses cause a "left unburied" thought after 4 days (wiki)
+- Sandbags before first raid (wiki: 55% cover, built from Fabric or Leathery material, 5 units each; raid day is unverified)
 - Don't hoard — wealth scales raid difficulty
 - No pyromaniacs — they burn bases down
 - Rice first — fastest food crop
 - Cook meals — raw food = mood penalty
 - **Harvest healroot Day 1** — medicine saves lives
 - **Build medical beds** — downed colonists need treatment
-- **Beware animals** — even guinea pigs can kill!
+- **Beware animals** — predators hunt colonists when hungry and keep attacking downed prey (wiki: Animals). Guinea pigs are herbivores; the Session 1 cause of death is not confirmed as a predator attack
 
 ## Sources
 

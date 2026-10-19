@@ -2,14 +2,20 @@
 
 ## Wealth System
 - Raid strength scales with colony wealth (total value of buildings, items, colonists, animals)
-- Wealth counted toward raids caps at 1,000,000; raid points cap at 10,000 (unverified — confirm against RimWorld wiki)
+- Wealth counted toward raids caps at 1,000,000 storyteller wealth; raid points cap at 10,000 (wiki: Wealth, Raid_points, verified 2026-10-18)
 - Classic new-player trap: hoard everything → wealth spikes → raids get harder → colony dies
 - Rules: build only what you need, sell/process loot fast, upgrade defenses before warehouse
 
 ## Mood System
-- Below 25%: minor breaks (food binge, hide in room)
-- Below 10%: major breaks (berserk, setting fires, catatonia)
-- Above 50%: safe from all breaks
+- Mental break thresholds (wiki: Mental_break, Mood; verified 2026-10-18), base values for a normal colonist:
+  - Minor break threshold 35% (MTB ~4 days below it)
+  - Major break threshold 20% (MTB ~0.8 days below it)
+  - Extreme break threshold 5% (MTB ~0.5 days below it)
+- Traits shift these: Iron-willed -18%, Steadfast -9%, Nervous +8%, Volatile +15%
+- Base mood by difficulty: Peaceful/Community builder 42, Adventure story 37, Strive to survive 32, Blood and dust 27, Losing is Fun 22
+- Mood bar moves toward its target at most +12/hour up and -8/hour down (wiki: Mood)
+- Expectations: wealth sets a base mood bonus (+30 at 0-15k wealth down to 0 at 308k+) and the number of recreation types needed (2 to 6) (wiki: Wealth)
+- Earlier notes (below 25% / below 10% / above 50% safe) were wrong and have been removed.
 - Key mood boosters: fine meals, nice bedrooms, recreation variety
 - Key mood drains: raw food, sleeping outside, dirt, darkness, corpses, pain
 
@@ -21,7 +27,7 @@
 - Late-game: Fabrication, Multi-analyzer
 
 ## Food
-- Packaged survival meals: ~8 days for 3 pawns (50 meals)
+- Packaged survival meals: "~8 days for 3 pawns (50 meals)" is unverified against the wiki (Packaged_survival_meal page lists nutrition but not a duration); meals deteriorate slowly but do not expire (wiki)
 - Rice: fastest crop, harvest in ~6 days
 - Corn: slow but high yield
 - Potatoes: average soil is fine

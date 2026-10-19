@@ -75,17 +75,18 @@
 - [ ] Lit rooms (no darkness debuff)
 - [ ] Recreation variety (horseshoes, chess, TV)
 - [ ] Clean cooking area (no food poisoning)
-- [ ] Bury/butcher corpses (-10 mood each!)
+- [ ] Bury/butcher corpses (wiki: "Colonist left unburied" thought after 4 game days in the open; the -10 per corpse figure is unverified)
 - [ ] Monitor relationships (breakups cause grief)
 - [ ] Watch for mental breaks below 25% mood
 
 ## Mental Break Prevention
 | Mood | Risk | Action |
 |------|------|--------|
-| 50%+ | Safe | Continue working |
-| 25-50% | Warning | Check needs, fix biggest penalty |
-| 10-25% | Critical | Emergency recreation, food, rest |
-| <10% | Break imminent | Draft and isolate if violent |
+| 35%+ | Safe from mental breaks (base threshold; traits shift it) | Continue working |
+| 20-35% | Minor break risk (MTB ~4 days) | Check needs, fix biggest penalty |
+| 5-20% | Major break risk (MTB ~0.8 days) | Emergency recreation, food, rest |
+| <5% | Extreme break risk (MTB ~0.5 days) | Draft and isolate if violent |
+(wiki: Mental_break, Mood; verified 2026-10-18)
 
 ### Common Mental Breaks:
 - **Food binge**: Colonist eats all food (mood 15-25%)

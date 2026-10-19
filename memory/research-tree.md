@@ -18,8 +18,9 @@
 - Don't remove the only cook during shortage
 - Research the next concrete need: preservation → power → defense → production
 
-## Pre-Researched (Community Builder Mode)
-These are already unlocked at game start in Community Builder difficulty:
+## Pre-Researched (Community Builder Mode) — UNVERIFIED
+The wiki (Difficulty, Research) does not list pre-researched projects. Confirm in-game before relying on this list. Wiki-verified difficulty facts: Community builder research speed 120%, threat scale 30%.
+These are reported as unlocked at game start:
 - Electricity
 - Stonecutting
 - Passive Cooler
@@ -29,8 +30,10 @@ These are already unlocked at game start in Community Builder difficulty:
 - Nutrient Paste
 
 ## Research Name Notes
-- "Medicine" research is actually called "Drug Production" in this game
-- Drug lab crafting: healroot + cloth + neutroamine → herbal medicine
+- Wiki (Research, Herbal_medicine; verified 2026-10-18): "Drug production" (500 silver/cost tier) unlocks the drug lab. "Medicine production" (1500) is a separate, later research that requires Drug production.
+- Herbal medicine is extracted from healroot / wild healroot (the wiki does not call this a cloth-and-neutroamine recipe).
+- Industrial medicine (Medicine production): 3 cloth + 1 herbal medicine + 1 neutroamine, crafted by a crafter with at least 4 Intellectual and 4 Crafting.
+- Earlier note "Medicine research is called Drug Production" and "healroot + cloth + neutroamine → herbal medicine" were wrong.
 
 ## Key Techs
 | Tech | Unlocks |

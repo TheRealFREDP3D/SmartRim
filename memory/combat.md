@@ -1,6 +1,6 @@
 # Combat
 
-## First Raid (Days 8-15)
+## First Raid (day range unverified; Session 5 raid came Day 5 under Phoebe)
 - Most runs: first raid arrives in this window
 - Have weapons + sandbags ready before it hits
 - If behind: pause and re-prioritize immediately

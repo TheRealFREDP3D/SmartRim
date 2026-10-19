@@ -26,7 +26,7 @@
 
 ## Bedrooms
 
-- One per colonist (shared barracks = mood penalty)
+- One per colonist. A shared barracks (multiple colonists in one room) is a mood penalty: Dull barracks -5 and Awful barracks -7 versus a private bedroom (wiki: Thoughts, Bedroom)
 - At least 3x3
 - Bed + light minimum
 - Spacious+Impressive = +10 mood
