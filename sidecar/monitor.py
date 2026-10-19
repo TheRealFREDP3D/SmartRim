@@ -273,57 +273,107 @@ def write_snapshot(client, day_label):
     return path
 
 
+PID_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "memory", "monitor.pid")
+
+
+def _acquire_lock():
+    if os.path.exists(PID_FILE):
+        try:
+            with open(PID_FILE) as f:
+                old_pid = int(f.read().strip())
+            # check if process is alive
+            try:
+                os.kill(old_pid, 0)
+                print(f"Monitor already running (PID {old_pid}). Exiting.")
+                return False
+            except OSError:
+                pass
+        except (ValueError, OSError):
+            pass
+    with open(PID_FILE, "w") as f:
+        f.write(str(os.getpid()))
+    return True
+
+
+def _release_lock():
+    try:
+        if os.path.exists(PID_FILE):
+            with open(PID_FILE) as f:
+                pid = int(f.read().strip())
+            if pid == os.getpid():
+                os.remove(PID_FILE)
+    except (ValueError, OSError):
+        pass
+
+
 def main():
     ensure_dirs()
+    if not _acquire_lock():
+        return
     client = McpClient(MCP_URL, delay=MCP_DELAY)
     last_day = None
     snapshotted_day = None
+    consecutive_errors = 0
 
-    print(f"Reflex monitor started. Polling every {POLL_INTERVAL}s")
+    print(f"Reflex monitor started. Polling every {POLL_INTERVAL}s (PID {os.getpid()})")
     print(f"Alerts: {ALERTS_DIR}")
     print(f"Snapshots: {SNAPSHOTS_DIR}")
 
-    while True:
-        try:
-            conditions = client.call_tool("get_conditions")
-            if not conditions or not isinstance(conditions, dict) or conditions.get("error"):
-                time.sleep(POLL_INTERVAL)
-                continue
+    try:
+        while True:
+            try:
+                conditions = client.call_tool("get_conditions")
+                if not conditions or not isinstance(conditions, dict) or conditions.get("error"):
+                    consecutive_errors += 1
+                    if consecutive_errors >= 5:
+                        alert_path = os.path.join(ALERTS_DIR, "current.json")
+                        with open(alert_path, "w") as f:
+                            json.dump([{"type": "urgent", "category": "system", "message": f"MCP unreachable for {consecutive_errors} polls", "timestamp": datetime.now().isoformat()}], f, indent=2)
+                    time.sleep(POLL_INTERVAL)
+                    continue
 
-            current_day = conditions.get("date")
-            current_hour = conditions.get("hour")
+                consecutive_errors = 0
+                current_day = conditions.get("date")
+                current_hour = conditions.get("hour")
 
-            if current_day is not None and current_day != last_day:
-                if last_day is not None and snapshotted_day != last_day:
-                    path = write_snapshot(client, last_day)
-                    print(f"Snapshot written: {path}")
-                    snapshotted_day = last_day
-                last_day = current_day
+                if current_day is not None and current_day != last_day:
+                    if last_day is not None and snapshotted_day != last_day:
+                        path = write_snapshot(client, last_day)
+                        print(f"Snapshot written: {path}")
+                        snapshotted_day = last_day
+                    last_day = current_day
 
-            alerts = run_reflex_checks(client)
-            alert_path = os.path.join(ALERTS_DIR, "current.json")
-            with open(alert_path, "w") as f:
-                json.dump(alerts, f, indent=2)
+                alerts = run_reflex_checks(client)
+                alert_path = os.path.join(ALERTS_DIR, "current.json")
+                with open(alert_path, "w") as f:
+                    json.dump(alerts, f, indent=2)
 
-            urgent = [a for a in alerts if a.get("type") == "urgent"]
-            if urgent:
-                print(f"{len(alerts)} alert(s) ({len(urgent)} urgent) - pausing game")
-                try:
-                    client.call_tool("set_speed", {"action": "pause"})
-                except Exception:
-                    pass
-                if any(a.get("category") == "colony_death" for a in alerts):
-                    if snapshotted_day != current_day:
-                        path = write_snapshot(client, current_day)
-                        print(f"Death snapshot written: {path}")
-                        snapshotted_day = current_day
-            elif alerts:
-                print(f"{len(alerts)} alert(s)")
+                urgent = [a for a in alerts if a.get("type") == "urgent"]
+                if urgent:
+                    print(f"{len(alerts)} alert(s) ({len(urgent)} urgent) - pausing game")
+                    try:
+                        client.call_tool("set_speed", {"action": "pause"})
+                    except Exception:
+                        pass
+                    if any(a.get("category") == "colony_death" for a in alerts):
+                        if snapshotted_day != current_day:
+                            path = write_snapshot(client, current_day)
+                            print(f"Death snapshot written: {path}")
+                            snapshotted_day = current_day
+                elif alerts:
+                    print(f"{len(alerts)} alert(s)")
 
-        except Exception as e:
-            print(f"Error: {e}")
+            except Exception as e:
+                consecutive_errors += 1
+                print(f"Error: {e}")
+                if consecutive_errors >= 5:
+                    alert_path = os.path.join(ALERTS_DIR, "current.json")
+                    with open(alert_path, "w") as f:
+                        json.dump([{"type": "urgent", "category": "system", "message": f"Monitor error: {e}", "timestamp": datetime.now().isoformat()}], f, indent=2)
 
-        time.sleep(POLL_INTERVAL)
+            time.sleep(POLL_INTERVAL)
+    finally:
+        _release_lock()
 
 
 if __name__ == "__main__":
