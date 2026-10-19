@@ -36,6 +36,10 @@ def run_reflex_checks(client):
             alerts.append({"type": "error", "category": "system", "message": f"get_status failed: {status}", "timestamp": timestamp})
             return alerts
 
+        # No colony loaded (main menu / game setup): skip all checks.
+        if status.get("loaded") is False or status.get("programState") in ("Entry", "Menu"):
+            return []
+
         colonists = (
             status.get("bundled", {}).get("list_colonists", {}).get("colonists", [])
         )

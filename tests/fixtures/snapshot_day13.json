@@ -1,41 +1,59 @@
 {
   "day": "13th of Septober, 5500",
-  "timestamp": "2026-10-18T21:55:17.111869",
+  "timestamp": "2026-10-18T21:55:21.000000",
   "status": {
-    "loaded": false,
-    "programState": "Entry"
+    "loaded": true,
+    "programState": "Playing",
+    "colonyName": "Test Colony",
+    "daysPassed": 6,
+    "colonistCount": 3,
+    "difficulty": "Adventure story",
+    "storyteller": "Cassandra Classic",
+    "bundled": {
+      "list_colonists": {
+        "colonists": [
+          {"id": "Human1", "name": "A", "health": 100, "mood": 70, "downed": false, "job": "researching", "x": 130, "z": 120},
+          {"id": "Human2", "name": "B", "health": 80, "mood": 45, "downed": false, "job": "hauling", "x": 131, "z": 121},
+          {"id": "Human3", "name": "C", "health": 100, "mood": 30, "downed": false, "job": "sleeping", "x": 132, "z": 122}
+        ]
+      },
+      "get_alerts": {
+        "dangerByMap": [{"mapIndex": 0, "dangerRating": "None"}],
+        "activeAlerts": [
+          {"label": "Low food", "priority": "High", "explanation": "You are dangerously low on food."}
+        ],
+        "activeLetters": []
+      }
+    }
   },
-  "conditions": {
-    "loaded": false,
-    "message": "No colony is currently loaded."
-  },
+  "conditions": {"loaded": true, "date": "13th of Septober, 5500", "hour": 12, "seasonLabel": "Fall"},
   "colonists": {
-    "loaded": false,
-    "message": "No colony is currently loaded. Start or load a save to query game state."
+    "loaded": true,
+    "count": 3,
+    "colonists": [
+      {"id": "Human1", "name": "A", "health": 100, "mood": 70, "downed": false, "job": "researching"},
+      {"id": "Human2", "name": "B", "health": 80, "mood": 45, "downed": false, "job": "hauling"},
+      {"id": "Human3", "name": "C", "health": 100, "mood": 30, "downed": false, "job": "sleeping"}
+    ]
   },
   "resources": {
-    "loaded": false,
-    "message": "No colony is currently loaded. Start or load a save to query game state."
+    "loaded": true,
+    "wealthTotal": 25000,
+    "resources": [
+      {"defName": "Silver", "label": "silver", "count": 800},
+      {"defName": "WoodLog", "label": "wood", "count": 320},
+      {"defName": "Steel", "label": "steel", "count": 138},
+      {"defName": "MedicineIndustrial", "label": "medicine", "count": 4},
+      {"defName": "MealSurvivalPack", "label": "packaged survival meal", "count": 12}
+    ]
   },
-  "research": {
-    "loaded": false,
-    "message": "No colony is currently loaded. Start or load a save to query game state."
-  },
+  "research": {"loaded": true, "current": {"defName": "Smithing", "label": "smithing", "progressPercent": 25}, "completedCount": 8},
   "alerts": {
-    "loaded": false,
-    "message": "No colony is currently loaded. Start or load a save to query game state."
-  },
-  "summary": {
-    "day": "13th of Septober, 5500",
-    "hour": null,
-    "season": null,
-    "temp": null,
-    "colonist_count": null,
-    "min_mood": null,
-    "min_health": null,
-    "downed": [],
-    "alerts": [],
-    "resources": {},
-    "wealth": null
+    "loaded": true,
+    "dangerByMap": [{"mapIndex": 0, "dangerRating": "None"}],
+    "activeAlerts": [
+      {"label": "Low food", "priority": "High", "explanation": "You are dangerously low on food."}
+    ],
+    "activeLetters": []
   }
 }
