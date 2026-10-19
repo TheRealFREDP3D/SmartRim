@@ -306,6 +306,34 @@ def _release_lock():
         pass
 
 
+def run_length_reached(days_passed, run_days=None):
+    """True when the fixed run length has been reached (see RUN-PROTOCOL.md)."""
+    run_days = RUN_DAYS if run_days is None else run_days
+    return days_passed is not None and days_passed >= run_days
+
+
+def write_run_end(client, run_id, days_passed):
+    """Pause the game, take a final snapshot, and write the run-end marker."""
+    try:
+        client.call_tool("set_speed", {"action": "pause"})
+    except Exception:
+        pass
+    final_day = f"end-day-{days_passed}"
+    path = write_snapshot(client, final_day)
+    runs_dir = os.path.join(os.path.dirname(ALERTS_DIR), "runs")
+    os.makedirs(runs_dir, exist_ok=True)
+    marker = os.path.join(runs_dir, f"{run_id}.end.json")
+    with open(marker, "w", encoding="utf-8") as f:
+        json.dump({
+            "run_id": run_id,
+            "run_days": RUN_DAYS,
+            "days_passed": days_passed,
+            "ended_at": datetime.now().isoformat(),
+            "final_snapshot": path,
+        }, f, indent=2)
+    return marker
+
+
 def main():
     ensure_dirs()
     if not _acquire_lock():
@@ -314,6 +342,7 @@ def main():
     last_day = None
     snapshotted_day = None
     consecutive_errors = 0
+    run_ended = False
 
     print(f"Reflex monitor started. Polling every {POLL_INTERVAL}s (PID {os.getpid()})")
     print(f"Alerts: {ALERTS_DIR}")
@@ -333,6 +362,13 @@ def main():
                     continue
 
                 consecutive_errors = 0
+                status_now = client.call_tool("get_status")
+                days_now = status_now.get("daysPassed") if isinstance(status_now, dict) else None
+                if run_length_reached(days_now) and not run_ended:
+                    marker = write_run_end(client, RUN_ID, days_now)
+                    print(f"RUN COMPLETE at {days_now} days (limit {RUN_DAYS}). Marker: {marker}")
+                    run_ended = True
+                    break
                 current_day = conditions.get("date")
                 current_hour = conditions.get("hour")
 

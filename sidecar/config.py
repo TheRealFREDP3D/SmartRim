@@ -33,3 +33,7 @@ LLM_MODEL = os.getenv("LLM_MODEL", "gpt-4o-mini")
 
 # Run identity for advice logging
 RUN_ID = os.getenv("RUN_ID", "current-run")
+
+# Fixed run length for comparable runs (see RUN-PROTOCOL.md).
+# A run ends when daysPassed (from get_status) reaches RUN_DAYS.
+RUN_DAYS = int(os.getenv("RUN_DAYS", "10"))
