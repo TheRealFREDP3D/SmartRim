@@ -183,20 +183,23 @@ def run_reflex_checks(client):
                     if "medicine" in str(k).lower():
                         med += v
                 if med < 5:
-                    alerts.append({"type": "warning" if med > 0 else "urgent", "category": "medicine_low", "message": f"Medicine stock low ({med})", "timestamp": timestamp})
+                    # Advisory only: never auto-pause on medicine (pause on downed/injured instead)
+                    alerts.append({"type": "warning", "category": "medicine_low", "message": f"Medicine stock low ({med})", "timestamp": timestamp})
                 food = 0
                 for k, v in res_map.items():
                     kl = str(k).lower()
                     if "meal" in kl or "rice" in kl or "corn" in kl or "potato" in kl or "berry" in kl or "meat" in kl or "bread" in kl:
                         food += v
                 if food < 20:
-                    alerts.append({"type": "warning" if food > 5 else "urgent", "category": "food_low", "message": f"Food stock low ({food} units)", "timestamp": timestamp})
+                    # Advisory only: never auto-pause on food (pause on downed/colony death instead)
+                    alerts.append({"type": "warning", "category": "food_low", "message": f"Food stock low ({food} units)", "timestamp": timestamp})
         except Exception:
             pass
 
-        # Colony death detection
+        # Colony death detection (only after the game has started)
         colonist_count = status.get("colonistCount", 0)
-        if colonist_count == 0:
+        days_now = status.get("daysPassed", 0)
+        if colonist_count == 0 and days_now and days_now > 0:
             alerts.append({"type": "urgent", "category": "colony_death", "message": "All colonists dead — debrief recommended", "timestamp": timestamp})
 
         # Sleeping during a threat
