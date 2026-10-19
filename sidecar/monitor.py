@@ -17,16 +17,15 @@ def _is_urgent_label(label):
 
 
 def _predator_kinds():
-    # Wiki Animals page: predators hunt smaller species when hungry.
     return {
         "cougar", "panther", "lynx", "cobra", "grizzly bear", "polar bear",
         "arctic fox", "arctic wolf", "fennec fox", "red fox", "timber wolf",
         "warg", "alligator", "greatwolf", "scimitar cat", "tiger",
-        "wolverine", "lynx",
+        "wolverine",
     }
 
 
-def run_reflex_checks(client):
+def run_reflex_checks(client, deep=False):
     alerts = []
     timestamp = datetime.now().isoformat()
 
@@ -36,7 +35,6 @@ def run_reflex_checks(client):
             alerts.append({"type": "error", "category": "system", "message": f"get_status failed: {status}", "timestamp": timestamp})
             return alerts
 
-        # No colony loaded (main menu / game setup): skip all checks.
         if status.get("loaded") is False or status.get("programState") in ("Entry", "Menu"):
             return []
 
@@ -56,11 +54,9 @@ def run_reflex_checks(client):
             downed = colonist.get("downed")
             cid = colonist.get("id")
 
-            # Downed colonist
             if downed:
                 alerts.append({"type": "urgent", "category": "downed", "message": f"{name} is DOWNED", "timestamp": timestamp})
 
-            # Mood bands (wiki: Mental_break 35/20/5)
             if mood is not None:
                 if mood < MOOD_EXTREME_THRESHOLD:
                     alerts.append({"type": "urgent", "category": "mood_extreme", "message": f"{name} mood at {mood}% (extreme break risk)", "timestamp": timestamp})
@@ -69,11 +65,9 @@ def run_reflex_checks(client):
                 elif mood < MOOD_MINOR_THRESHOLD:
                     alerts.append({"type": "warning", "category": "mood_minor", "message": f"{name} mood at {mood}% (minor break risk)", "timestamp": timestamp})
 
-            # Health
             if health is not None and health < HEALTH_THRESHOLD:
                 alerts.append({"type": "urgent", "category": "health", "message": f"{name} health at {health}%", "timestamp": timestamp})
 
-            # Position for predator proximity
             if cid:
                 try:
                     p = client.call_tool("get_pawn", {"id": cid})
@@ -82,108 +76,73 @@ def run_reflex_checks(client):
                 except Exception:
                     pass
 
-        # Game alerts (danger rating, active alerts)
         bundled_alerts = status.get("bundled", {}).get("get_alerts", {})
         if not bundled_alerts:
             bundled_alerts = client.call_tool("get_alerts") or {}
 
-        # Danger rating
         for d in (bundled_alerts.get("dangerByMap", []) if isinstance(bundled_alerts, dict) else []):
             rating = d.get("dangerRating", "None")
             if rating and str(rating).lower() not in ("none", "null"):
                 urgent = str(rating).lower() in ("high", "extreme", "danger")
                 alerts.append({"type": "urgent" if urgent else "warning", "category": "danger_rating", "message": f"Map {d.get('mapIndex')} danger rating: {rating}", "timestamp": timestamp})
 
-        # Active game alerts
         for alert in (bundled_alerts.get("activeAlerts", []) if isinstance(bundled_alerts, dict) else []):
             label = alert.get("label", "")
-            # idle colonist detection
             low = label.lower()
             if "idle" in low:
                 alerts.append({"type": "warning", "category": "idle_colonist", "message": label, "timestamp": timestamp})
                 continue
-            # medical treatment needed + no medical bed check
             if "medical treatment" in low:
-                # check if any bed is medical
-                has_medical_bed = False
-                try:
-                    things = client.call_tool("list_things", {"category": "building", "limit": 50})
-                    # beds tagged medical are not distinguishable via list_things; rely on alert text
-                    has_medical_bed = False
-                except Exception:
-                    pass
-                alerts.append({"type": "warning" if has_medical_bed else "urgent", "category": "medical_treatment_needed", "message": label, "timestamp": timestamp})
+                alerts.append({"type": "warning", "category": "medical_treatment_needed", "message": label, "timestamp": timestamp})
                 continue
-            # low food / low medicine from game alerts
             if "low food" in low:
-                alerts.append({"type": "urgent", "category": "low_food", "message": label, "timestamp": timestamp})
+                alerts.append({"type": "warning", "category": "food_low", "message": label, "timestamp": timestamp})
                 continue
-            # general game alert
             alert_type = "urgent" if _is_urgent_label(label) else "warning"
             alerts.append({"type": alert_type, "category": "game_alert", "message": label, "timestamp": timestamp})
 
-        # Hostile proximity: any pawn reported as hostile
-        try:
-            pawns_resp = client.call_tool("list_things", {"category": "pawn"})
-            things = []
-            if isinstance(pawns_resp, dict):
-                things = pawns_resp.get("things", []) or pawns_resp.get("pawns", [])
-            for t in things:
-                hostile = (
-                    t.get("hostile")
-                    or t.get("isHostile")
-                    or (str(t.get("faction", "")).lower() in ("hostile", "enemy", "raider"))
-                )
-                if hostile:
-                    hx, hz = t.get("x"), t.get("z")
-                    near = False
-                    if hx is not None and hz is not None:
-                        for (_, cx, cz) in colonist_positions:
-                            if cx is not None and cz is not None and abs(hx - cx) + abs(hz - cz) <= 15:
-                                near = True
-                    alerts.append({
-                        "type": "urgent" if near else "warning",
-                        "category": "hostile",
-                        "message": f"Hostile pawn nearby: {t.get('label') or t.get('name') or t.get('def')} at ({hx},{hz}){' (near colonist)' if near else ''}",
-                        "timestamp": timestamp,
-                    })
-        except Exception:
-            pass
+        # Hostile and predator proximity (deep check only, every 3rd poll)
+        if deep:
+            try:
+                pawns_resp = client.call_tool("list_things", {"category": "pawn"})
+                things = pawns_resp.get("things", []) if isinstance(pawns_resp, dict) else []
+                for t in things:
+                    hostile = t.get("hostile") or t.get("isHostile") or (str(t.get("faction", "")).lower() in ("hostile", "enemy", "raider"))
+                    if hostile:
+                        hx, hz = t.get("x"), t.get("z")
+                        near = False
+                        if hx is not None and hz is not None:
+                            for (_, cx, cz) in colonist_positions:
+                                if cx is not None and cz is not None and abs(hx - cx) + abs(hz - cz) <= 15:
+                                    near = True
+                        alerts.append({"type": "urgent" if near else "warning", "category": "hostile", "message": f"Hostile pawn nearby: {t.get('label') or t.get('name') or t.get('def')} at ({hx},{hz}){' (near colonist)' if near else ''}", "timestamp": timestamp})
+            except Exception:
+                pass
 
-        # Predator proximity from wildlife
-        try:
-            wl = client.call_tool("list_wildlife")
-            animals = wl.get("animals", []) if isinstance(wl, dict) else []
-            predators = _predator_kinds()
-            for a in animals:
-                kind = str(a.get("kind", "")).lower()
-                if any(p in kind for p in predators):
-                    ax, az = a.get("x"), a.get("z")
-                    if ax is not None and az is not None:
-                        for (_, cx, cz) in colonist_positions:
-                            if cx is not None and cz is not None and abs(ax - cx) + abs(az - cz) <= 15:
-                                alerts.append({
-                                    "type": "urgent",
-                                    "category": "predator_near",
-                                    "message": f"Predator ({a.get('kind')}) near colonist at ({ax},{az})",
-                                    "timestamp": timestamp,
-                                })
-                                break
-        except Exception:
-            pass
+            try:
+                wl = client.call_tool("list_wildlife")
+                animals = wl.get("animals", []) if isinstance(wl, dict) else []
+                predators = _predator_kinds()
+                for a in animals:
+                    kind = str(a.get("kind", "")).lower()
+                    if any(p in kind for p in predators):
+                        ax, az = a.get("x"), a.get("z")
+                        if ax is not None and az is not None:
+                            for (_, cx, cz) in colonist_positions:
+                                if cx is not None and cz is not None and abs(ax - cx) + abs(az - cz) <= 15:
+                                    alerts.append({"type": "urgent", "category": "predator_near", "message": f"Predator ({a.get('kind')}) near colonist at ({ax},{az})", "timestamp": timestamp})
+                                    break
+            except Exception:
+                pass
 
-        # Resource checks (food, medicine)
+        # Resource checks (food, medicine) - advisory only
         try:
             res = client.call_tool("get_resources")
             if isinstance(res, dict) and not res.get("error"):
                 res_list = res.get("resources", [])
-                res_map = { (r.get("defName") or r.get("label")): r.get("count", 0) for r in res_list if isinstance(r, dict) }
-                med = 0
-                for k, v in res_map.items():
-                    if "medicine" in str(k).lower():
-                        med += v
+                res_map = {(r.get("defName") or r.get("label")): r.get("count", 0) for r in res_list if isinstance(r, dict)}
+                med = sum(v for k, v in res_map.items() if "medicine" in str(k).lower())
                 if med < 5:
-                    # Advisory only: never auto-pause on medicine (pause on downed/injured instead)
                     alerts.append({"type": "warning", "category": "medicine_low", "message": f"Medicine stock low ({med})", "timestamp": timestamp})
                 food = 0
                 for k, v in res_map.items():
@@ -191,12 +150,11 @@ def run_reflex_checks(client):
                     if "meal" in kl or "rice" in kl or "corn" in kl or "potato" in kl or "berry" in kl or "meat" in kl or "bread" in kl:
                         food += v
                 if food < 20:
-                    # Advisory only: never auto-pause on food (pause on downed/colony death instead)
                     alerts.append({"type": "warning", "category": "food_low", "message": f"Food stock low ({food} units)", "timestamp": timestamp})
         except Exception:
             pass
 
-        # Colony death detection (only after the game has started)
+        # Colony death detection
         colonist_count = status.get("colonistCount", 0)
         days_now = status.get("daysPassed", 0)
         if colonist_count == 0 and days_now and days_now > 0:
@@ -204,11 +162,12 @@ def run_reflex_checks(client):
 
         # Sleeping during a threat
         try:
-            if bundled_alerts and isinstance(bundled_alerts, dict):
+            if isinstance(bundled_alerts, dict):
                 threat_labels = [a.get("label", "") for a in bundled_alerts.get("activeAlerts", [])]
                 if any("raid" in l.lower() or "attack" in l.lower() or "enemy" in l.lower() for l in threat_labels):
                     for colonist in colonists:
-                        if "sleep" in str(colonist.get("job", "")).lower() or "rest" in str(colonist.get("job", "")).lower():
+                        job = str(colonist.get("job", "")).lower()
+                        if "sleep" in job or "rest" in job:
                             alerts.append({"type": "urgent", "category": "sleeping_during_threat", "message": f"{colonist.get('name')} is sleeping during a threat", "timestamp": timestamp})
         except Exception:
             pass
@@ -288,7 +247,6 @@ def _acquire_lock():
         try:
             with open(PID_FILE) as f:
                 old_pid = int(f.read().strip())
-            # check if process is alive
             try:
                 os.kill(old_pid, 0)
                 print(f"Monitor already running (PID {old_pid}). Exiting.")
@@ -314,13 +272,11 @@ def _release_lock():
 
 
 def run_length_reached(days_passed, run_days=None):
-    """True when the fixed run length has been reached (see RUN-PROTOCOL.md)."""
     run_days = RUN_DAYS if run_days is None else run_days
     return days_passed is not None and days_passed >= run_days
 
 
 def write_run_end(client, run_id, days_passed):
-    """Pause the game, take a final snapshot, and write the run-end marker."""
     try:
         client.call_tool("set_speed", {"action": "pause"})
     except Exception:
@@ -350,6 +306,7 @@ def main():
     snapshotted_day = None
     consecutive_errors = 0
     run_ended = False
+    poll_count = 0
 
     print(f"Reflex monitor started. Polling every {POLL_INTERVAL}s (PID {os.getpid()})")
     print(f"Alerts: {ALERTS_DIR}")
@@ -376,8 +333,8 @@ def main():
                     print(f"RUN COMPLETE at {days_now} days (limit {RUN_DAYS}). Marker: {marker}")
                     run_ended = True
                     break
+
                 current_day = conditions.get("date")
-                current_hour = conditions.get("hour")
 
                 if current_day is not None and current_day != last_day:
                     if last_day is not None and snapshotted_day != last_day:
@@ -386,7 +343,9 @@ def main():
                         snapshotted_day = last_day
                     last_day = current_day
 
-                alerts = run_reflex_checks(client)
+                poll_count += 1
+                deep = (poll_count % 3 == 0)
+                alerts = run_reflex_checks(client, deep=deep)
                 alert_path = os.path.join(ALERTS_DIR, "current.json")
                 with open(alert_path, "w") as f:
                     json.dump(alerts, f, indent=2)
@@ -394,7 +353,6 @@ def main():
                 urgent = [a for a in alerts if a.get("type") == "urgent"]
                 if urgent:
                     print(f"{len(alerts)} alert(s) ({len(urgent)} urgent) - pausing game")
-                    # Log advice
                     try:
                         import advice_log
                         advice_log.log_advice(
