@@ -14,6 +14,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ALERTS_DIR = os.path.join(BASE_DIR, "memory", "alerts")
 SNAPSHOTS_DIR = os.path.join(BASE_DIR, "memory", "snapshots")
 DEBRIEFS_DIR = os.path.join(BASE_DIR, "memory", "debriefs")
+CANDIDATES_DIR = os.path.join(BASE_DIR, "memory", "candidates")
 
 HEALTH_THRESHOLD = int(os.getenv("HEALTH_THRESHOLD", "50"))
 # Wiki base values for a normal colonist: minor break 35%, major 20%, extreme 5% (Mental_break page).
