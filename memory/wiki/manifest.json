@@ -1,212 +1,737 @@
 {
-  "Main_Page": {
-    "url": "https://rimworldwiki.com/wiki/Main_Page",
+  "Alpaca_wool": {
+    "url": "https://rimworldwiki.com/wiki/Alpaca_wool",
     "fetched": "2026-10-18",
-    "size": 57790
+    "size": 109826
   },
-  "Wealth": {
-    "url": "https://rimworldwiki.com/wiki/Wealth",
+  "Ambrosia": {
+    "url": "https://rimworldwiki.com/wiki/Ambrosia",
     "fetched": "2026-10-18",
-    "size": 48104
-  },
-  "Mood": {
-    "url": "https://rimworldwiki.com/wiki/Mood",
-    "fetched": "2026-10-18",
-    "size": 48146
-  },
-  "Research": {
-    "url": "https://rimworldwiki.com/wiki/Research",
-    "fetched": "2026-10-18",
-    "size": 316218
-  },
-  "Medicine": {
-    "url": "https://rimworldwiki.com/wiki/Medicine",
-    "fetched": "2026-10-18",
-    "size": 44602
-  },
-  "Herbal_medicine": {
-    "url": "https://rimworldwiki.com/wiki/Herbal_medicine",
-    "fetched": "2026-10-18",
-    "size": 44791
-  },
-  "Cover": {
-    "url": "https://rimworldwiki.com/wiki/Cover",
-    "fetched": "2026-10-18",
-    "size": 200065
+    "size": 50172
   },
   "Animals": {
     "url": "https://rimworldwiki.com/wiki/Animals",
     "fetched": "2026-10-18",
-    "size": 147333
+    "size": 148055
   },
-  "Stockpile": {
-    "url": "https://rimworldwiki.com/wiki/Stockpile",
+  "Animals_skill": {
+    "url": "https://rimworldwiki.com/wiki/Animals_skill",
     "fetched": "2026-10-18",
-    "size": 36355
-  },
-  "Zones": {
-    "url": "https://rimworldwiki.com/wiki/Zones",
-    "fetched": "2026-10-18",
-    "size": 51503
-  },
-  "Temperature": {
-    "url": "https://rimworldwiki.com/wiki/Temperature",
-    "fetched": "2026-10-18",
-    "size": 90088
-  },
-  "Electricity": {
-    "url": "https://rimworldwiki.com/wiki/Electricity",
-    "fetched": "2026-10-18",
-    "size": 316627
-  },
-  "Raid": {
-    "url": "https://rimworldwiki.com/wiki/Raid",
-    "fetched": "2026-10-18",
-    "size": 1089923
-  },
-  "Raid_points": {
-    "url": "https://rimworldwiki.com/wiki/Raid_points",
-    "fetched": "2026-10-18",
-    "size": 59813
-  },
-  "Mental_break": {
-    "url": "https://rimworldwiki.com/wiki/Mental_break",
-    "fetched": "2026-10-18",
-    "size": 151363
-  },
-  "Thoughts": {
-    "url": "https://rimworldwiki.com/wiki/Thoughts",
-    "fetched": "2026-10-18",
-    "size": 385340
-  },
-  "Traits": {
-    "url": "https://rimworldwiki.com/wiki/Traits",
-    "fetched": "2026-10-18",
-    "size": 188292
-  },
-  "Skills": {
-    "url": "https://rimworldwiki.com/wiki/Skills",
-    "fetched": "2026-10-18",
-    "size": 196930
-  },
-  "Health": {
-    "url": "https://rimworldwiki.com/wiki/Health",
-    "fetched": "2026-10-18",
-    "size": 74926
-  },
-  "Food": {
-    "url": "https://rimworldwiki.com/wiki/Food",
-    "fetched": "2026-10-18",
-    "size": 135366
-  },
-  "Nutrition": {
-    "url": "https://rimworldwiki.com/wiki/Nutrition",
-    "fetched": "2026-10-18",
-    "size": 115428
-  },
-  "Defense": {
-    "url": "https://rimworldwiki.com/wiki/Defense",
-    "fetched": "2026-10-18",
-    "size": 22346
-  },
-  "Turret": {
-    "url": "https://rimworldwiki.com/wiki/Turret",
-    "fetched": "2026-10-18",
-    "size": 36099
-  },
-  "Sandbags": {
-    "url": "https://rimworldwiki.com/wiki/Sandbags",
-    "fetched": "2026-10-18",
-    "size": 106764
-  },
-  "Growing": {
-    "url": "https://rimworldwiki.com/wiki/Growing",
-    "fetched": "2026-10-18",
-    "size": 44245
-  },
-  "Farming": {
-    "url": "https://rimworldwiki.com/wiki/Farming",
-    "fetched": "2026-10-18",
-    "size": 76649
-  },
-  "Batteries": {
-    "url": "https://rimworldwiki.com/wiki/Batteries",
-    "fetched": "2026-10-18",
-    "size": 45845
-  },
-  "Solar_panel": {
-    "url": "https://rimworldwiki.com/wiki/Solar_panel",
-    "fetched": "2026-10-18",
-    "size": 48626
-  },
-  "Wind_turbine": {
-    "url": "https://rimworldwiki.com/wiki/Wind_turbine",
-    "fetched": "2026-10-18",
-    "size": 79502
-  },
-  "Power": {
-    "url": "https://rimworldwiki.com/wiki/Power",
-    "fetched": "2026-10-18",
-    "size": 81331
-  },
-  "Room": {
-    "url": "https://rimworldwiki.com/wiki/Room",
-    "fetched": "2026-10-18",
-    "size": 112263
-  },
-  "Room_roles": {
-    "url": "https://rimworldwiki.com/wiki/Room_roles",
-    "fetched": "2026-10-18",
-    "size": 112316
-  },
-  "Impressiveness": {
-    "url": "https://rimworldwiki.com/wiki/Impressiveness",
-    "fetched": "2026-10-18",
-    "size": 112377
-  },
-  "Beauty": {
-    "url": "https://rimworldwiki.com/wiki/Beauty",
-    "fetched": "2026-10-18",
-    "size": 42424
-  },
-  "Prisoner": {
-    "url": "https://rimworldwiki.com/wiki/Prisoner",
-    "fetched": "2026-10-18",
-    "size": 102732
-  },
-  "Trade": {
-    "url": "https://rimworldwiki.com/wiki/Trade",
-    "fetched": "2026-10-18",
-    "size": 231565
-  },
-  "Caravan": {
-    "url": "https://rimworldwiki.com/wiki/Caravan",
-    "fetched": "2026-10-18",
-    "size": 147009
-  },
-  "Quests": {
-    "url": "https://rimworldwiki.com/wiki/Quests",
-    "fetched": "2026-10-18",
-    "size": 208584
-  },
-  "Ideology_(DLC)": {
-    "url": "https://rimworldwiki.com/wiki/Ideology_(DLC)",
-    "fetched": "2026-10-18",
-    "size": 55522
-  },
-  "Royalty_(DLC)": {
-    "url": "https://rimworldwiki.com/wiki/Royalty_(DLC)",
-    "fetched": "2026-10-18",
-    "size": 67571
-  },
-  "Biotech_(DLC)": {
-    "url": "https://rimworldwiki.com/wiki/Biotech_(DLC)",
-    "fetched": "2026-10-18",
-    "size": 57935
+    "size": 200419
   },
   "Anomaly_(DLC)": {
     "url": "https://rimworldwiki.com/wiki/Anomaly_(DLC)",
     "fetched": "2026-10-18",
-    "size": 66477
+    "size": 67099
+  },
+  "Archotech": {
+    "url": "https://rimworldwiki.com/wiki/Archotech",
+    "fetched": "2026-10-18",
+    "size": 40327
+  },
+  "Art": {
+    "url": "https://rimworldwiki.com/wiki/Art",
+    "fetched": "2026-10-18",
+    "size": 116340
+  },
+  "Base": {
+    "url": "https://rimworldwiki.com/wiki/Base",
+    "fetched": "2026-10-18",
+    "size": 33548
+  },
+  "Batteries": {
+    "url": "https://rimworldwiki.com/wiki/Batteries",
+    "fetched": "2026-10-18",
+    "size": 46409
+  },
+  "Beauty": {
+    "url": "https://rimworldwiki.com/wiki/Beauty",
+    "fetched": "2026-10-18",
+    "size": 42821
+  },
+  "Bed": {
+    "url": "https://rimworldwiki.com/wiki/Bed",
+    "fetched": "2026-10-18",
+    "size": 198436
+  },
+  "Bedroom": {
+    "url": "https://rimworldwiki.com/wiki/Bedroom",
+    "fetched": "2026-10-18",
+    "size": 113574
+  },
+  "Beer": {
+    "url": "https://rimworldwiki.com/wiki/Beer",
+    "fetched": "2026-10-18",
+    "size": 112915
+  },
+  "Bionic": {
+    "url": "https://rimworldwiki.com/wiki/Bionic",
+    "fetched": "2026-10-18",
+    "size": 24148
+  },
+  "Bionic_arm": {
+    "url": "https://rimworldwiki.com/wiki/Bionic_arm",
+    "fetched": "2026-10-18",
+    "size": 100343
+  },
+  "Bionic_eye": {
+    "url": "https://rimworldwiki.com/wiki/Bionic_eye",
+    "fetched": "2026-10-18",
+    "size": 69412
+  },
+  "Bionic_heart": {
+    "url": "https://rimworldwiki.com/wiki/Bionic_heart",
+    "fetched": "2026-10-18",
+    "size": 64908
+  },
+  "Bionic_leg": {
+    "url": "https://rimworldwiki.com/wiki/Bionic_leg",
+    "fetched": "2026-10-18",
+    "size": 68642
+  },
+  "Biotech_(DLC)": {
+    "url": "https://rimworldwiki.com/wiki/Biotech_(DLC)",
+    "fetched": "2026-10-18",
+    "size": 58411
+  },
+  "Blood_loss": {
+    "url": "https://rimworldwiki.com/wiki/Blood_loss",
+    "fetched": "2026-10-18",
+    "size": 362142
+  },
+  "Bond": {
+    "url": "https://rimworldwiki.com/wiki/Bond",
+    "fetched": "2026-10-18",
+    "size": 239896
+  },
+  "Brawler": {
+    "url": "https://rimworldwiki.com/wiki/Brawler",
+    "fetched": "2026-10-18",
+    "size": 190557
+  },
+  "Caravan": {
+    "url": "https://rimworldwiki.com/wiki/Caravan",
+    "fetched": "2026-10-18",
+    "size": 148504
+  },
+  "Careful_shooter": {
+    "url": "https://rimworldwiki.com/wiki/Careful_shooter",
+    "fetched": "2026-10-18",
+    "size": 190629
+  },
+  "Cleaning": {
+    "url": "https://rimworldwiki.com/wiki/Cleaning",
+    "fetched": "2026-10-18",
+    "size": 128759
+  },
+  "Cloth": {
+    "url": "https://rimworldwiki.com/wiki/Cloth",
+    "fetched": "2026-10-18",
+    "size": 132426
+  },
+  "Construction": {
+    "url": "https://rimworldwiki.com/wiki/Construction",
+    "fetched": "2026-10-18",
+    "size": 200441
+  },
+  "Cooking": {
+    "url": "https://rimworldwiki.com/wiki/Cooking",
+    "fetched": "2026-10-18",
+    "size": 200395
+  },
+  "Cooler": {
+    "url": "https://rimworldwiki.com/wiki/Cooler",
+    "fetched": "2026-10-18",
+    "size": 54261
+  },
+  "Cover": {
+    "url": "https://rimworldwiki.com/wiki/Cover",
+    "fetched": "2026-10-18",
+    "size": 203312
+  },
+  "Crafting": {
+    "url": "https://rimworldwiki.com/wiki/Crafting",
+    "fetched": "2026-10-18",
+    "size": 200404
+  },
+  "Defense": {
+    "url": "https://rimworldwiki.com/wiki/Defense",
+    "fetched": "2026-10-18",
+    "size": 22608
+  },
+  "Delicate": {
+    "url": "https://rimworldwiki.com/wiki/Delicate",
+    "fetched": "2026-10-18",
+    "size": 190566
+  },
+  "Devilstrand": {
+    "url": "https://rimworldwiki.com/wiki/Devilstrand",
+    "fetched": "2026-10-18",
+    "size": 117235
+  },
+  "Disease": {
+    "url": "https://rimworldwiki.com/wiki/Disease",
+    "fetched": "2026-10-18",
+    "size": 73592
+  },
+  "Doctoring": {
+    "url": "https://rimworldwiki.com/wiki/Doctoring",
+    "fetched": "2026-10-18",
+    "size": 104511
+  },
+  "Drill_arm": {
+    "url": "https://rimworldwiki.com/wiki/Drill_arm",
+    "fetched": "2026-10-18",
+    "size": 97088
+  },
+  "Drug": {
+    "url": "https://rimworldwiki.com/wiki/Drug",
+    "fetched": "2026-10-18",
+    "size": 110174
+  },
+  "Egg": {
+    "url": "https://rimworldwiki.com/wiki/Egg",
+    "fetched": "2026-10-18",
+    "size": 82188
+  },
+  "Electricity": {
+    "url": "https://rimworldwiki.com/wiki/Electricity",
+    "fetched": "2026-10-18",
+    "size": 320376
+  },
+  "Farming": {
+    "url": "https://rimworldwiki.com/wiki/Farming",
+    "fetched": "2026-10-18",
+    "size": 77395
+  },
+  "Field_hand": {
+    "url": "https://rimworldwiki.com/wiki/Field_hand",
+    "fetched": "2026-10-18",
+    "size": 106366
+  },
+  "Fine_meal": {
+    "url": "https://rimworldwiki.com/wiki/Fine_meal",
+    "fetched": "2026-10-18",
+    "size": 61624
+  },
+  "Firefighting": {
+    "url": "https://rimworldwiki.com/wiki/Firefighting",
+    "fetched": "2026-10-18",
+    "size": 58151
+  },
+  "Flake": {
+    "url": "https://rimworldwiki.com/wiki/Flake",
+    "fetched": "2026-10-18",
+    "size": 61599
+  },
+  "Flu": {
+    "url": "https://rimworldwiki.com/wiki/Flu",
+    "fetched": "2026-10-18",
+    "size": 39066
+  },
+  "Food": {
+    "url": "https://rimworldwiki.com/wiki/Food",
+    "fetched": "2026-10-18",
+    "size": 137056
+  },
+  "Frail": {
+    "url": "https://rimworldwiki.com/wiki/Frail",
+    "fetched": "2026-10-18",
+    "size": 362097
+  },
+  "Fur": {
+    "url": "https://rimworldwiki.com/wiki/Fur",
+    "fetched": "2026-10-18",
+    "size": 22768
+  },
+  "Glitterworld_medicine": {
+    "url": "https://rimworldwiki.com/wiki/Glitterworld_medicine",
+    "fetched": "2026-10-18",
+    "size": 47205
+  },
+  "Go-juice": {
+    "url": "https://rimworldwiki.com/wiki/Go-juice",
+    "fetched": "2026-10-18",
+    "size": 61633
+  },
+  "Growing": {
+    "url": "https://rimworldwiki.com/wiki/Growing",
+    "fetched": "2026-10-18",
+    "size": 44686
+  },
+  "Growing_zone": {
+    "url": "https://rimworldwiki.com/wiki/Growing_zone",
+    "fetched": "2026-10-18",
+    "size": 44343
+  },
+  "Hand_talon": {
+    "url": "https://rimworldwiki.com/wiki/Hand_talon",
+    "fetched": "2026-10-18",
+    "size": 101686
+  },
+  "Harvest": {
+    "url": "https://rimworldwiki.com/wiki/Harvest",
+    "fetched": "2026-10-18",
+    "size": 25533
+  },
+  "Hauling": {
+    "url": "https://rimworldwiki.com/wiki/Hauling",
+    "fetched": "2026-10-18",
+    "size": 35924
+  },
+  "Hay": {
+    "url": "https://rimworldwiki.com/wiki/Hay",
+    "fetched": "2026-10-18",
+    "size": 51336
+  },
+  "Health": {
+    "url": "https://rimworldwiki.com/wiki/Health",
+    "fetched": "2026-10-18",
+    "size": 75796
+  },
+  "Heater": {
+    "url": "https://rimworldwiki.com/wiki/Heater",
+    "fetched": "2026-10-18",
+    "size": 39407
+  },
+  "Herbal_medicine": {
+    "url": "https://rimworldwiki.com/wiki/Herbal_medicine",
+    "fetched": "2026-10-18",
+    "size": 45312
+  },
+  "Hospital": {
+    "url": "https://rimworldwiki.com/wiki/Hospital",
+    "fetched": "2026-10-18",
+    "size": 113578
+  },
+  "Human_meat": {
+    "url": "https://rimworldwiki.com/wiki/Human_meat",
+    "fetched": "2026-10-18",
+    "size": 70599
+  },
+  "Hyperweave": {
+    "url": "https://rimworldwiki.com/wiki/Hyperweave",
+    "fetched": "2026-10-18",
+    "size": 113546
+  },
+  "Ideology_(DLC)": {
+    "url": "https://rimworldwiki.com/wiki/Ideology_(DLC)",
+    "fetched": "2026-10-18",
+    "size": 56044
+  },
+  "Impressiveness": {
+    "url": "https://rimworldwiki.com/wiki/Impressiveness",
+    "fetched": "2026-10-18",
+    "size": 113647
+  },
+  "Infection": {
+    "url": "https://rimworldwiki.com/wiki/Infection",
+    "fetched": "2026-10-18",
+    "size": 51134
+  },
+  "Injury": {
+    "url": "https://rimworldwiki.com/wiki/Injury",
+    "fetched": "2026-10-18",
+    "size": 83146
+  },
+  "Insect_meat": {
+    "url": "https://rimworldwiki.com/wiki/Insect_meat",
+    "fetched": "2026-10-18",
+    "size": 64412
+  },
+  "Inspiration": {
+    "url": "https://rimworldwiki.com/wiki/Inspiration",
+    "fetched": "2026-10-18",
+    "size": 59177
+  },
+  "Intellectual": {
+    "url": "https://rimworldwiki.com/wiki/Intellectual",
+    "fetched": "2026-10-18",
+    "size": 200440
+  },
+  "Joy": {
+    "url": "https://rimworldwiki.com/wiki/Joy",
+    "fetched": "2026-10-18",
+    "size": 133852
+  },
+  "Joywire": {
+    "url": "https://rimworldwiki.com/wiki/Joywire",
+    "fetched": "2026-10-18",
+    "size": 72319
+  },
+  "Kibble": {
+    "url": "https://rimworldwiki.com/wiki/Kibble",
+    "fetched": "2026-10-18",
+    "size": 58011
+  },
+  "Lavish_meal": {
+    "url": "https://rimworldwiki.com/wiki/Lavish_meal",
+    "fetched": "2026-10-18",
+    "size": 59267
+  },
+  "Leather": {
+    "url": "https://rimworldwiki.com/wiki/Leather",
+    "fetched": "2026-10-18",
+    "size": 103931
+  },
+  "Luciferium": {
+    "url": "https://rimworldwiki.com/wiki/Luciferium",
+    "fetched": "2026-10-18",
+    "size": 151087
+  },
+  "Main_Page": {
+    "url": "https://rimworldwiki.com/wiki/Main_Page",
+    "fetched": "2026-10-18",
+    "size": 58414
+  },
+  "Malaria": {
+    "url": "https://rimworldwiki.com/wiki/Malaria",
+    "fetched": "2026-10-18",
+    "size": 40364
+  },
+  "Meals": {
+    "url": "https://rimworldwiki.com/wiki/Meals",
+    "fetched": "2026-10-18",
+    "size": 71715
+  },
+  "Meat": {
+    "url": "https://rimworldwiki.com/wiki/Meat",
+    "fetched": "2026-10-18",
+    "size": 55658
+  },
+  "Medicine": {
+    "url": "https://rimworldwiki.com/wiki/Medicine",
+    "fetched": "2026-10-18",
+    "size": 45186
+  },
+  "Megasloth_wool": {
+    "url": "https://rimworldwiki.com/wiki/Megasloth_wool",
+    "fetched": "2026-10-18",
+    "size": 111245
+  },
+  "Melee": {
+    "url": "https://rimworldwiki.com/wiki/Melee",
+    "fetched": "2026-10-18",
+    "size": 200377
+  },
+  "Mental_break": {
+    "url": "https://rimworldwiki.com/wiki/Mental_break",
+    "fetched": "2026-10-18",
+    "size": 152348
+  },
+  "Mining": {
+    "url": "https://rimworldwiki.com/wiki/Mining",
+    "fetched": "2026-10-18",
+    "size": 200386
+  },
+  "Mood": {
+    "url": "https://rimworldwiki.com/wiki/Mood",
+    "fetched": "2026-10-18",
+    "size": 48609
+  },
+  "Muffalo_wool": {
+    "url": "https://rimworldwiki.com/wiki/Muffalo_wool",
+    "fetched": "2026-10-18",
+    "size": 109832
+  },
+  "Neutroamine": {
+    "url": "https://rimworldwiki.com/wiki/Neutroamine",
+    "fetched": "2026-10-18",
+    "size": 59743
+  },
+  "Nimble": {
+    "url": "https://rimworldwiki.com/wiki/Nimble",
+    "fetched": "2026-10-18",
+    "size": 190548
+  },
+  "Nutrient_paste": {
+    "url": "https://rimworldwiki.com/wiki/Nutrient_paste",
+    "fetched": "2026-10-18",
+    "size": 68736
+  },
+  "Nutrition": {
+    "url": "https://rimworldwiki.com/wiki/Nutrition",
+    "fetched": "2026-10-18",
+    "size": 116646
+  },
+  "Packaged_survival_meal": {
+    "url": "https://rimworldwiki.com/wiki/Packaged_survival_meal",
+    "fetched": "2026-10-18",
+    "size": 74634
+  },
+  "Pain": {
+    "url": "https://rimworldwiki.com/wiki/Pain",
+    "fetched": "2026-10-18",
+    "size": 96981
+  },
+  "Peg_leg": {
+    "url": "https://rimworldwiki.com/wiki/Peg_leg",
+    "fetched": "2026-10-18",
+    "size": 68274
+  },
+  "Penoxycyline": {
+    "url": "https://rimworldwiki.com/wiki/Penoxycyline",
+    "fetched": "2026-10-18",
+    "size": 49618
+  },
+  "Plague": {
+    "url": "https://rimworldwiki.com/wiki/Plague",
+    "fetched": "2026-10-18",
+    "size": 40503
+  },
+  "Power": {
+    "url": "https://rimworldwiki.com/wiki/Power",
+    "fetched": "2026-10-18",
+    "size": 82087
+  },
+  "Power_claw": {
+    "url": "https://rimworldwiki.com/wiki/Power_claw",
+    "fetched": "2026-10-18",
+    "size": 108720
+  },
+  "Prisoner": {
+    "url": "https://rimworldwiki.com/wiki/Prisoner",
+    "fetched": "2026-10-18",
+    "size": 103358
+  },
+  "Prosthetic": {
+    "url": "https://rimworldwiki.com/wiki/Prosthetic",
+    "fetched": "2026-10-18",
+    "size": 23880
+  },
+  "Psychic_animal_pulser": {
+    "url": "https://rimworldwiki.com/wiki/Psychic_animal_pulser",
+    "fetched": "2026-10-18",
+    "size": 35894
+  },
+  "Psychic_drone": {
+    "url": "https://rimworldwiki.com/wiki/Psychic_drone",
+    "fetched": "2026-10-18",
+    "size": 239413
+  },
+  "Psychic_emanator": {
+    "url": "https://rimworldwiki.com/wiki/Psychic_emanator",
+    "fetched": "2026-10-18",
+    "size": 49636
+  },
+  "Psychic_ship": {
+    "url": "https://rimworldwiki.com/wiki/Psychic_ship",
+    "fetched": "2026-10-18",
+    "size": 40442
+  },
+  "Psychic_soothe_pulser": {
+    "url": "https://rimworldwiki.com/wiki/Psychic_soothe_pulser",
+    "fetched": "2026-10-18",
+    "size": 33107
+  },
+  "Psychite": {
+    "url": "https://rimworldwiki.com/wiki/Psychite",
+    "fetched": "2026-10-18",
+    "size": 23306
+  },
+  "Quests": {
+    "url": "https://rimworldwiki.com/wiki/Quests",
+    "fetched": "2026-10-18",
+    "size": 209976
+  },
+  "Raid": {
+    "url": "https://rimworldwiki.com/wiki/Raid",
+    "fetched": "2026-10-18",
+    "size": 1092182
+  },
+  "Raid_points": {
+    "url": "https://rimworldwiki.com/wiki/Raid_points",
+    "fetched": "2026-10-18",
+    "size": 60472
+  },
+  "Raw_food": {
+    "url": "https://rimworldwiki.com/wiki/Raw_food",
+    "fetched": "2026-10-18",
+    "size": 31641
+  },
+  "Recreation": {
+    "url": "https://rimworldwiki.com/wiki/Recreation",
+    "fetched": "2026-10-18",
+    "size": 133527
+  },
+  "Research": {
+    "url": "https://rimworldwiki.com/wiki/Research",
+    "fetched": "2026-10-18",
+    "size": 319966
+  },
+  "Robust": {
+    "url": "https://rimworldwiki.com/wiki/Robust",
+    "fetched": "2026-10-18",
+    "size": 530127
+  },
+  "Room": {
+    "url": "https://rimworldwiki.com/wiki/Room",
+    "fetched": "2026-10-18",
+    "size": 113533
+  },
+  "Room_roles": {
+    "url": "https://rimworldwiki.com/wiki/Room_roles",
+    "fetched": "2026-10-18",
+    "size": 113586
+  },
+  "Royalty_(DLC)": {
+    "url": "https://rimworldwiki.com/wiki/Royalty_(DLC)",
+    "fetched": "2026-10-18",
+    "size": 67979
+  },
+  "Sandbags": {
+    "url": "https://rimworldwiki.com/wiki/Sandbags",
+    "fetched": "2026-10-18",
+    "size": 107452
+  },
+  "Scyther_blade": {
+    "url": "https://rimworldwiki.com/wiki/Scyther_blade",
+    "fetched": "2026-10-18",
+    "size": 54529
+  },
+  "Shooting": {
+    "url": "https://rimworldwiki.com/wiki/Shooting",
+    "fetched": "2026-10-18",
+    "size": 200404
+  },
+  "Sickly": {
+    "url": "https://rimworldwiki.com/wiki/Sickly",
+    "fetched": "2026-10-18",
+    "size": 190548
+  },
+  "Simple_meal": {
+    "url": "https://rimworldwiki.com/wiki/Simple_meal",
+    "fetched": "2026-10-18",
+    "size": 60747
+  },
+  "Skills": {
+    "url": "https://rimworldwiki.com/wiki/Skills",
+    "fetched": "2026-10-18",
+    "size": 200029
+  },
+  "Slaughter": {
+    "url": "https://rimworldwiki.com/wiki/Slaughter",
+    "fetched": "2026-10-18",
+    "size": 74114
+  },
+  "Smokeleaf": {
+    "url": "https://rimworldwiki.com/wiki/Smokeleaf",
+    "fetched": "2026-10-18",
+    "size": 63622
+  },
+  "Social": {
+    "url": "https://rimworldwiki.com/wiki/Social",
+    "fetched": "2026-10-18",
+    "size": 121790
+  },
+  "Solar_panel": {
+    "url": "https://rimworldwiki.com/wiki/Solar_panel",
+    "fetched": "2026-10-18",
+    "size": 49350
+  },
+  "Sowing": {
+    "url": "https://rimworldwiki.com/wiki/Sowing",
+    "fetched": "2026-10-18",
+    "size": 44682
+  },
+  "Stockpile": {
+    "url": "https://rimworldwiki.com/wiki/Stockpile",
+    "fetched": "2026-10-18",
+    "size": 36790
+  },
+  "Stockpile_zone": {
+    "url": "https://rimworldwiki.com/wiki/Stockpile_zone",
+    "fetched": "2026-10-18",
+    "size": 36435
+  },
+  "Surgery": {
+    "url": "https://rimworldwiki.com/wiki/Surgery",
+    "fetched": "2026-10-18",
+    "size": 104902
+  },
+  "Synthread": {
+    "url": "https://rimworldwiki.com/wiki/Synthread",
+    "fetched": "2026-10-18",
+    "size": 109919
+  },
+  "Taming": {
+    "url": "https://rimworldwiki.com/wiki/Taming",
+    "fetched": "2026-10-18",
+    "size": 239899
+  },
+  "Temperature": {
+    "url": "https://rimworldwiki.com/wiki/Temperature",
+    "fetched": "2026-10-18",
+    "size": 91003
+  },
+  "Thoughts": {
+    "url": "https://rimworldwiki.com/wiki/Thoughts",
+    "fetched": "2026-10-18",
+    "size": 393982
+  },
+  "Tough": {
+    "url": "https://rimworldwiki.com/wiki/Tough",
+    "fetched": "2026-10-18",
+    "size": 190539
+  },
+  "Trade": {
+    "url": "https://rimworldwiki.com/wiki/Trade",
+    "fetched": "2026-10-18",
+    "size": 234478
+  },
+  "Training": {
+    "url": "https://rimworldwiki.com/wiki/Training",
+    "fetched": "2026-10-18",
+    "size": 102107
+  },
+  "Traits": {
+    "url": "https://rimworldwiki.com/wiki/Traits",
+    "fetched": "2026-10-18",
+    "size": 190187
+  },
+  "Trigger-happy": {
+    "url": "https://rimworldwiki.com/wiki/Trigger-happy",
+    "fetched": "2026-10-18",
+    "size": 190611
+  },
+  "Turret": {
+    "url": "https://rimworldwiki.com/wiki/Turret",
+    "fetched": "2026-10-18",
+    "size": 36404
+  },
+  "Venom_talon": {
+    "url": "https://rimworldwiki.com/wiki/Venom_talon",
+    "fetched": "2026-10-18",
+    "size": 93719
+  },
+  "Wake-up": {
+    "url": "https://rimworldwiki.com/wiki/Wake-up",
+    "fetched": "2026-10-18",
+    "size": 59612
+  },
+  "Wealth": {
+    "url": "https://rimworldwiki.com/wiki/Wealth",
+    "fetched": "2026-10-18",
+    "size": 48609
+  },
+  "Wind_turbine": {
+    "url": "https://rimworldwiki.com/wiki/Wind_turbine",
+    "fetched": "2026-10-18",
+    "size": 80254
+  },
+  "Wool": {
+    "url": "https://rimworldwiki.com/wiki/Wool",
+    "fetched": "2026-10-18",
+    "size": 55151
+  },
+  "Yayo": {
+    "url": "https://rimworldwiki.com/wiki/Yayo",
+    "fetched": "2026-10-18",
+    "size": 63966
+  },
+  "Zones": {
+    "url": "https://rimworldwiki.com/wiki/Zones",
+    "fetched": "2026-10-18",
+    "size": 52015
   }
 }
