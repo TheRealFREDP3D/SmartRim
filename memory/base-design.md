@@ -2,8 +2,16 @@
 
 ## Shelter (Day 1)
 
-- Default shelter: 7x7 room (fits 3 beds, table, chairs, stove)
-- Walls + door minimum
+- Default starter shelter: 7x7 room with walls + door. This is a TEMPORARY shelter only.
+- Do NOT pack everything into one room. Separate room roles per the wiki (Room_roles):
+  - Bedroom: bed only (mood from impressiveness). One per colonist.
+  - Dining room: table + chairs (mood from impressiveness).
+  - Kitchen: stove (cleanliness affects food poisoning and work speed).
+  - Workshop: workbenches (no mood, but cleanliness affects work speed).
+  - Hospital: medical beds (cleanliness affects surgery success).
+  - Laboratory: research bench (cleanliness affects research speed).
+  - Rec room: horseshoes, chess, TV (mood from impressiveness).
+- A room can serve multiple roles (e.g., bedroom + dining room) but mixing kitchen/workshop with living spaces causes problems.
 - Smaller (4x4-5x5) only for emergency starter shacks; larger needs more materials/time
 - Use existing ruins/mountains as walls to save resources
 - Keep home area compact (cleaning/fire management)

@@ -225,4 +225,9 @@
 7. **Corpse search**: `defName="Corpse_Human"`; `category="corpse"` is wrong (returns rocks)
 8. **Designator names differ**: `Designator_ZoneAdd_Growing` (with underscore), `Designator_PlantsHarvestWood`, `Designator_PlantsHarvest`, `Designator_Hunt`, `Designator_Cancel` — wrong name returns "Unknown designator" with a hint to use list_architect
 9. **Sandbags stuff=Cloth only (tool behaviour, conflicts with wiki)** — wiki (Sandbags) says 5 units of Fabric or Leathery material. The MCP build call only accepted cloth in our tests. Plant cotton early, and re-test other Fabric/Leathery stuffs in-game before placing
-10. **`save_game` can return `saved=False`** (window open / game shutting down) — verify, and know autosave names `Autosave-N.rws` in `%USERPROFILE%\AppData\LocalLow\Ludeon Studios\RimWorld by Ludeon Studios\Saves`
+10. **`save_game` can return `saved=False`** (window open / game shutting down) - verify, and know autosave names `Autosave-N.rws` in `%USERPROFILE%\AppData\LocalLow\Ludeon Studios\RimWorld by Ludeon Studios\Saves`
+
+### Layout: do not pack everything into one room (wiki: Room_roles)
+- Single-room packing is wrong. Separate room roles: bedroom (bed, mood from impressiveness), dining room (table+chairs, mood), kitchen (stove, cleanliness affects food poisoning + work speed), workshop (benches, no mood but cleanliness affects work speed), hospital (medical beds, cleanliness affects surgery), laboratory (research bench, cleanliness affects research speed), rec room (horseshoes/TV, mood).
+- A room can serve multiple roles but mixing kitchen/workshop with living spaces causes problems.
+- Research bench interaction spots conflict with beds — plan interior layout carefully.

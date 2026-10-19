@@ -9,6 +9,16 @@
 
 ## Day 0 (Pause Immediately!)
 
+NOTE: Do NOT pack everything into one room. Separate room roles per wiki (Room_roles):
+- Bedroom: bed only (mood from impressiveness). One per colonist.
+- Dining room: table + chairs (mood from impressiveness).
+- Kitchen: stove (cleanliness affects food poisoning and work speed).
+- Workshop: workbenches (no mood, but cleanliness affects work speed).
+- Hospital: medical beds (cleanliness affects surgery success).
+- Laboratory: research bench (cleanliness affects research speed).
+- Rec room: horseshoes, chess, TV (mood from impressiveness).
+A room can serve multiple roles but mixing kitchen/workshop with living spaces causes problems.
+
 1. Unforbid all starting items (red X)
 2. Draft colonists, equip weapons (rifle > pistol > knife)
 3. Survey map: geysers, rich soil, mountains, ruins
