@@ -24,6 +24,9 @@ MOOD_MAJOR_THRESHOLD = int(os.getenv("MOOD_MAJOR_THRESHOLD", "20"))
 MOOD_EXTREME_THRESHOLD = int(os.getenv("MOOD_EXTREME_THRESHOLD", "5"))
 MOOD_THRESHOLD = MOOD_MINOR_THRESHOLD
 
+# Legacy aliases (kept for .env compatibility)
+HEALTH_THRESHOLD = int(os.getenv("HEALTH_THRESHOLD", "50"))
+
 URGENT_KEYWORDS = ["fire", "predator", "raid", "attack", "downed", "berserk", "pyromaniac"]
 
 # Optional LLM provider for debrief generation (Phase 1 optional)

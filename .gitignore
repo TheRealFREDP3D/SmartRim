@@ -14,3 +14,4 @@ memory/snapshots_archive*/
 memory/debriefs/
 memory/candidates/
 scratchpad/
+sessions/*.transcript.md

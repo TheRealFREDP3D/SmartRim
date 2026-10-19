@@ -200,6 +200,18 @@ def normalize_snapshot(snapshot):
             if isinstance(r, dict):
                 res_map[r.get("defName") or r.get("label")] = r.get("count", 0)
 
+        # Food days projection (rough: food items / (colonists * 2 meals/day))
+        food_items = 0
+        for k, v in res_map.items():
+            kl = str(k).lower()
+            if "meal" in kl or "rice" in kl or "corn" in kl or "potato" in kl or "berry" in kl or "meat" in kl or "bread" in kl or "kibble" in kl:
+                food_items += v
+        colonist_count = status.get("colonistCount") or len(colonists)
+        if colonist_count and colonist_count > 0:
+            food_days = round(food_items / (colonist_count * 2), 1)
+        else:
+            food_days = None
+
         snapshot["summary"] = {
             "day": conditions.get("date") or snapshot.get("day"),
             "hour": conditions.get("hour"),
@@ -211,6 +223,8 @@ def normalize_snapshot(snapshot):
             "downed": downed,
             "alerts": [a.get("label") for a in active_alerts if isinstance(a, dict)],
             "resources": res_map,
+            "food_days": food_days,
+            "medicine_count": sum(v for k, v in res_map.items() if "medicine" in str(k).lower()),
             "wealth": status.get("wealthTotal") or (resources_wrap.get("wealthTotal") if isinstance(resources_wrap, dict) else None),
             "difficulty": status.get("difficulty"),
             "storyteller": status.get("storyteller"),
