@@ -7,13 +7,18 @@ $logFile = "memory\monitor.log"
 $venvPython = Join-Path $PSScriptRoot ".venv\Scripts\python.exe"
 $pythonExe = if (Test-Path $venvPython) { $venvPython } else { "python" }
 
-# Check if already running
-$existing = Get-CimInstance Win32_Process -Filter "Name='python.exe'" |
-    Where-Object { $_.CommandLine -like "*monitor.py*" }
-if ($existing) {
-    Write-Host "Monitor is already running (PID $($existing.ProcessId))" -ForegroundColor Yellow
-    Write-Host "View log: $logFile"
-    exit 0
+# Check if already running via PID file
+$pidFile = "memory\monitor.pid"
+if (Test-Path $pidFile) {
+    $oldPid = [int](Get-Content $pidFile -ErrorAction SilentlyContinue)
+    $proc = Get-Process -Id $oldPid -ErrorAction SilentlyContinue
+    if ($proc) {
+        Write-Host "Monitor is already running (PID $oldPid)" -ForegroundColor Yellow
+        Write-Host "View log: $logFile"
+        exit 0
+    }
+    # stale PID file
+    Remove-Item $pidFile -Force -ErrorAction SilentlyContinue
 }
 
 # Check MCP server reachable

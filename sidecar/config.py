@@ -29,3 +29,6 @@ URGENT_KEYWORDS = ["fire", "predator", "raid", "attack", "downed", "berserk", "p
 LLM_API_KEY = os.getenv("LLM_API_KEY") or os.getenv("OPENAI_API_KEY") or os.getenv("ANTHROPIC_API_KEY")
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openai")  # openai | anthropic
 LLM_MODEL = os.getenv("LLM_MODEL", "gpt-4o-mini")
+
+# Run identity for advice logging
+RUN_ID = os.getenv("RUN_ID", "current-run")
