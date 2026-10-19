@@ -1,0 +1,809 @@
+
+<!DOCTYPE html>
+<html class="client-nojs" lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8"/>
+<title>Health - RimWorld Wiki</title>
+<script>document.documentElement.className="client-js";RLCONF={"wgBreakFrames":!1,"wgSeparatorTransformTable":["",""],"wgDigitTransformTable":["",""],"wgDefaultDateFormat":"dmy","wgMonthNames":["","January","February","March","April","May","June","July","August","September","October","November","December"],"wgRequestId":"atVzvoNTcoJB3XREmHov8AAAAAE","wgCSPNonce":!1,"wgCanonicalNamespace":"","wgCanonicalSpecialPageName":!1,"wgNamespaceNumber":0,"wgPageName":"Health","wgTitle":"Health","wgCurRevisionId":162339,"wgRevisionId":162339,"wgArticleId":12588,"wgIsArticle":!0,"wgIsRedirect":!1,"wgAction":"view","wgUserName":null,"wgUserGroups":["*"],"wgCategories":["Pages that need fact checking","Pages with graphs","Stubs","Health"],"wgPageContentLanguage":"en","wgPageContentModel":"wikitext","wgRelevantPageName":"Health","wgRelevantArticleId":12588,"wgIsProbablyEditable":!0,"wgRelevantPageIsProbablyEditable":!0,"wgRestrictionEdit":[],"wgRestrictionMove":[],"wgPageFormsTargetName":
+null,"wgPageFormsAutocompleteValues":[],"wgPageFormsAutocompleteOnAllChars":!1,"wgPageFormsFieldProperties":[],"wgPageFormsCargoFields":[],"wgPageFormsDependentFields":[],"wgPageFormsCalendarValues":[],"wgPageFormsCalendarParams":[],"wgPageFormsCalendarHTML":null,"wgPageFormsGridValues":[],"wgPageFormsGridParams":[],"wgPageFormsContLangYes":null,"wgPageFormsContLangNo":null,"wgPageFormsContLangMonths":[],"wgPageFormsHeightForMinimizingInstances":800,"wgPageFormsShowOnSelect":[],"wgPageFormsScriptPath":"/extensions/PageForms","edgValues":null,"wgPageFormsEDSettings":null,"wgAmericanDates":!1,"wgGraphSpecs":{"e8a606f1d413729dab78668ef77a820c56640f81":{"legends":[],"scales":[{"clamp":!0,"type":"linear","zero":!1,"range":"width","nice":!1,"name":"x","domainMax":100,"domainMin":0,"domain":{"data":"chart","field":"x"}},{"clamp":!0,"type":"linear","zero":!1,"range":"height","nice":!0,"name":"y","domainMax":0,"domain":{"data":"chart","field":"y"},"domainMin":-40},{"domain"
+:{"data":"chart","field":"series"},"type":"ordinal","name":"color","range":"category10"}],"version":2,"marks":[{"type":"line","properties":{"hover":{"stroke":{"value":"red"}},"update":{"stroke":{"scale":"color","field":"series"}},"enter":{"y":{"scale":"y","field":"y"},"x":{"scale":"x","field":"x"},"stroke":{"scale":"color","field":"series"},"strokeWidth":{"value":2.5}}},"from":{"data":"chart"}}],"height":100,"axes":[{"type":"x","title":"Pain (%)","scale":"x","format":"d","properties":{"axis":{"strokeWidth":{"value":2},"stroke":{"value":"#54595d"}},"ticks":{"stroke":{"value":"#54595d"}},"title":{"fill":{"value":"#54595d"}},"labels":{"fill":{"value":"#54595d"}}},"grid":!0},{"type":"y","title":"Consciousness Penalty (%)","scale":"y","format":"d","properties":{"title":{"fill":{"value":"#54595d"}},"grid":{"stroke":{"value":"#54595d"}},"ticks":{"stroke":{"value":"#54595d"}},"axis":{"strokeWidth":{"value":2},"stroke":{"value":"#54595d"}},"labels":{"fill":{"value":"#54595d"}}},"grid":!0}],
+"data":[{"format":{"parse":{"y":"integer","x":"integer"},"type":"json"},"name":"chart","values":[{"y":0,"series":"y","x":0},{"y":0,"series":"y","x":10},{"y":-40,"series":"y","x":100}]}],"width":400}}};RLSTATE={"site.styles":"ready","noscript":"ready","user.styles":"ready","user":"ready","user.options":"loading","ext.cite.styles":"ready","ext.graph.styles":"ready","skins.vector.styles.legacy":"ready","jquery.tablesorter.styles":"ready","mediawiki.toc.styles":"ready","ext.smw.style":"ready","ext.smw.tooltip.styles":"ready"};RLPAGEMODULES=["ext.smw.style","ext.smw.tooltips","ext.cite.ux-enhancements","ext.graph.vega2","smw.entityexaminer","site","mediawiki.page.startup","mediawiki.page.ready","jquery.tablesorter","mediawiki.toc","skins.vector.legacy.js","last.modified","ext.HighlightjsIntegration","ext.moderation.notify","ext.moderation.notify.desktop"];</script>
+<script>(RLQ=window.RLQ||[]).push(function(){mw.loader.implement("user.options@1hzgi",function($,jQuery,require,module){/*@nomin*/mw.user.tokens.set({"patrolToken":"+\\","watchToken":"+\\","csrfToken":"+\\"});
+});});</script>
+<link rel="stylesheet" href="/load.php?lang=en&amp;modules=ext.cite.styles%7Cext.graph.styles%7Cjquery.tablesorter.styles%7Cmediawiki.toc.styles%7Cskins.vector.styles.legacy&amp;only=styles&amp;skin=vector"/>
+<link rel="stylesheet" href="/load.php?lang=en&amp;modules=ext.smw.style%7Cext.smw.tooltip.styles&amp;only=styles&amp;skin=vector"/>
+<script async="" src="/load.php?lang=en&amp;modules=startup&amp;only=scripts&amp;raw=1&amp;skin=vector"></script>
+<style>#mw-indicator-mw-helplink {display:none;}</style>
+<meta name="ResourceLoaderDynamicStyles" content=""/>
+<link rel="stylesheet" href="/load.php?lang=en&amp;modules=site.styles&amp;only=styles&amp;skin=vector"/>
+<meta name="generator" content="MediaWiki 1.35.8"/>
+<meta http-equiv="last-modified" content="Tue, 03 Jun 2025 20:50:05 +0000"/>
+<meta name="last-modified-timestamp" content="1748983805"/>
+<meta name="last-modified-range" content="2"/>
+<link rel="alternate" type="application/rdf+xml" title="Health" href="/index.php?title=Special:ExportRDF/Health&amp;xmlmime=rdf"/>
+<link rel="alternate" type="application/x-wiki" title="Edit" href="/index.php?title=Health&amp;action=edit"/>
+<link rel="edit" title="Edit" href="/index.php?title=Health&amp;action=edit"/>
+<link rel="shortcut icon" href="/images/favicon.ico"/>
+<link rel="search" type="application/opensearchdescription+xml" href="/opensearch_desc.php" title="RimWorld Wiki (en)"/>
+<link rel="EditURI" type="application/rsd+xml" href="https://rimworldwiki.com/api.php?action=rsd"/>
+<link rel="license" href="/wiki/RimWorld_Wiki:Copyrights"/>
+<!--[if lt IE 9]><script src="/resources/lib/html5shiv/html5shiv.js"></script><![endif]-->
+</head>
+<body class="mediawiki ltr sitedir-ltr mw-hide-empty-elt ns-0 ns-subject mw-editable page-Health rootpage-Health skin-vector action-view skin-vector-legacy">
+<div id="mw-page-base" class="noprint"></div>
+<div id="mw-head-base" class="noprint"></div>
+<div id="content" class="mw-body" role="main">
+	<a id="top"></a>
+	<div id="siteNotice" class="mw-body-content"></div>
+	<div class="mw-indicators mw-body-content">
+	<div id="mw-indicator-smw-entity-examiner" class="mw-indicator"><div class="smw-entity-examiner smw-indicator-vertical-bar-loader" data-subject="Health#0##" data-dir="ltr" data-uselang="" title="Running an examiner in the background"></div></div>
+	</div>
+	<h1 id="firstHeading" class="firstHeading" lang="en">Health</h1>
+	<div id="bodyContent" class="mw-body-content">
+		<div id="siteSub" class="noprint">From RimWorld Wiki</div>
+		<div id="contentSub"></div>
+		<div id="contentSub2"></div>
+		
+		<div id="jump-to-nav"></div>
+		<a class="mw-jump-link" href="#mw-head">Jump to navigation</a>
+		<a class="mw-jump-link" href="#searchInput">Jump to search</a>
+		<div id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><div class="mw-parser-output"><table align="center">
+<tbody><tr>
+<td>
+<table align="center">
+<tbody><tr>
+<td>
+<table align="center">
+<tbody><tr>
+<th>
+<table align="center">
+<tbody><tr>
+<th>
+<table style="border-collapse:collapse; padding:5px; outline: 1px #E0E0E0 solid;" align="center">
+<tbody><tr>
+<td style="border: 1px #A0A0A0 solid; background-color: #eee; padding: 5px 10px;"><a href="/wiki/Basics" title="Basics">Basics</a>
+</td>
+<td style="border: 1px #A0A0A0 solid; background-color: #eee; padding: 5px 10px;"><a href="/wiki/Menus" title="Menus">Menus</a>
+</td>
+<td style="border: 1px #A0A0A0 solid; background-color: #eee; padding: 5px 10px;"><a href="/wiki/Game_Creation" title="Game Creation">Game&#160;Creation</a>
+</td>
+<td style="border: 1px #A0A0A0 solid; background-color: #eee; padding: 5px 10px;"><a href="/wiki/Gameplay" title="Gameplay">Gameplay</a>
+</td>
+<td style="border: 1px #A0A0A0 solid; background-color: #eee; padding: 5px 10px;"><b>Pawns</b>
+</td>
+<td style="border: 1px #A0A0A0 solid; background-color: #eee; padding: 5px 10px;"><a href="/wiki/Plants" title="Plants">Plants</a>
+</td>
+<td style="border: 1px #A0A0A0 solid; background-color: #eee; padding: 5px 10px;"><a href="/wiki/Resources" title="Resources">Resources</a>
+</td>
+<td style="border: 1px #A0A0A0 solid; background-color: #eee; padding: 5px 10px;"><a href="/wiki/Gear" title="Gear">Gear</a>
+</td>
+<td style="border: 1px #A0A0A0 solid; background-color: #eee; padding: 5px 10px;"><a href="/wiki/Mods" title="Mods">Mods</a>
+</td></tr>
+</tbody></table>
+</th></tr></tbody></table>
+<table style="border-collapse:collapse;" align="center">
+<tbody><tr>
+<td style="border: 1px #A0A0A0 solid; background-color: #eee; padding: 5px 10px;"><a href="/wiki/Pawns" title="Pawns">Pawns Menu</a>
+</td>
+<td style="border: 1px #A0A0A0 solid; background-color: #eee; padding: 5px 10px;"><b>Character&#160;Properties</b>
+</td>
+<td style="border: 1px #A0A0A0 solid; background-color: #eee; padding: 5px 10px;"><a href="/wiki/Character_Types" title="Character Types">Character&#160;Types</a>
+</td></tr></tbody></table>
+</th></tr></tbody></table>
+<table style="border-collapse:collapse;" align="center">
+<tbody><tr>
+<td style="border: 1px #A0A0A0 solid; background-color: #eee; padding: 5px 10px;"><a href="/wiki/Characters" title="Characters">Character&#160;Properties</a>
+</td>
+<td style="border: 1px #A0A0A0 solid; background-color: #eee; padding: 5px 10px;"><a class="mw-selflink selflink">Health</a>
+</td>
+<td style="border: 1px #A0A0A0 solid; background-color: #eee; padding: 5px 10px;"><a href="/wiki/Mood" title="Mood">Mood</a>
+</td>
+<td style="border: 1px #A0A0A0 solid; background-color: #eee; padding: 5px 10px;"><a href="/wiki/Needs" title="Needs">Needs</a>
+</td>
+<td style="border: 1px #A0A0A0 solid; background-color: #eee; padding: 5px 10px;"><a href="/wiki/Skills" title="Skills">Skills</a>
+</td>
+<td style="border: 1px #A0A0A0 solid; background-color: #eee; padding: 5px 10px;"><a href="/wiki/Thoughts" title="Thoughts">Thoughts</a>
+</td>
+<td style="border: 1px #A0A0A0 solid; background-color: #eee; padding: 5px 10px;"><a href="/wiki/Traits" title="Traits">Traits</a>
+</td>
+<td style="border: 1px #A0A0A0 solid; background-color: #eee; padding: 5px 10px;"><a href="/wiki/Social" title="Social">Social</a>
+</td></tr></tbody></table>
+</td></tr></tbody></table>
+<table style="border-collapse:collapse;" align="center">
+<tbody><tr>
+<td style="border: 1px #A0A0A0 solid; background-color: #eee; padding: 5px 10px;"><a class="mw-selflink selflink">Health</a>
+</td>
+<td style="border: 1px #A0A0A0 solid; background-color: #eee; padding: 5px 10px;"><a href="/wiki/Body_Parts" title="Body Parts">Body Parts</a>
+</td>
+<td style="border: 1px #A0A0A0 solid; background-color: #eee; padding: 5px 10px;"><a href="/wiki/Capacity" title="Capacity">Capacities</a>
+</td>
+<td style="border: 1px #A0A0A0 solid; background-color: #eee; padding: 5px 10px;"><a href="/wiki/Injury" title="Injury">Injury</a>
+</td>
+<td style="border: 1px #A0A0A0 solid; background-color: #eee; padding: 5px 10px;"><a href="/wiki/Disease" title="Disease">Disease</a>
+</td>
+<td style="border: 1px #A0A0A0 solid; background-color: #eee; padding: 5px 10px;"><a href="/wiki/Ailments" title="Ailments">Ailments</a>
+</td></tr></tbody></table>
+</td></tr></tbody></table>
+<hr />
+<div style="float:right; clear:right; margin-bottom:.5em; padding:.5em 0 .8em 1.4em; background:transparent; max-width:20em;"><div id="toc" class="toc" role="navigation" aria-labelledby="mw-toc-heading"><input type="checkbox" role="button" id="toctogglecheckbox" class="toctogglecheckbox" style="display:none" /><div class="toctitle" lang="en" dir="ltr"><h2 id="mw-toc-heading">Contents</h2><span class="toctogglespan"><label class="toctogglelabel" for="toctogglecheckbox"></label></span></div>
+<ul>
+<li class="toclevel-1 tocsection-1"><a href="#Health_Systems"><span class="tocnumber">1</span> <span class="toctext">Health Systems</span></a>
+<ul>
+<li class="toclevel-2 tocsection-2"><a href="#Sight"><span class="tocnumber">1.1</span> <span class="toctext">Sight</span></a></li>
+<li class="toclevel-2 tocsection-3"><a href="#Hearing"><span class="tocnumber">1.2</span> <span class="toctext">Hearing</span></a></li>
+<li class="toclevel-2 tocsection-4"><a href="#Moving"><span class="tocnumber">1.3</span> <span class="toctext">Moving</span></a></li>
+<li class="toclevel-2 tocsection-5"><a href="#Manipulation"><span class="tocnumber">1.4</span> <span class="toctext">Manipulation</span></a></li>
+<li class="toclevel-2 tocsection-6"><a href="#Talking"><span class="tocnumber">1.5</span> <span class="toctext">Talking</span></a></li>
+<li class="toclevel-2 tocsection-7"><a href="#Eating"><span class="tocnumber">1.6</span> <span class="toctext">Eating</span></a></li>
+<li class="toclevel-2 tocsection-8"><a href="#Breathing"><span class="tocnumber">1.7</span> <span class="toctext">Breathing</span></a></li>
+<li class="toclevel-2 tocsection-9"><a href="#Blood_Filtration"><span class="tocnumber">1.8</span> <span class="toctext">Blood Filtration</span></a></li>
+<li class="toclevel-2 tocsection-10"><a href="#Blood_Pumping"><span class="tocnumber">1.9</span> <span class="toctext">Blood Pumping</span></a></li>
+<li class="toclevel-2 tocsection-11"><a href="#Digestion"><span class="tocnumber">1.10</span> <span class="toctext">Digestion</span></a></li>
+<li class="toclevel-2 tocsection-12"><a href="#Consciousness"><span class="tocnumber">1.11</span> <span class="toctext">Consciousness</span></a></li>
+</ul>
+</li>
+<li class="toclevel-1 tocsection-13"><a href="#Pain"><span class="tocnumber">2</span> <span class="toctext">Pain</span></a>
+<ul>
+<li class="toclevel-2"><a href="#Formula"><span class="tocnumber">2.1</span> <span class="toctext">Formula</span></a></li>
+<li class="toclevel-2"><a href="#Thresholds"><span class="tocnumber">2.2</span> <span class="toctext">Thresholds</span></a></li>
+<li class="toclevel-2"><a href="#Factors"><span class="tocnumber">2.3</span> <span class="toctext">Factors</span></a>
+<ul>
+<li class="toclevel-3"><a href="#Base_factors"><span class="tocnumber">2.3.1</span> <span class="toctext">Base factors</span></a></li>
+<li class="toclevel-3"><a href="#Offsets"><span class="tocnumber">2.3.2</span> <span class="toctext">Offsets</span></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toclevel-1 tocsection-14"><a href="#Health_tab"><span class="tocnumber">3</span> <span class="toctext">Health tab</span></a></li>
+<li class="toclevel-1 tocsection-15"><a href="#Cold_and_Heat_Injuries"><span class="tocnumber">4</span> <span class="toctext">Cold and Heat Injuries</span></a></li>
+<li class="toclevel-1 tocsection-16"><a href="#Treatment"><span class="tocnumber">5</span> <span class="toctext">Treatment</span></a>
+<ul>
+<li class="toclevel-2 tocsection-17"><a href="#Improper_Treatment"><span class="tocnumber">5.1</span> <span class="toctext">Improper Treatment</span></a></li>
+<li class="toclevel-2 tocsection-18"><a href="#Operations"><span class="tocnumber">5.2</span> <span class="toctext">Operations</span></a>
+<ul>
+<li class="toclevel-3 tocsection-19"><a href="#Transplants"><span class="tocnumber">5.2.1</span> <span class="toctext">Transplants</span></a></li>
+<li class="toclevel-3 tocsection-20"><a href="#Limb_Replacement"><span class="tocnumber">5.2.2</span> <span class="toctext">Limb Replacement</span></a></li>
+<li class="toclevel-3 tocsection-21"><a href="#Implants"><span class="tocnumber">5.2.3</span> <span class="toctext">Implants</span></a></li>
+<li class="toclevel-3 tocsection-22"><a href="#Amputations"><span class="tocnumber">5.2.4</span> <span class="toctext">Amputations</span></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toclevel-1 tocsection-23"><a href="#Version_history"><span class="tocnumber">6</span> <span class="toctext">Version history</span></a></li>
+</ul>
+</div>
+</div>
+<div class="rellink mw-tpl-rellink mw-tpl-seealso">See also: <a href="/wiki/Injury" title="Injury">Injury</a></div>
+<p><a href="/wiki/Characters" title="Characters">Characters</a>, like <a href="/wiki/Colonist" title="Colonist">colonists</a>, <a href="/wiki/Raider" title="Raider">raiders</a>, etc., can become <a href="/wiki/Injury" title="Injury">injured</a> (via the environment or fighting). 
+</p><p>Each injury affects a different part of the colonists' well being, and can be found under a character's <b>Health</b> tab.
+</p><p>Under the health tab there are two sub-tabs, one for a health "Overview" which includes medical treatment preference and food restriction (1.0 onwards), and a second tab for scheduling any "Operations" that a colonist requires.
+</p>
+<h2><span class="mw-headline" id="Health_Systems">Health Systems</span><span class="mw-editsection"><span class="mw-editsection-bracket">[</span><a href="/index.php?title=Health&amp;action=edit&amp;section=1" title="Edit section: Health Systems">edit</a><span class="mw-editsection-bracket">]</span></span></h2>
+<div class="rellink mw-tpl-rellink relarticle mainarticle">Main articles: <a href="/wiki/Characters" title="Characters">Characters</a>&#32;and&#32;<a href="/wiki/Table_of_Human_Body_Parts" title="Table of Human Body Parts">Table of Human Body Parts</a></div>
+<p>Pawns have the following health systems. 
+</p>
+<div style="float: left;">
+<table class="sortable c_08 text-center table">
+<tbody><tr>
+<th>System Name</th>
+<th>Biological<br />Body Parts</th>
+<th>Mechanical<br />Body Parts</th>
+<th>Biological<br />Pawns Have?</th>
+<th>Mechanical<br />Pawns Have?</th>
+<th>Fatal if all<br />capacity lost?<sup id="cite_ref-1" class="reference"><a href="#cite_note-1">&#91;1&#93;</a></sup>
+</th></tr>
+<tr>
+<th><a href="/wiki/Pain" title="Pain">Pain</a>
+</th>
+<td>-</td>
+<td>-</td>
+<td>Yes</td>
+<td>No</td>
+<td>No
+</td></tr>
+<tr>
+<th><a href="#Consciousness">Consciousness</a>
+</th>
+<td>Brain</td>
+<td>-</td>
+<td>Yes</td>
+<td>No</td>
+<td>Yes
+</td></tr>
+<tr>
+<th><a href="#Data_Processing">Data Processing</a>
+</th>
+<td>-</td>
+<td>Mechanical Brain</td>
+<td>No</td>
+<td>Yes</td>
+<td>Yes
+</td></tr>
+<tr>
+<th><a href="#Sight">Sight</a>
+</th>
+<td>Eye</td>
+<td>Sight Sensor</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>No
+</td></tr>
+<tr>
+<th><a href="#Hearing">Hearing</a>
+</th>
+<td>Ear</td>
+<td>Hearing Sensor</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>No
+</td></tr>
+<tr>
+<th><a href="#Moving">Moving</a>
+</th>
+<td>Leg, Foot</td>
+<td>Leg, Foot<sup id="cite_ref-2" class="reference"><a href="#cite_note-2">&#91;2&#93;</a></sup></td>
+<td>Yes</td>
+<td>Yes</td>
+<td>No
+</td></tr>
+<tr>
+<th><a href="#Manipulation">Manipulation</a>
+</th>
+<td>Arm, Hand</td>
+<td>Arm, Hand<sup id="cite_ref-3" class="reference"><a href="#cite_note-3">&#91;3&#93;</a></sup></td>
+<td>Yes</td>
+<td>Yes</td>
+<td>No
+</td></tr>
+<tr>
+<th><a href="#Talking">Talking</a>
+</th>
+<td>Jaw, Neck</td>
+<td>-</td>
+<td>Yes</td>
+<td>No</td>
+<td>No
+</td></tr>
+<tr>
+<th><a href="#Communication">Communication</a>
+</th>
+<td>-</td>
+<td>Neck<sup id="cite_ref-4" class="reference"><a href="#cite_note-4">&#91;4&#93;</a></sup></td>
+<td>No</td>
+<td>Yes</td>
+<td>No
+</td></tr>
+<tr>
+<th><a href="#Breathing">Breathing</a>
+</th>
+<td>Lungs</td>
+<td>-</td>
+<td>Yes</td>
+<td>No</td>
+<td>Yes
+</td></tr>
+<tr>
+<th><a href="#Blood_Filtration">Blood Filtration</a>
+</th>
+<td>Kidneys, Liver</td>
+<td>-</td>
+<td>Yes</td>
+<td>No</td>
+<td>Yes
+</td></tr>
+<tr>
+<th><a href="#Fluid_Reprocessing">Fluid Reprocessing</a>
+</th>
+<td>-</td>
+<td>Fluid Reprocessor</td>
+<td>No</td>
+<td>Yes</td>
+<td>Yes
+</td></tr>
+<tr>
+<th><a href="#Blood_Pumping">Blood Pumping</a>
+</th>
+<td>Heart</td>
+<td>-</td>
+<td>Yes</td>
+<td>No</td>
+<td>Yes
+</td></tr>
+<tr>
+<th><a href="#Power_Generation">Power Generation</a>
+</th>
+<td>-</td>
+<td>Reactor</td>
+<td>No</td>
+<td>Yes</td>
+<td>Yes
+</td></tr>
+<tr>
+<th><a href="#Digestion">Digestion</a>
+</th>
+<td>Stomach</td>
+<td>-</td>
+<td>Yes</td>
+<td>No</td>
+<td>Yes
+</td></tr>
+</tbody></table>
+<div class="mw-references-wrap"><ol class="references">
+<li id="cite_note-1"><span class="mw-cite-backlink"><a href="#cite_ref-1">↑</a></span> <span class="reference-text">Refers to whether or not the pawn will die if a system's capacity becomes 'None'</span>
+</li>
+<li id="cite_note-2"><span class="mw-cite-backlink"><a href="#cite_ref-2">↑</a></span> <span class="reference-text">Centipedes body rings are used for movement instead, since they don't have legs.</span>
+</li>
+<li id="cite_note-3"><span class="mw-cite-backlink"><a href="#cite_ref-3">↑</a></span> <span class="reference-text">Again, Centipedes body rings are used for work instead, since they don't have arms.</span>
+</li>
+<li id="cite_note-4"><span class="mw-cite-backlink"><a href="#cite_ref-4">↑</a></span> <span class="reference-text">Centipedes have no form of external communication. Scythers do have a neck though, and make some interesting sounds when incapacitated.</span>
+</li>
+</ol></div>
+</div>
+<p><br style="clear:both" />
+</p>
+<h4><span class="mw-headline" id="Sight">Sight</span><span class="mw-editsection"><span class="mw-editsection-bracket">[</span><a href="/index.php?title=Health&amp;action=edit&amp;section=2" title="Edit section: Sight">edit</a><span class="mw-editsection-bracket">]</span></span></h4>
+<div class="rellink mw-tpl-rellink relarticle mainarticle">Main article: <a href="/wiki/Sight" title="Sight">Sight</a></div>
+<p>Sight is a capacity that contributes to stats including <a href="/wiki/Shooting_Accuracy" title="Shooting Accuracy">shooting accuracy</a>, <a href="/wiki/Melee_Hit_Chance" title="Melee Hit Chance">melee hit chance</a>, and for colonists, nearly every work stat. Humans and animals have eyes, while <a href="/wiki/Scyther" title="Scyther">scythers</a> and <a href="/wiki/Centipede" title="Centipede">centipedes</a> have functionally equivalent sight sensors. Losing an eye or sensor reduces sight by 50%. Humans aged 50 or older may develop cataracts which drastically reduces sight by 50%. An eye can be upgraded with a <a href="/wiki/Bionic_eye" title="Bionic eye">bionic eye</a>.
+</p>
+<h4><span class="mw-headline" id="Hearing">Hearing</span><span class="mw-editsection"><span class="mw-editsection-bracket">[</span><a href="/index.php?title=Health&amp;action=edit&amp;section=3" title="Edit section: Hearing">edit</a><span class="mw-editsection-bracket">]</span></span></h4>
+<div class="rellink mw-tpl-rellink relarticle mainarticle">Main article: <a href="/wiki/Hearing" title="Hearing">Hearing</a></div>
+<p>Hearing is a capacity that contributes to <a href="/wiki/Trade_Price_Improvement" title="Trade Price Improvement">trade price improvement</a>. Hearing is reduced by damaged, missing ears, or hearing loss.  Hearing can be improved past 100% with a <a href="/wiki/Bionic_ear" title="Bionic ear">bionic ear</a>, however no derived stat benefits from doing so.
+</p>
+<h4><span class="mw-headline" id="Moving">Moving</span><span class="mw-editsection"><span class="mw-editsection-bracket">[</span><a href="/index.php?title=Health&amp;action=edit&amp;section=4" title="Edit section: Moving">edit</a><span class="mw-editsection-bracket">]</span></span></h4>
+<div class="rellink mw-tpl-rellink relarticle mainarticle">Main article: <a href="/wiki/Moving" title="Moving">Moving</a></div>
+<p>Moving is a pawn's capacity to use their legs to move about. It's a major factor in a pawn's overall <a href="/wiki/Move_Speed" title="Move Speed">movement speed</a>. Moving is reduced when a leg, femur, tibia, foot, toe or their spine is injured.
+</p><p>Consciousness applies a 1 for 1 multiplier on moving, while breathing and blood pumping does the same but only up to -10% moving, so anything that affects any of these stats will also increase or reduce moving by the same amount. Moving is also directly reduced by certain ailments including <a href="/wiki/Bad_back" class="mw-redirect" title="Bad back">bad back</a> and <a href="/wiki/Frail" class="mw-redirect" title="Frail">frail</a>. 
+</p><p>Any time a pawn's moving is reduced to below 15%, they become incapacitated and can no longer do anything. They can be rescued or captured at this point. An injured pawn may eventually recover on their own as the pain levels drop, although blood loss may prevent this or cause them to collapse again.
+</p>
+<h4><span class="mw-headline" id="Manipulation">Manipulation</span><span class="mw-editsection"><span class="mw-editsection-bracket">[</span><a href="/index.php?title=Health&amp;action=edit&amp;section=5" title="Edit section: Manipulation">edit</a><span class="mw-editsection-bracket">]</span></span></h4>
+<div class="rellink mw-tpl-rellink relarticle mainarticle">Main article: <a href="/wiki/Manipulation" title="Manipulation">Manipulation</a></div>
+<p>Manipulation is a pawn's capacity to perform any task with their <a href="/wiki/Body_Parts#Hand" title="Body Parts">hands</a>. It is an important factor in almost every task a colonist can perform. 
+</p><p>Anatomically, bipeds use their left and right arms for manipulation, and each side contributes its efficiency level to 50% of the manipulation stat. Total loss of a shoulder, arm, radius, humerus or hand will render that side totally useless and reduce the pawn's manipulation by 50%. Loss of a finger will result in about an 8% manipulation penalty per finger. For quadrupeds, manipulation is reduced by injury to their <a href="/wiki/Body_Parts#Jaw" title="Body Parts">jaw</a> instead. For both, injury to the spine will also reduce manipulation.
+</p><p>Consciousness applies a 1 for 1 multiplier on manipulation, so anything that affects consciousness (pain, brain damage, diseases, drugs, joywires, etc.) will also increase or reduce manipulation by the same amount. Manipulation is also reduced by ailments including <a href="/wiki/Injury#old_age" title="Injury">bad back and frailty</a>. Manipulation is modified by prosthetics including power claws, prosthetic arms, and bionic arms.
+</p>
+<h4><span class="mw-headline" id="Talking">Talking</span><span class="mw-editsection"><span class="mw-editsection-bracket">[</span><a href="/index.php?title=Health&amp;action=edit&amp;section=6" title="Edit section: Talking">edit</a><span class="mw-editsection-bracket">]</span></span></h4>
+<div class="rellink mw-tpl-rellink relarticle mainarticle">Main article: <a href="/wiki/Talking" title="Talking">Talking</a></div>
+<p>A character's capacity of speech. Directly affected by consciousness.
+</p>
+<h4><span class="mw-headline" id="Eating">Eating</span><span class="mw-editsection"><span class="mw-editsection-bracket">[</span><a href="/index.php?title=Health&amp;action=edit&amp;section=7" title="Edit section: Eating">edit</a><span class="mw-editsection-bracket">]</span></span></h4>
+<div class="rellink mw-tpl-rellink relarticle mainarticle">Main article: <a href="/wiki/Eating" title="Eating">Eating</a></div>
+<p>Eating is the capacity of biological pawns to consume food and is a major factor of <a href="/wiki/Eating_Speed" title="Eating Speed">Eating Speed</a>. It is reduced by a damaged jaw. Even when missing a jaw a pawn can still eat, though at a reduced rate. A damaged or missing jaw can be replaced with a denture or bionic jaw
+</p>
+<h4><span class="mw-headline" id="Breathing">Breathing</span><span class="mw-editsection"><span class="mw-editsection-bracket">[</span><a href="/index.php?title=Health&amp;action=edit&amp;section=8" title="Edit section: Breathing">edit</a><span class="mw-editsection-bracket">]</span></span></h4>
+<div class="rellink mw-tpl-rellink relarticle mainarticle">Main article: <a href="/wiki/Breathing" title="Breathing">Breathing</a></div>
+<p>The ability of a character to breathe. Affects consciousness and movement.
+</p>
+<h4><span class="mw-headline" id="Blood_Filtration">Blood Filtration</span><span class="mw-editsection"><span class="mw-editsection-bracket">[</span><a href="/index.php?title=Health&amp;action=edit&amp;section=9" title="Edit section: Blood Filtration">edit</a><span class="mw-editsection-bracket">]</span></span></h4>
+<div class="rellink mw-tpl-rellink relarticle mainarticle">Main article: <a href="/wiki/Blood_Filtration" title="Blood Filtration">Blood Filtration</a></div>
+<p>A character's ability to fight off diseases. Affects consciousness and immunity gain speed.
+</p>
+<h4><span class="mw-headline" id="Blood_Pumping">Blood Pumping</span><span class="mw-editsection"><span class="mw-editsection-bracket">[</span><a href="/index.php?title=Health&amp;action=edit&amp;section=10" title="Edit section: Blood Pumping">edit</a><span class="mw-editsection-bracket">]</span></span></h4>
+<div class="rellink mw-tpl-rellink relarticle mainarticle">Main article: <a href="/wiki/Blood_Pumping" title="Blood Pumping">Blood Pumping</a></div>
+<p>Blood Pumping is an essential function provided by the heart. It directly influences the moving stat. A pawn whose blood pumping reaches 0% will die instantly.
+</p>
+<h4><span class="mw-headline" id="Digestion">Digestion</span><span class="mw-editsection"><span class="mw-editsection-bracket">[</span><a href="/index.php?title=Health&amp;action=edit&amp;section=11" title="Edit section: Digestion">edit</a><span class="mw-editsection-bracket">]</span></span></h4>
+<div class="rellink mw-tpl-rellink relarticle mainarticle">Main article: <a href="/wiki/Digestion" title="Digestion">Digestion</a></div>
+<p>Digestion is a pawn's ability to digest food and convert it to energy efficiently. The better a pawn's Digestion value, the less rest they will need. A pawn whose Digestion reaches 0% will die instantly.
+</p>
+<h4><span class="mw-headline" id="Consciousness">Consciousness</span><span class="mw-editsection"><span class="mw-editsection-bracket">[</span><a href="/index.php?title=Health&amp;action=edit&amp;section=12" title="Edit section: Consciousness">edit</a><span class="mw-editsection-bracket">]</span></span></h4>
+<div class="rellink mw-tpl-rellink relarticle mainarticle">Main article: <a href="/wiki/Consciousness" title="Consciousness">Consciousness</a></div>
+<p>Consciousness is a creature's ability to remain active, and in the case of your colonists, controllable. Blood loss, starvation and pain can have a serious effect on a creature's consciousness if they reach higher levels. Pawns below 30% consciousness will not wake up.
+When a medical operation is performed, anesthesia is induced, which renders the person unconscious until the effect of the anesthetic medication has worn off. This makes them incapable of moving, along with being incapable of leaving the bed.
+</p><p>Consciousness is directly influenced by Efficiency of consciousness source, Pain, Blood pumping, Breathing and Blood filtration. The formula is:
+</p>
+<pre>   <b>E(C) = E(CS) * (1 - Clamp((Pain - 0.1) * 4 / 9, 0, 0.4)) * (1 - 0.2 * △E(BP)) * (1 - 0.2 * △E(Br)) * (1 - 0.1 * △E(BF))</b>
+</pre>
+<p>where
+</p>
+<pre> E(C) is the Efficiency of Consciousness
+ E(CS) is the Efficiency of Consciousness source (e.g., the brain)
+ Pain is the total pain
+ △E(BP) = 1 - E(BP), E(BP) is the Efficiency of Blood pumping
+ △E(Br) = 1 - E(Br), E(Br) is the Efficiency of Breathing
+ △E(BF) = 1 - E(BF), E(BF) is the Efficiency of Blood filtration
+</pre>
+<p>From the fomula, we know that when total pain is below 10%, it makes no influence on consciousness. And when 10% &lt;= pain &lt;= 100%, the fomula can be simplified as:   
+</p>
+<pre>   <b>E(C) = E(CS) * [(Pain - 0.1) * 4 / 9] * (1 - 0.2 * △E(BP)) * (1 - 0.2 * △E(Br)) * (1 - 0.1 * △E(BF))</b>
+</pre>
+<h2><span class="mw-headline" id="Pain">Pain</span><span class="mw-editsection"><span class="mw-editsection-bracket">[</span><a href="/index.php?title=Health&amp;action=edit&amp;section=13" title="Edit section: Pain">edit</a><span class="mw-editsection-bracket">]</span></span></h2>
+<dl><dd><i>Main Article: <a href="/wiki/Pain" title="Pain">Pain</a></i></dd></dl>
+<p>Most biological creatures including <a href="/wiki/Colonist" title="Colonist">colonists</a>, <a href="/wiki/Raider" title="Raider">raiders</a>, and <a href="/wiki/Animals" title="Animals">animals</a> feel pain caused by <a href="/wiki/Injury" title="Injury">injuries</a>.  A pawn's pain level ranges from 0% to 100% and is displayed on their Health tab's Overview. Pain levels are None, Little, Moderate, Severe, and Extreme.<span title="What percentage ranges do those names correlate to?" style="border-bottom:1px dotted"><sup>[Detail Needed]</sup></span> Even a little pain causes unhappy <a href="/wiki/Thoughts_list" class="mw-redirect" title="Thoughts list">thoughts</a>. Once pain passes 10%, it'll start to have an effect on <a href="/wiki/Consciousness" title="Consciousness">consciousness</a>. If a pawn's pain level meets or exceeds their <a href="/wiki/Pain_Shock_Threshold" title="Pain Shock Threshold">Pain Shock Threshold</a> they'll go into <a href="/wiki/Injury#Shock" title="Injury">shock</a>, unable to move. Pawns with the <a href="/wiki/Wimp" class="mw-redirect" title="Wimp">Wimp</a> trait will be incapacitated with only minor pain of 30%.
+</p><p>Most pain is temporary, but <a href="/wiki/Injury#Scarring" title="Injury">scars</a> and certain <a href="/wiki/Disease" title="Disease">diseases</a> can cause long-term pain.  A <a href="/wiki/Painstopper" title="Painstopper">painstopper</a> implant or the <a href="/wiki/Painblock" title="Painblock">painblock</a> psycast <sup><a href="/wiki/Royalty_DLC" title="Content added by the Royalty DLC"><img alt="Content added by the Royalty DLC" src="/images/thumb/4/41/RoyaltyIcon.png/16px-RoyaltyIcon.png" decoding="async" width="16" height="16" srcset="/images/thumb/4/41/RoyaltyIcon.png/24px-RoyaltyIcon.png 1.5x, /images/thumb/4/41/RoyaltyIcon.png/32px-RoyaltyIcon.png 2x" /></a></sup> will get rid of all a colonist's pain and negate any pain-related mood penalties. Note that colonists with the <a href="/wiki/Masochist" class="mw-redirect" title="Masochist">Masochist</a> trait or an ideoligion with the <a href="/wiki/Pain_(precept)" class="mw-redirect" title="Pain (precept)">Pain: Idealized</a> precept<sup><a href="/wiki/Ideology_DLC" title="Content added by the Ideology DLC"><img alt="Content added by the Ideology DLC" src="/images/thumb/9/94/IdeologyIcon.png/16px-IdeologyIcon.png" decoding="async" width="16" height="16" srcset="/images/thumb/9/94/IdeologyIcon.png/24px-IdeologyIcon.png 1.5x, /images/thumb/9/94/IdeologyIcon.png/32px-IdeologyIcon.png 2x" /></a></sup> get a mood <i>bonus</i> from pain instead of a penalty, so it's usually better to leave them alone.
+</p><p>Injuries to the <a href="/wiki/Artificial_body_parts" title="Artificial body parts">artificial parts</a> do not cause any pain, so colonists with a lot of bionics will generally incur less pain during combat.
+</p>
+<h3><span class="mw-headline" id="Formula">Formula</span><span class="mw-editsection"><span class="mw-editsection-bracket">[</span><a href="/index.php?title=Pain&amp;action=edit&amp;section=T-1" title="Edit section: ">edit</a><span class="mw-editsection-bracket">]</span></span></h3>
+<p>Pain for a given pawn is the sum of the pain from each individual injury, with two extra steps at the end:
+</p>
+<ul><li><code>pain = pain / healthFactor</code> for pawns with a healthFactor other than 1.0 (like <a href="/wiki/Grizzly_bear" title="Grizzly bear">grizzly bears</a> and other large animals).  Humans have a healthFactor of 1.0, so this doesn't impact humans</li>
+<li><code>pain = pain * painFactor</code> from health conditions which alter pain.  This includes pain-reducing drugs like <a href="/wiki/Flake" title="Flake">flake</a> and <a href="/wiki/Yayo" title="Yayo">yayo</a> as well as anesthetic used during operations</li></ul>
+<p>Pain from an individual injury is the product of the severity of the injury (the number of HP missing for things like cuts and burns) and the pain per severity for the injury type.  For example:
+</p>
+<ul><li>30 burn damage causes 30 damage &#215; 0.01875 pain per severity = 56.25% pain</li>
+<li>30 cut damage causes 30 damage &#215; 0.0125 pain per severity =  37.5% pain</li></ul>
+<p>For the complete table of pain vs damage, see <a href="/wiki/Health_Difficulties" title="Health Difficulties">Health Difficulties</a>
+</p><p>An exceptional kind of injury is scarification. They take the form of 0.5 HP scars, but give either 11% or 4% pain, for a pain factor of 0.08 or 0.22.
+</p>
+<h3><span class="mw-headline" id="Thresholds">Thresholds</span><span class="mw-editsection"><span class="mw-editsection-bracket">[</span><a href="/index.php?title=Pain&amp;action=edit&amp;section=T-2" title="Edit section: ">edit</a><span class="mw-editsection-bracket">]</span></span></h3>
+<p>Pain creates moodlets of different values at 4 stages depending on pain severity.
+</p>
+<table class="sortable c_10 text-center table">
+<tbody><tr>
+<th>Level</th>
+<th>Required Pain&#160;%</th>
+<th>Mood Penalty<br />(Default)</th>
+<th>Mood Buff<br />(<a href="/wiki/Masochist" class="mw-redirect" title="Masochist">Masochist</a>)</th>
+<th>Mood Buff<br />(<a href="/wiki/Pain_(precept)" class="mw-redirect" title="Pain (precept)">Pain:Idealized</a><sup><a href="/wiki/Ideology_DLC" title="Content added by the Ideology DLC"><img alt="Content added by the Ideology DLC" src="/images/thumb/9/94/IdeologyIcon.png/16px-IdeologyIcon.png" decoding="async" width="16" height="16" srcset="/images/thumb/9/94/IdeologyIcon.png/24px-IdeologyIcon.png 1.5x, /images/thumb/9/94/IdeologyIcon.png/32px-IdeologyIcon.png 2x" /></a></sup>)
+</th></tr>
+<tr>
+<th>Minor
+</th>
+<td>1%</td>
+<td><span style="color:firebrick; font-weight:bold">−5</span></td>
+<td><span style="color:forestgreen; font-weight:bold">+5</span></td>
+<td><span style="color:forestgreen; font-weight:bold">+3</span>
+</td></tr>
+<tr>
+<th>Serious
+</th>
+<td>15%</td>
+<td><span style="color:firebrick; font-weight:bold">−10</span></td>
+<td><span style="color:forestgreen; font-weight:bold">+10</span></td>
+<td><span style="color:forestgreen; font-weight:bold">+5</span>
+</td></tr>
+<tr>
+<th>Intense
+</th>
+<td>40%</td>
+<td><span style="color:firebrick; font-weight:bold">−15</span></td>
+<td><span style="color:forestgreen; font-weight:bold">+15</span></td>
+<td><span style="color:forestgreen; font-weight:bold">+7</span>
+</td></tr>
+<tr>
+<th>Mind-shattering
+</th>
+<td>80%</td>
+<td><span style="color:firebrick; font-weight:bold">−20</span></td>
+<td><span style="color:forestgreen; font-weight:bold">+20</span></td>
+<td><span style="color:forestgreen; font-weight:bold">+9</span>
+</td></tr>
+</tbody></table>
+<p>A standard pawn will go down upon reaching mind-shattering pain.<br />
+Pain inflicts a <a href="/wiki/Consciousness" title="Consciousness">consciousness</a> penalty that scales with the pain percentage after exceeding 10%. It conforms to the following equation:
+<code>IF Pain[%] &lt;= 10% THEN -0% ELSE -{(Pain-0.1)/2.25}[%]</code> For example, 15% pain is 0.15 - 0.1 = 0.05 / 2.25 = 0.02 or 2% consciousness loss.
+</p>
+<table class="wikitable">
+<tbody><tr>
+<th>Graph
+</th></tr>
+<tr>
+<td><style data-mw-deduplicate="TemplateStyles:r79806">body.skin-minerva .mw-parser-output div.mw-graph{max-width:100%;overflow:auto}</style><div class="mw-graph mw-graph-always mw-graph-nofallback" style="min-width:400px;min-height:100px" data-graph-id="e8a606f1d413729dab78668ef77a820c56640f81"></div>
+</td></tr></tbody></table>
+<h3><span class="mw-headline" id="Factors">Factors</span><span class="mw-editsection"><span class="mw-editsection-bracket">[</span><a href="/index.php?title=Pain&amp;action=edit&amp;section=T-3" title="Edit section: ">edit</a><span class="mw-editsection-bracket">]</span></span></h3>
+<table class="metadata plainlinks ambox" style="border-left: 10px solid #1e90ff">
+<tbody><tr>
+<td class="mbox-image"><div style="width:52px;"><a href="/wiki/Category:Stubs" title="Category:Stubs"><img alt="StumpChoppedA (cropped).png" src="/images/thumb/6/6a/StumpChoppedA_%28cropped%29.png/40px-StumpChoppedA_%28cropped%29.png" decoding="async" width="40" height="40" srcset="/images/6/6a/StumpChoppedA_%28cropped%29.png 1.5x" /></a></div></td>
+<td class="mbox-text"><span class="mbox-text-span"><b>This section is a <a href="/wiki/Category:Stubs" title="Category:Stubs">stub</a>.</b> You can help RimWorld Wiki by <b><a rel="nofollow" class="external text" href="https://rimworldwiki.com/index.php?title=Health&amp;action=edit">expanding it</a>. Reason:</b> <i>Many other hediffs cause pain or change pain factors. Also injury mechanics. Also how is PainFactor applied? Is it exactly the same as a post factor for other capacities? Math section on final calculation is needed..</i></span></td>
+</tr>
+</tbody></table>
+<h4><span class="mw-headline" id="Base_factors">Base factors</span><span class="mw-editsection"><span class="mw-editsection-bracket">[</span><a href="/index.php?title=Pain&amp;action=edit&amp;section=T-4" title="Edit section: ">edit</a><span class="mw-editsection-bracket">]</span></span></h4>
+<p>Factors cause the game code to MULTIPLY pain X a number. Small numbers reduce pain a lot. Large numbers below 100% reduce pain a little.
+</p>
+<ul><li><a href="/wiki/Painstopper" title="Painstopper">Painstopper</a>: <b>×0%</b></li>
+<li><a href="/wiki/Painless" class="mw-redirect" title="Painless">Painless</a> persona trait <sup><a href="/wiki/Royalty_DLC" title="Content added by the Royalty DLC"><img alt="Content added by the Royalty DLC" src="/images/thumb/4/41/RoyaltyIcon.png/16px-RoyaltyIcon.png" decoding="async" width="16" height="16" srcset="/images/thumb/4/41/RoyaltyIcon.png/24px-RoyaltyIcon.png 1.5x, /images/thumb/4/41/RoyaltyIcon.png/32px-RoyaltyIcon.png 2x" /></a></sup>: <b>×0%</b></li>
+<li><a href="/wiki/Go-juice" title="Go-juice">Go-juice</a>:
+<ul><li>High: <b>×10%</b></li>
+<li>Withdrawal: <b>×300%</b></li></ul></li>
+<li><a href="/wiki/Painblock" title="Painblock">Painblock</a> psycast: <sup><a href="/wiki/Royalty_DLC" title="Content added by the Royalty DLC"><img alt="Content added by the Royalty DLC" src="/images/thumb/4/41/RoyaltyIcon.png/16px-RoyaltyIcon.png" decoding="async" width="16" height="16" srcset="/images/thumb/4/41/RoyaltyIcon.png/24px-RoyaltyIcon.png 1.5x, /images/thumb/4/41/RoyaltyIcon.png/32px-RoyaltyIcon.png 2x" /></a></sup> <b>×10%</b></li>
+<li><a href="/wiki/Yayo" title="Yayo">Yayo</a>:
+<ul><li>High: <b>×50%</b></li></ul></li>
+<li><a href="/wiki/Luciferium" title="Luciferium">Luciferium</a>:
+<ul><li>High: <b>×80%</b></li></ul></li>
+<li><a href="/wiki/Psychite_tea" title="Psychite tea">Psychite tea</a>:
+<ul><li>High: <b>×90%</b></li></ul></li>
+<li><a href="/wiki/Beer" title="Beer">Beer</a>: (See also <a href="#Offsets">Offsets</a>)
+<ul><li>Warm: <b>×90%</b></li>
+<li>Tipsy: <b>×80%</b></li>
+<li>Drunk: <b>×50%</b></li>
+<li>Hammered: <b>×30%</b></li>
+<li>Blackout: <b>×10%</b></li></ul></li>
+<li><a href="/wiki/Psychic_bonding" class="mw-redirect" title="Psychic bonding">Psychic bond</a><sup><a href="/wiki/Biotech_(DLC)" title="Content added by the Biotech DLC"><img alt="Content added by the Biotech DLC" src="/images/thumb/7/73/BiotechIcon.png/16px-BiotechIcon.png" decoding="async" width="16" height="16" srcset="/images/thumb/7/73/BiotechIcon.png/24px-BiotechIcon.png 1.5x, /images/thumb/7/73/BiotechIcon.png/32px-BiotechIcon.png 2x" /></a></sup>:
+<ul><li>Psychic bond: <b>×50%</b></li></ul></li>
+<li><a href="/wiki/Reduced_pain" class="mw-redirect" title="Reduced pain">Reduced pain</a><sup><a href="/wiki/Biotech_(DLC)" title="Content added by the Biotech DLC"><img alt="Content added by the Biotech DLC" src="/images/thumb/7/73/BiotechIcon.png/16px-BiotechIcon.png" decoding="async" width="16" height="16" srcset="/images/thumb/7/73/BiotechIcon.png/24px-BiotechIcon.png 1.5x, /images/thumb/7/73/BiotechIcon.png/32px-BiotechIcon.png 2x" /></a></sup>: <b>×50%</b></li></ul>
+<h4><span class="mw-headline" id="Offsets">Offsets</span><span class="mw-editsection"><span class="mw-editsection-bracket">[</span><a href="/index.php?title=Pain&amp;action=edit&amp;section=T-5" title="Edit section: ">edit</a><span class="mw-editsection-bracket">]</span></span></h4>
+<p>Offsets cause the game code to ADD OR SUBTRACT a number from the pawn's pain. Small numbers are less effective at reducing pain than large numbers. However, if the pawn only has a small amount of pain, an equally small offset will be totally effective at removing all pain. Positive numbers add pain. Negative numbers reduce pain.
+</p>
+<ul><li><a href="/wiki/Mindscrew" title="Mindscrew">Mindscrew</a>: <span style="color:firebrick; font-weight:bold">+20%</span></li>
+<li><a href="/wiki/Sensory_mechanites" title="Sensory mechanites">Sensory mechanites</a>:
+<ul><li>Mild pain: <span style="color:firebrick; font-weight:bold">+20%</span></li>
+<li>Intense pain: <span style="color:firebrick; font-weight:bold">+60%</span></li></ul></li>
+<li><a href="/wiki/Blood_rot" title="Blood rot">Blood rot</a>:
+<ul><li>Extreme: <span style="color:firebrick; font-weight:bold">+5%</span></li></ul></li>
+<li><a href="/wiki/Fibrous_mechanites" title="Fibrous mechanites">Fibrous mechanites</a>:
+<ul><li>Mild pain: <span style="color:firebrick; font-weight:bold">+20%</span></li>
+<li>Intense pain: <span style="color:firebrick; font-weight:bold">+60%</span></li></ul></li>
+<li><a href="/wiki/Muscle_parasites" title="Muscle parasites">Muscle parasites</a>: <span style="color:firebrick; font-weight:bold">+20%</span></li>
+<li><a href="/wiki/Gut_worms" title="Gut worms">Gut worms</a>: <span style="color:firebrick; font-weight:bold">+20%</span></li>
+<li><a href="/wiki/Malaria" title="Malaria">Malaria</a>:
+<ul><li>Major: <span style="color:firebrick; font-weight:bold">+30%</span></li>
+<li>Extreme: <span style="color:firebrick; font-weight:bold">+30%</span></li></ul></li>
+<li><a href="/wiki/Luciferium" title="Luciferium">Luciferium</a>:
+<ul><li>Withdrawal: <span style="color:firebrick; font-weight:bold">+40%</span></li></ul></li>
+<li><a href="/wiki/Beer" title="Beer">Beer</a>: (See also <a href="#Factors">Factors</a>)
+<ul><li>Blackout: <span style="color:firebrick; font-weight:bold">+5%</span></li></ul></li>
+<li><a href="/wiki/Smokeleaf_joint" title="Smokeleaf joint">Stoned on smokeleaf</a>: <span style="color:forestgreen; font-weight:bold">−20%</span></li>
+<li><a href="/wiki/Torture_crown" title="Torture crown">Torture crown</a>:<sup><a href="/wiki/Ideology_DLC" title="Content added by the Ideology DLC"><img alt="Content added by the Ideology DLC" src="/images/thumb/9/94/IdeologyIcon.png/16px-IdeologyIcon.png" decoding="async" width="16" height="16" srcset="/images/thumb/9/94/IdeologyIcon.png/24px-IdeologyIcon.png 1.5x, /images/thumb/9/94/IdeologyIcon.png/32px-IdeologyIcon.png 2x" /></a></sup> <span style="color:firebrick; font-weight:bold">+5%</span></li>
+<li><a href="/wiki/Tox_gas" title="Tox gas">Tox gas</a>:<sup><a href="/wiki/Biotech_(DLC)" title="Content added by the Biotech DLC"><img alt="Content added by the Biotech DLC" src="/images/thumb/7/73/BiotechIcon.png/16px-BiotechIcon.png" decoding="async" width="16" height="16" srcset="/images/thumb/7/73/BiotechIcon.png/24px-BiotechIcon.png 1.5x, /images/thumb/7/73/BiotechIcon.png/32px-BiotechIcon.png 2x" /></a></sup>
+<ul><li>Mild: <span style="color:firebrick; font-weight:bold">+10%</span></li>
+<li>Moderate: <span style="color:firebrick; font-weight:bold">+15%</span></li>
+<li>Severe: <span style="color:firebrick; font-weight:bold">+25%</span></li></ul></li>
+<li><a href="/wiki/Hemogen" title="Hemogen">Hemogen</a> craving:<sup><a href="/wiki/Biotech_(DLC)" title="Content added by the Biotech DLC"><img alt="Content added by the Biotech DLC" src="/images/thumb/7/73/BiotechIcon.png/16px-BiotechIcon.png" decoding="async" width="16" height="16" srcset="/images/thumb/7/73/BiotechIcon.png/24px-BiotechIcon.png 1.5x, /images/thumb/7/73/BiotechIcon.png/32px-BiotechIcon.png 2x" /></a></sup>
+<ul><li>Minor: <span style="color:firebrick; font-weight:bold">+5%</span></li>
+<li>Moderate: <span style="color:firebrick; font-weight:bold">+10%</span></li>
+<li>Major: <span style="color:firebrick; font-weight:bold">+15%</span></li></ul></li>
+<li><a href="/wiki/Inhumanized" title="Inhumanized">Inhumanization</a>:<sup><a href="/wiki/Anomaly_(DLC)" title="Content added by the Anomaly DLC"><img alt="Content added by the Anomaly DLC" src="/images/thumb/3/32/AnomalyIcon.png/16px-AnomalyIcon.png" decoding="async" width="16" height="16" srcset="/images/thumb/3/32/AnomalyIcon.png/24px-AnomalyIcon.png 1.5x, /images/thumb/3/32/AnomalyIcon.png/32px-AnomalyIcon.png 2x" /></a></sup> <span style="color:forestgreen; font-weight:bold">−50%</span></li></ul>
+<p><br />
+</p>
+<h2><span class="mw-headline" id="Health_tab">Health tab</span><span class="mw-editsection"><span class="mw-editsection-bracket">[</span><a href="/index.php?title=Health&amp;action=edit&amp;section=14" title="Edit section: Health tab">edit</a><span class="mw-editsection-bracket">]</span></span></h2>
+<p>All creatures have a health tab, located above the pawn's inspect pane.
+</p>
+<dl><dd>Overview tab
+<dl><dd>The first section lists the creature's type, gender and age. Hovering over this section will display the creature's exact age and date born.</dd>
+<dd>Self-tend (turned off by default) allows a doctor to tend their own wounds, although with reduced efficiency.</dd>
+<dd>The creature's bodily systems are listed here with their current effectiveness. Not all systems are found among all types of creatures (i.e. animals don't have Talking).</dd></dl></dd></dl>
+<dl><dd>Operations tab
+<dl><dd>The Operations tab is only available for colonists, colony animals, and prisoners. Bills can be added here to request surgical operations.</dd></dl></dd></dl>
+<dl><dd>Injuries
+<dl><dd>Listed here are the creature's health conditions and injuries. Implants, bionic parts, and prosthetics are also listed here. Hovering over an entry provides detailed information.</dd>
+<dd>A red blood droplet indicates a bleeding injury. The size of the droplet indicates severity of the bleeding. Overall bleeding rate is listed at the bottom.</dd>
+<dd>An open circle indicates a condition that needs tending, usually requiring periodic treatments before fully cured. A solid circle indicates the condition has been tended to.</dd>
+<dd>A bandage icon indicates a treated injury. A white bandage indicates high quality treatment. Darker shades indicate lower quality treatment, more likely to result in scarring or infection. <i>See <a href="/wiki/Doctoring" title="Doctoring">Doctoring</a></i></dd></dl></dd></dl>
+<h2><span class="mw-headline" id="Cold_and_Heat_Injuries">Cold and Heat Injuries</span><span class="mw-editsection"><span class="mw-editsection-bracket">[</span><a href="/index.php?title=Health&amp;action=edit&amp;section=15" title="Edit section: Cold and Heat Injuries">edit</a><span class="mw-editsection-bracket">]</span></span></h2>
+<p>Hypothermia: Causes a negative thought, and pawns will eventually lose consciousness.<br />
+Frostbite: Can cause limbs and fingers/toes to fall off. <br />
+Heatstroke: Causes a negative thought, and can affect consciousness and even set a pawn on <a href="/wiki/Fire" title="Fire">fire</a>.<br />
+Burns: Causes low-medium pain and creates a risk of infection.
+</p>
+<h2><span class="mw-headline" id="Treatment">Treatment</span><span class="mw-editsection"><span class="mw-editsection-bracket">[</span><a href="/index.php?title=Health&amp;action=edit&amp;section=16" title="Edit section: Treatment">edit</a><span class="mw-editsection-bracket">]</span></span></h2>
+<p>For most injuries, you can treat <a href="/wiki/Colonist" title="Colonist">colonists</a> with or without <a href="/wiki/Medicine" title="Medicine">medicine</a> (with typically better results if a medicinal substance is provided), and also have them lay in <a href="/wiki/Hospital_bed" title="Hospital bed">hospital beds</a> or any other bed or sleeping spot assigned as a medical spot, though Hospital Beds further improve the chance of them being treated properly. Humans heal wounds at a base rate of <a href="/wiki/Injury#Healing_Rate" title="Injury">8 damage per day</a> before bonuses.
+</p>
+<h3><span class="mw-headline" id="Improper_Treatment">Improper Treatment</span><span class="mw-editsection"><span class="mw-editsection-bracket">[</span><a href="/index.php?title=Health&amp;action=edit&amp;section=17" title="Edit section: Improper Treatment">edit</a><span class="mw-editsection-bracket">]</span></span></h3>
+<p>Treating an injury poorly <i>may</i> result in <a href="/wiki/Injury#Scarring" title="Injury">scarring</a>, reduced <a href="/wiki/Stat#Healing_Rate" title="Stat">healing rate</a> or infections.
+</p>
+<h3><span class="mw-headline" id="Operations">Operations</span><span class="mw-editsection"><span class="mw-editsection-bracket">[</span><a href="/index.php?title=Health&amp;action=edit&amp;section=18" title="Edit section: Operations">edit</a><span class="mw-editsection-bracket">]</span></span></h3>
+<div class="rellink mw-tpl-rellink mw-tpl-seealso">See also: <a href="/wiki/Surgery" class="mw-redirect" title="Surgery">Surgery</a></div>
+<p>Under the Health tab, you can assign an operation to a <a href="/wiki/Colonist" title="Colonist">colonist</a> by clicking on the bill sub-tab. Operations cannot be performed without a proper <a href="/wiki/Medicine" title="Medicine">Medkit</a> to apply an anesthetic. Operation success chance depends highly on the doctor's skill level. Keep in mind that keeping the room as clean as possible (also optionally with the use of <a href="/wiki/Sterile_tile" title="Sterile tile">sterile tiles</a>) will help preventing possible infection.  As of Alpha 16, there are three categories of surgery failure – minor, catastrophic, and ridiculous. Ridiculous hits all body parts, minor and catastrophic hit parts near the surgery site.
+</p>
+<h5><span class="mw-headline" id="Transplants">Transplants</span><span class="mw-editsection"><span class="mw-editsection-bracket">[</span><a href="/index.php?title=Health&amp;action=edit&amp;section=19" title="Edit section: Transplants">edit</a><span class="mw-editsection-bracket">]</span></span></h5>
+<p>For missing <a href="/wiki/Table_of_Human_Body_Parts" title="Table of Human Body Parts">internal organs</a>, either a donor organ or an <a href="/wiki/Artificial_body_parts#Body_-_Organs" title="Artificial body parts">artificial equivalent</a> can be used. Some diseases can be cured through a transplant. <a href="/wiki/Artery_blockage" class="mw-redirect" title="Artery blockage">Artery blockages</a> can be cured with a heart transplant and <a href="/wiki/Ailments#Asthma" title="Ailments">asthma</a> can be cured with lung transplants. Be wary that your colonists may suffer <a href="/wiki/Mood#Someone_organ-harvested" title="Mood">mood penalties</a> when you harvest an organ, with the "donor" will suffer a -30 mood penalty for over a week. See <a href="/wiki/Human_Resources" class="mw-redirect" title="Human Resources">Human Resources</a> for details and mitigation strategies.
+</p>
+<h5><span class="mw-headline" id="Limb_Replacement">Limb Replacement</span><span class="mw-editsection"><span class="mw-editsection-bracket">[</span><a href="/index.php?title=Health&amp;action=edit&amp;section=20" title="Edit section: Limb Replacement">edit</a><span class="mw-editsection-bracket">]</span></span></h5>
+<p>From <a href="/wiki/Peg_leg" title="Peg leg">peg legs</a> to <a href="/wiki/Bionic_arm" title="Bionic arm">bionic arms</a>, you could either replace a colonists' missing limbs, augment them, or cruelly punish your <a href="/wiki/Raider" title="Raider">enemies</a> with peg legs out of spite. 
+Bionic parts have a bonus to specific actions or movement. For example, a <a href="/wiki/Bionic_leg" title="Bionic leg">bionic leg</a> will increase your colonist's <a href="/wiki/Move_Speed" title="Move Speed">moving speed</a> by 12.5%. Having a second bionic leg will increase the speed further by 12.5%, so having both right and left bionic legs will increase the speed by 25%.
+</p>
+<h5><span class="mw-headline" id="Implants">Implants</span><span class="mw-editsection"><span class="mw-editsection-bracket">[</span><a href="/index.php?title=Health&amp;action=edit&amp;section=21" title="Edit section: Implants">edit</a><span class="mw-editsection-bracket">]</span></span></h5>
+<p>You can install implants onto a natural part to improve its functions. 
+</p><p>Implants are not mutually exclusive so you can have more than 1 per part.
+</p>
+<h5><span class="mw-headline" id="Amputations">Amputations</span><span class="mw-editsection"><span class="mw-editsection-bracket">[</span><a href="/index.php?title=Health&amp;action=edit&amp;section=22" title="Edit section: Amputations">edit</a><span class="mw-editsection-bracket">]</span></span></h5>
+<p>Limbs can also be removed due to health reasons. If an arm/leg becomes infected it can be amputated to save the person.
+</p>
+<h2><span class="mw-headline" id="Version_history">Version history</span><span class="mw-editsection"><span class="mw-editsection-bracket">[</span><a href="/index.php?title=Health&amp;action=edit&amp;section=23" title="Edit section: Version history">edit</a><span class="mw-editsection-bracket">]</span></span></h2>
+<ul><li><a href="/wiki/Version/0.10.785" title="Version/0.10.785">0.10.785</a> - Health tab now displays overall bleeding rate.</li>
+<li><a href="/wiki/Version/0.12.906" title="Version/0.12.906">0.12.906</a> - Added way to enable/deny medicine in different qualities to any colonist, prisoner, or tame animal.</li>
+<li><a href="/wiki/Version/0.13.1135" title="Version/0.13.1135">0.13.1135</a> - Sick people in bed can now watch <a href="/wiki/TV" class="mw-redirect" title="TV">TV</a></li></ul>
+<!-- 
+NewPP limit report
+Cached time: 20261018021055
+Cache expiry: 86400
+Dynamic content: false
+Complications: []
+[SMW] In‐text annotation parser time: 0 seconds
+CPU time usage: 0.126 seconds
+Real time usage: 0.187 seconds
+Preprocessor visited node count: 1887/1000000
+Post‐expand include size: 30584/2097152 bytes
+Template argument size: 3251/2097152 bytes
+Highest expansion depth: 9/40
+Expensive parser function count: 0/100
+Unstrip recursion depth: 0/20
+Unstrip post‐expand size: 1660/5000000 bytes
+Lua time usage: 0.020/7 seconds
+Lua virtual size: 4.69 MB/50 MB
+Lua estimated memory usage: 0 bytes
+-->
+<!--
+Transclusion expansion time report (%,ms,calls,template)
+100.00%  124.350      1 -total
+ 67.69%   84.169      1 Pain
+ 42.34%   52.650      1 Template:Graph:Chart
+ 10.78%   13.401      1 Template:Health_Nav
+  8.48%   10.549      1 Template:Character_Properties_Nav
+  6.71%    8.346     14 Template:Rellink
+  6.15%    7.648     12 Template:Main
+  5.59%    6.946      2 Template:See_also
+  5.02%    6.239      1 Template:Stub
+  5.01%    6.236      1 Template:Pawns_Nav
+-->
+
+<!-- Saved in parser cache with key rimworld_wiki_new-mr_:pcache:idhash:12588-0!canonical and timestamp 20261018021055 and revision id 162339
+ -->
+</div></div><div class="printfooter">Retrieved from "<a dir="ltr" href="https://rimworldwiki.com/index.php?title=Health&amp;oldid=162339">https://rimworldwiki.com/index.php?title=Health&amp;oldid=162339</a>"</div>
+		<div id="catlinks" class="catlinks" data-mw="interface"><div id="mw-normal-catlinks" class="mw-normal-catlinks"><a href="/wiki/Special:Categories" title="Special:Categories">Categories</a>: <ul><li><a href="/wiki/Category:Stubs" title="Category:Stubs">Stubs</a></li><li><a href="/wiki/Category:Health" title="Category:Health">Health</a></li></ul></div><div id="mw-hidden-catlinks" class="mw-hidden-catlinks mw-hidden-cats-hidden">Hidden categories: <ul><li><a href="/wiki/Category:Pages_that_need_fact_checking" title="Category:Pages that need fact checking">Pages that need fact checking</a></li><li><a href="/wiki/Category:Pages_with_graphs" title="Category:Pages with graphs">Pages with graphs</a></li></ul></div></div>
+	</div>
+</div>
+
+<div id="mw-navigation">
+	<h2>Navigation menu</h2>
+	<div id="mw-head">
+		<!-- Please do not use role attribute as CSS selector, it is deprecated. -->
+<nav id="p-personal" class="vector-menu" aria-labelledby="p-personal-label" role="navigation" 
+	 >
+	<h3 id="p-personal-label">
+		<span>Personal tools</span>
+	</h3>
+	<!-- Please do not use the .body class, it is deprecated. -->
+	<div class="body vector-menu-content">
+		<!-- Please do not use the .menu class, it is deprecated. -->
+		<ul class="vector-menu-content-list"><li id="pt-anonuserpage">Not logged in</li><li id="pt-anontalk"><a href="/wiki/Special:MyTalk" title="Discussion about edits from this IP address [n]" accesskey="n">Talk</a></li><li id="pt-anoncontribs"><a href="/wiki/Special:MyContributions" title="A list of edits made from this IP address [y]" accesskey="y">Contributions</a></li><li id="pt-createaccount"><a href="/index.php?title=Special:CreateAccount&amp;returnto=Health" title="You are encouraged to create an account and log in; however, it is not mandatory">Create account</a></li><li id="pt-login"><a href="/index.php?title=Special:UserLogin&amp;returnto=Health" title="You are encouraged to log in; however, it is not mandatory [o]" accesskey="o">Log in</a></li></ul>
+		
+	</div>
+</nav>
+
+
+		<div id="left-navigation">
+			<!-- Please do not use role attribute as CSS selector, it is deprecated. -->
+<nav id="p-namespaces" class="vector-menu vector-menu-tabs vectorTabs" aria-labelledby="p-namespaces-label" role="navigation" 
+	 >
+	<h3 id="p-namespaces-label">
+		<span>Namespaces</span>
+	</h3>
+	<!-- Please do not use the .body class, it is deprecated. -->
+	<div class="body vector-menu-content">
+		<!-- Please do not use the .menu class, it is deprecated. -->
+		<ul class="vector-menu-content-list"><li id="ca-nstab-main" class="selected"><a href="/wiki/Health" title="View the content page [c]" accesskey="c">Page</a></li><li id="ca-talk"><a href="/wiki/Talk:Health" rel="discussion" title="Discussion about the content page [t]" accesskey="t">Discussion</a></li></ul>
+		
+	</div>
+</nav>
+
+
+			<!-- Please do not use role attribute as CSS selector, it is deprecated. -->
+<nav id="p-variants" class="vector-menu-empty emptyPortlet vector-menu vector-menu-dropdown vectorMenu" aria-labelledby="p-variants-label" role="navigation" 
+	 >
+	<input type="checkbox" class="vector-menu-checkbox vectorMenuCheckbox" aria-labelledby="p-variants-label" />
+	<h3 id="p-variants-label">
+		<span>Variants</span>
+	</h3>
+	<!-- Please do not use the .body class, it is deprecated. -->
+	<div class="body vector-menu-content">
+		<!-- Please do not use the .menu class, it is deprecated. -->
+		<ul class="menu vector-menu-content-list"></ul>
+		
+	</div>
+</nav>
+
+
+		</div>
+		<div id="right-navigation">
+			<!-- Please do not use role attribute as CSS selector, it is deprecated. -->
+<nav id="p-views" class="vector-menu vector-menu-tabs vectorTabs" aria-labelledby="p-views-label" role="navigation" 
+	 >
+	<h3 id="p-views-label">
+		<span>Views</span>
+	</h3>
+	<!-- Please do not use the .body class, it is deprecated. -->
+	<div class="body vector-menu-content">
+		<!-- Please do not use the .menu class, it is deprecated. -->
+		<ul class="vector-menu-content-list"><li id="ca-view" class="collapsible selected"><a href="/wiki/Health">Read</a></li><li id="ca-edit" class="collapsible"><a href="/index.php?title=Health&amp;action=edit" title="Edit this page [e]" accesskey="e">Edit</a></li><li id="ca-history" class="collapsible"><a href="/index.php?title=Health&amp;action=history" title="Past revisions of this page [h]" accesskey="h">View history</a></li></ul>
+		
+	</div>
+</nav>
+
+
+			<!-- Please do not use role attribute as CSS selector, it is deprecated. -->
+<nav id="p-cactions" class="vector-menu-empty emptyPortlet vector-menu vector-menu-dropdown vectorMenu" aria-labelledby="p-cactions-label" role="navigation" 
+	 >
+	<input type="checkbox" class="vector-menu-checkbox vectorMenuCheckbox" aria-labelledby="p-cactions-label" />
+	<h3 id="p-cactions-label">
+		<span>More</span>
+	</h3>
+	<!-- Please do not use the .body class, it is deprecated. -->
+	<div class="body vector-menu-content">
+		<!-- Please do not use the .menu class, it is deprecated. -->
+		<ul class="menu vector-menu-content-list"></ul>
+		
+	</div>
+</nav>
+
+
+			<div id="p-search" role="search">
+	<h3 >
+		<label for="searchInput">Search</label>
+	</h3>
+	<form action="/index.php" id="searchform">
+		<div id="simpleSearch">
+			<input type="search" name="search" placeholder="Search RimWorld Wiki" title="Search RimWorld Wiki [f]" accesskey="f" id="searchInput"/>
+			<input type="hidden" name="title" value="Special:Search">
+			<input type="submit" name="fulltext" value="Search" title="Search the pages for this text" id="mw-searchButton" class="searchButton mw-fallbackSearchButton"/>
+			<input type="submit" name="go" value="Go" title="Go to a page with this exact name if it exists" id="searchButton" class="searchButton"/>
+		</div>
+	</form>
+</div>
+
+		</div>
+	</div>
+	
+<div id="mw-panel">
+	<div id="p-logo" role="banner">
+		<a  title="Visit the main page" class="mw-wiki-logo" href="/wiki/Main_Page"></a>
+	</div>
+	<!-- Please do not use role attribute as CSS selector, it is deprecated. -->
+<nav id="p-RimWorld" class="vector-menu vector-menu-portal portal portal-first" aria-labelledby="p-RimWorld-label" role="navigation" 
+	 >
+	<h3 id="p-RimWorld-label">
+		<span>RimWorld</span>
+	</h3>
+	<!-- Please do not use the .body class, it is deprecated. -->
+	<div class="body vector-menu-content">
+		<!-- Please do not use the .menu class, it is deprecated. -->
+		<ul class="vector-menu-content-list"><li id="n-Official-Site"><a href="http://ludeon.com/" rel="nofollow">Official Site</a></li><li id="n-Official-Twitter"><a href="https://twitter.com/TynanSylvester" rel="nofollow">Official Twitter</a></li><li id="n-Subreddit"><a href="https://www.reddit.com/r/RimWorld" rel="nofollow">Subreddit</a></li><li id="n-Community-Discord"><a href="https://discordapp.com/invite/UTaMDWc" rel="nofollow">Community Discord</a></li></ul>
+		
+	</div>
+</nav>
+
+
+	<!-- Please do not use role attribute as CSS selector, it is deprecated. -->
+<nav id="p-navigation" class="vector-menu vector-menu-portal portal" aria-labelledby="p-navigation-label" role="navigation" 
+	 >
+	<h3 id="p-navigation-label">
+		<span>Navigation</span>
+	</h3>
+	<!-- Please do not use the .body class, it is deprecated. -->
+	<div class="body vector-menu-content">
+		<!-- Please do not use the .menu class, it is deprecated. -->
+		<ul class="vector-menu-content-list"><li id="n-mainpage-description"><a href="/wiki/Main_Page" title="Visit the main page [z]" accesskey="z">Main page</a></li><li id="n-recentchanges"><a href="/wiki/Special:RecentChanges" title="A list of recent changes in the wiki [r]" accesskey="r">Recent changes</a></li><li id="n-randompage"><a href="/wiki/Special:Random" title="Load a random page [x]" accesskey="x">Random page</a></li></ul>
+		
+	</div>
+</nav>
+
+<!-- Please do not use role attribute as CSS selector, it is deprecated. -->
+<nav id="p-tb" class="vector-menu vector-menu-portal portal" aria-labelledby="p-tb-label" role="navigation" 
+	 >
+	<h3 id="p-tb-label">
+		<span>Tools</span>
+	</h3>
+	<!-- Please do not use the .body class, it is deprecated. -->
+	<div class="body vector-menu-content">
+		<!-- Please do not use the .menu class, it is deprecated. -->
+		<ul class="vector-menu-content-list"><li id="t-whatlinkshere"><a href="/wiki/Special:WhatLinksHere/Health" title="A list of all wiki pages that link here [j]" accesskey="j">What links here</a></li><li id="t-recentchangeslinked"><a href="/wiki/Special:RecentChangesLinked/Health" rel="nofollow" title="Recent changes in pages linked from this page [k]" accesskey="k">Related changes</a></li><li id="t-specialpages"><a href="/wiki/Special:SpecialPages" title="A list of all special pages [q]" accesskey="q">Special pages</a></li><li id="t-print"><a href="javascript:print();" rel="alternate" title="Printable version of this page [p]" accesskey="p">Printable version</a></li><li id="t-permalink"><a href="/index.php?title=Health&amp;oldid=162339" title="Permanent link to this revision of the page">Permanent link</a></li><li id="t-info"><a href="/index.php?title=Health&amp;action=info" title="More information about this page">Page information</a></li><li id="t-smwbrowselink"><a href="/wiki/Special:Browse/:Health" rel="search">Browse properties</a></li></ul>
+		
+	</div>
+</nav>
+
+
+	
+</div>
+
+</div>
+
+<footer id="footer" class="mw-footer" role="contentinfo" >
+	<ul id="footer-info" >
+		<li id="footer-info-lastmod"> This page was last edited on 3 June 2025, at 20:50.</li>
+		<li id="footer-info-copyright">Content is available under <a href="/wiki/RimWorld_Wiki:Copyrights" title="RimWorld Wiki:Copyrights">CC BY-SA 3.0</a> unless otherwise noted.</li>
+	</ul>
+	<ul id="footer-places" >
+		<li id="footer-places-privacy"><a href="/wiki/RimWorld_Wiki:Privacy_policy" title="RimWorld Wiki:Privacy policy">Privacy policy</a></li>
+		<li id="footer-places-about"><a href="/wiki/RimWorld_Wiki:About" title="RimWorld Wiki:About">About RimWorld Wiki</a></li>
+		<li id="footer-places-disclaimer"><a href="/wiki/RimWorld_Wiki:General_disclaimer" title="RimWorld Wiki:General disclaimer">Disclaimers</a></li>
+	</ul>
+	<ul id="footer-icons" class="noprint">
+		<li id="footer-copyrightico"><a href="https://creativecommons.org/licenses/by-sa/3.0/"><img src="/resources/assets/licenses/cc-by-sa.png" alt="CC BY-SA 3.0" width="88" height="31" loading="lazy"/></a></li>
+		<li id="footer-poweredbyico"><a href="https://www.mediawiki.org/"><img src="/resources/assets/poweredby_mediawiki_88x31.png" alt="Powered by MediaWiki" srcset="/resources/assets/poweredby_mediawiki_132x47.png 1.5x, /resources/assets/poweredby_mediawiki_176x62.png 2x" width="88" height="31" loading="lazy"/></a><a href="https://www.semantic-mediawiki.org/wiki/Semantic_MediaWiki"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAFgAAAAfCAMAAABUFvrSAAACJVBMVEXe3t62trbLy8vGxsbAwMDX19e6urqsrKxHcEzQ0NC2tratra2oqKixsbHd3eDFxcXe3t7U1NTa2trX19fQ0NDV1dWNjY2dnZ2UlJSUlJTS0tKUlJSWlpbR0dGenp79/f38/Pz+/v7t7e3v7+/u7u7s7Oz19fX29vb6+vr7+/vz8/Pz8/P4+fnw8PD39/gWTq/09PX6+vktX7b/sg8XT7F6mc/f5OwhVrNvkMthhsfT2+j7rQ/M1eZqjcmFotPs7e9Cb722xuFResK/zOObstnu7/Grvd3M1+mNqNY6aLoaUbEaUbZWfsTk6fE2Zrnp7O8bTq0kWLQuYcpcg8Xh5/Byk83a4eukud1/nM+6yeQkWcGwwuDxnRQyYrigttvI0+gpW7XGyttLdsBni8geVLo0Z9XlkCPb4u+QqtcfVLLo7PNHcr73phFGX6HsmBnpkxg6bNwnXcbX3er19vnr7/SVrdhuhLl+j70vVqY6Xqv0oxJVcbQhV76DjKTz9ffQ2evE0OZAbbzu7/PS1uFufrDnrGgpSZjy8/SQnMFddrKuekXSiCsgTKRaaZHejy9yang3VptNaqspWbnmliy3j2/m6OzT3e7x8fL4+v3p6uwaN2re0cifqLiLiZWYhYGYb0xXYn+5g0xwiMKYpc2BcHZmW2srRXpGWIhecKfilz4+WID2+PyosMywqbGqss1aVnLZq33p1sGklZqrp7dkfr7CpY9yg59Ud6QZAAAAH3RSTlPfBN/f39/f2wDf39vV3/7N2rrEz5D5c8ONuHaPuXXDImoxqwAABO1JREFUSMe1kQdz01gQgBXaBS4w9OtHwMFSdPKTUNxkW+61xN2Je4tLHJNOGukkAUINJTzaUIbO9fr7TpLtS44DZiC5b6Sn3dW+TysJaWz4cv9eZFPZu/+bhkakYR88WqP59u3vjxzdDCT7GpCD4qNH3sEGzOhB5MCR/4PmA8j25uZ33t0A23lxff5hZTIzOrz2Ph8qK936l7i1tT7hk8DAoHNsbeLWKjPdQcZ+qvX9tHMNXca1XBDXHtL6x2Bh0HWtuXUo8oTgC1gVpcdsdpew92PUYtjwzFq+E9mJYfXxx1x5l2/l5Vhy0DW6TuyQCZcR2hnswXJM0h+203471u5WKMIE5mDpspIIO8sZTMZiIbczY6+JCaI+/sJZ38qjP28+nQjkx/mcqGJ26rW3iKg/fYphCL1jNk5WbqXI0nBnu00RJ2j9bNRp6MmFS0SYIXLuUlQ5w22qizHr5MTyy2u/3XxVvHHlwtWVa/xTCQIIlEaMzrgswzA5P9BrAciYASqNoiNdjL8b0GYAHN3AGAEgzPSQc9UtYCeyBQAMO2G9PhhzXfp9qdifSCT6Lj788QQnrvWEuNPI2um0LW0D+m4A6E4AnIZOeq7ksQuJvi6eUXRW+8EWXsxNPhkYGJiSXr7Rd1qtVp9MXHkgIurzAkdFxjrj7cmKbN4K5v8RGxT2sJMTpwBflNHhUJgBdoUylzy3TuwIDBRi0hf9p9VtbW3qk30X7q2Je1IybZq7mLVWFKTSADXPoqi9AzVorda0kKTS6KkRbSgaR1GT1h5CObYiW1GU27yc5z6F9Fn/yTYedeLi9AIA6AbgxGIxAMPZcZeUHH9cFavVfY97FaNA/DbazRZVV89/61at2BTlg1JXiFtrYoBmRyd7p6/UP0XxaSDmy4pt0jmuh8qx6wQ2MmRz18TaJCUWO9xisUVhMMsoZZDiGHLLuXUbso2iatP/1HvhYu3n3bh6Pe/LUjZSj1NUJ8lSlNwahRRlMRjmyFDICikVn8+SacomdbZTVj+0mQSxweS1WqpiHK/Ncubs858f9idOJ/qKS1cv+RbFuIbMmHEvTbO4QeF25CxyD62nSbmJ1MUzRrpiwR0RPBJMpnCGxWVGXBn8TkarNGQHjuPrxOeWY4GY9FmxWHy19Gvv+ayYF6f8oYi7i8U93bjFkYokvbhWEFu8Og2ZxrUe3NMpc3vLhqqYpVV4XbwDQkpgoVwYKOR9N5d+eXB5vJevQA0pD7oVqi4WOj16vX6EYSA08WKvyeOZJw1cQ6rsnXOa/RYoM0Kls0zLuVoHhHAHL8YFXkwVCoE8uXhvMVCY8mW5Ci8eKkcgJ9azOl0UajNDFiUpj5JeloEqTgwd/iCUJP0sFMSejkpO96b4zl1fPuYiyd6Vs4GBmHSsJoYmLy/WeBTlis5rlJYrgjhe1s+XOXGEtHJOMl4VB2EHLauKdyG7JBLIc//uslRKkhOrcGJqyiU9z5UkOpVOwiGXSyQizRAfqlRc7Y5KJFnV6FReiWSV7xAWeQd/SOSq6qY18eVHq4vjlyazEJ73ScmJPVxJVKdF9MFwYpFIEL+ehvDOcSH8YXRsAa4XfwS7kd0tLfw7Sp7fl7xJywbYjTTVotfTb+849lEcb0K+2lMN/5o+tons+Rxp+PrQ8U3n0BcNSGPj4W+bPuX5ZLNo+uxwY+PfoLJHX1KXgyMAAAAASUVORK5CYII=" alt="Powered by Semantic MediaWiki" class="smw-footer" width="88" height="31" loading="lazy"/></a></li>
+	</ul>
+	<div style="clear: both;"></div>
+</footer>
+
+
+
+<script>(RLQ=window.RLQ||[]).push(function(){mw.config.set({"wgPageParseReport":{"smw":{"limitreport-intext-parsertime":0},"limitreport":{"cputime":"0.126","walltime":"0.187","ppvisitednodes":{"value":1887,"limit":1000000},"postexpandincludesize":{"value":30584,"limit":2097152},"templateargumentsize":{"value":3251,"limit":2097152},"expansiondepth":{"value":9,"limit":40},"expensivefunctioncount":{"value":0,"limit":100},"unstrip-depth":{"value":0,"limit":20},"unstrip-size":{"value":1660,"limit":5000000},"timingprofile":["100.00%  124.350      1 -total"," 67.69%   84.169      1 Pain"," 42.34%   52.650      1 Template:Graph:Chart"," 10.78%   13.401      1 Template:Health_Nav","  8.48%   10.549      1 Template:Character_Properties_Nav","  6.71%    8.346     14 Template:Rellink","  6.15%    7.648     12 Template:Main","  5.59%    6.946      2 Template:See_also","  5.02%    6.239      1 Template:Stub","  5.01%    6.236      1 Template:Pawns_Nav"]},"scribunto":{"limitreport-timeusage":{"value":"0.020","limit":"7"},"limitreport-virtmemusage":{"value":4919296,"limit":52428800},"limitreport-estmemusage":0},"cachereport":{"timestamp":"20261018021055","ttl":86400,"transientcontent":false}}});mw.config.set({"wgBackendResponseTime":81});});</script><script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" data-cf-beacon='{"version":"2024.11.0","token":"6a2b1f67f7cd4538abab9eed30c661dd","r":1,"spa":2}' crossorigin="anonymous"></script>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4cc0b08dd40b0a3',t:'MTc5MjM3MzY5NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body></html>
