@@ -1,5 +1,10 @@
 # RimWorld MCP Project
 
+## Project goal (reoriented)
+
+The end goal is a system that **auto-plays RimWorld**. The human is a spectator who can intervene at any time: give orders, change parameters, pause/resume, or override decisions. The advisor-only stance from earlier phases is a stepping stone, not the destination.
+
+
 ## Overview
 
 This project uses a Model Context Protocol (MCP) server running inside RimWorld to allow LLMs to observe and interact with a live game session. The MCP server is embedded in the RimWorld process and exposes game state, issues orders, and manages colonists via JSON-RPC over HTTP.
