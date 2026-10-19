@@ -16,7 +16,12 @@ SNAPSHOTS_DIR = os.path.join(BASE_DIR, "memory", "snapshots")
 DEBRIEFS_DIR = os.path.join(BASE_DIR, "memory", "debriefs")
 
 HEALTH_THRESHOLD = int(os.getenv("HEALTH_THRESHOLD", "50"))
-MOOD_THRESHOLD = int(os.getenv("MOOD_THRESHOLD", "25"))
+# Wiki base values for a normal colonist: minor break 35%, major 20%, extreme 5% (Mental_break page).
+# Traits shift these; this is an approximation.
+MOOD_MINOR_THRESHOLD = int(os.getenv("MOOD_MINOR_THRESHOLD", "35"))
+MOOD_MAJOR_THRESHOLD = int(os.getenv("MOOD_MAJOR_THRESHOLD", "20"))
+MOOD_EXTREME_THRESHOLD = int(os.getenv("MOOD_EXTREME_THRESHOLD", "5"))
+MOOD_THRESHOLD = MOOD_MINOR_THRESHOLD
 
 URGENT_KEYWORDS = ["fire", "predator", "raid", "attack", "downed", "berserk", "pyromaniac"]
 

@@ -60,15 +60,13 @@ def run_reflex_checks(client):
                     }
                 )
 
-            if mood is not None and mood < MOOD_THRESHOLD:
-                alerts.append(
-                    {
-                        "type": "warning",
-                        "category": "mood",
-                        "message": f"{name} mood at {mood}% (below {MOOD_THRESHOLD}%)",
-                        "timestamp": timestamp,
-                    }
-                )
+            if mood is not None:
+                if mood < MOOD_EXTREME_THRESHOLD:
+                    alerts.append({"type": "urgent", "category": "mood_extreme", "message": f"{name} mood at {mood}% (extreme break risk)", "timestamp": timestamp})
+                elif mood < MOOD_MAJOR_THRESHOLD:
+                    alerts.append({"type": "urgent", "category": "mood_major", "message": f"{name} mood at {mood}% (major break risk)", "timestamp": timestamp})
+                elif mood < MOOD_MINOR_THRESHOLD:
+                    alerts.append({"type": "warning", "category": "mood_minor", "message": f"{name} mood at {mood}% (minor break risk)", "timestamp": timestamp})
 
             if health is not None and health < HEALTH_THRESHOLD:
                 alerts.append(

@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rimworld-counselor.local/schemas/advice.schema.json",
+  "title": "Advice record",
+  "description": "One piece of advice given by the counselor or its reflex layer, with its trigger, rationale, and (later) outcome.",
+  "type": "object",
+  "required": ["advice_id", "run_id", "timestamp", "snapshot_day", "trigger", "severity", "status", "situation", "actions"],
+  "properties": {
+    "advice_id": { "type": "string", "description": "Unique id, e.g. adv-20261018-2100-001" },
+    "run_id": { "type": "string" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "snapshot_day": { "type": "string", "description": "In-game day this advice refers to" },
+    "trigger": {
+      "type": "string",
+      "enum": ["reflex", "scheduled", "manual", "event"],
+      "description": "reflex = deterministic check; scheduled = situation assessor; manual = human/LLM; event = raid/letter/crisis"
+    },
+    "reflex_name": { "type": ["string", "null"], "description": "Name of the reflex that fired, if trigger=reflex" },
+    "severity": { "type": "string", "enum": ["info", "warning", "urgent", "critical"] },
+    "status": {
+      "type": "string",
+      "enum": ["open", "applied", "dismissed", "helped", "failed", "expired"],
+      "description": "open = given but not acted on; applied = acted on; helped/failed = outcome recorded; expired = no longer relevant"
+    },
+    "outcome_note": { "type": ["string", "null"] },
+    "situation": { "type": "string", "description": "2-4 sentence summary of the colony state" },
+    "risks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["label", "severity"],
+        "properties": {
+          "label": { "type": "string" },
+          "severity": { "type": "string", "enum": ["info", "warning", "urgent", "critical"] },
+          "evidence": { "type": "string" }
+        }
+      }
+    },
+    "actions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["rank", "action", "rationale"],
+        "properties": {
+          "rank": { "type": "integer", "minimum": 1 },
+          "action": { "type": "string" },
+          "rationale": { "type": "string" },
+          "estimated_cost": { "type": ["string", "null"] },
+          "estimated_time": { "type": ["string", "null"] },
+          "auto_paused": { "type": "boolean" }
+        }
+      }
+    },
+    "watch_next": { "type": "array", "items": { "type": "string" } },
+    "linked_lessons": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Lesson ids retrieved and shown with this advice"
+    },
+    "auto_paused": { "type": "boolean" },
+    "llm_model": { "type": ["string", "null"] },
+    "context_tokens": { "type": ["integer", "null"] }
+  }
+}
