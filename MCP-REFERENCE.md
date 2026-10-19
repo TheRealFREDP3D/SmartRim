@@ -371,3 +371,13 @@ Sources: earlyguides.com, jeu.video, roguewiki.com, rimworldwiki.com
 - Status at last snapshot (Day 9, Hour 0): Low food alert (3 days of food); Smithing 25%; 13 packaged meals; Ambrosia sprout + Mechanoid Signal quest active
 - Monitor running; snapshots day-1..day-8 stored in memory/snapshots/
 - No session log file yet
+
+### Session 5 — 2026-10-18
+- Colony "Northwest Asora Covenant" (Lajitas, tile 35, temperate forest, flat, 9.2°C)
+- Storyteller: Phoebe Chillax | Difficulty: Community Builder | Reload Anytime
+- Colonists: Chaz Targrin (researcher), Tyren Nordgren (fighter, psychopath), Henry 'Lawman' Jensen (shooter, misogynist)
+- Result: Day 7, all 3 alive. First raid survived (Pollution Unit, 1 raider killed). Tyren wounded (80→100 HP). Game crashed/quit on Day 7.
+- Buildings: 7x7 shelter, 4 beds (1 medical), table, stove, research bench, horseshoes pin, 2 stockpiles, 197-cell rice field
+- Research: Smithing complete (Day 5), Batteries 42% (Day 7)
+- Resources at end: 9 meals, 4 rice, 900 steel, 375 wood, 30 medicine
+- Full log: memory/session-logs/session-5.md

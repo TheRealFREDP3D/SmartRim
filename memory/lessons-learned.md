@@ -182,6 +182,23 @@
   - `order_pawn` command list is specific ("Fire at sparrow", not "Auto attack (AI)" in that context)
 - 2x/day colony summaries posted in-game via `say` (background pwsh loop, triggered at hours 6/18)
 
+### 2026-10-18 — Session 5 (Northwest Asora Covenant)
+- **Colony**: Northwest Asora Covenant (Lajitas, tile 35, temperate forest, flat, 9.2°C)
+- **Difficulty**: Community Builder (Easy) — Phoebe Chillax (confounds comparison with Adventure Story / Cassandra baseline)
+- **Result**: Day 7, all 3 alive. First raid survived (Pollution Unit, 1 raider). Tyren wounded (80→100 HP). Game crashed/quit on Day 7.
+- **Key lessons**:
+  - Food: 50 starting meals lasted 6-7 days; rice harvest started Day 6 (197-cell field). Low food alert Day 6. Fix: cook from rice as soon as harvest begins; plant smaller faster field earlier
+  - Defense: "Need defenses" alert persisted all 7 days — no cloth for sandbags. Fix: plant cotton on Day 1
+  - Tyren (psychopath) took knife wounds in melee (80 HP). Fix: keep fighters at range; melee only as last resort
+  - Shared barracks + no recreation → moods 40-77. Fix: individual bedrooms, horseshoes pin (helped, +5-10 mood)
+  - Henry (misogynist) + Chaz (female) → social friction, mood 48-57. Monitor or separate
+  - Medical bed: setting a bed to medical helped Tyren heal. Do this early
+  - Research bench placement conflicts with bed interaction spots. Plan interior layout
+  - Idle colonist (Chaz) when research bench occupied. Give secondary work (haul/clean/construct)
+  - First raid (Day 5): single raider, 3 armed colonists handled it. Draft all, focus fire, tend wounds after
+  - Naming dialog (faction/settlement) appears repeatedly; close with window_action close
+  - "A wait is already in progress" from stuck wait_for_event; use real-time sleep instead
+
 ### 2026-10-18 — Session 4 (Doder Coalition, in progress)
 - **Colony**: Doder Coalition (Hypnotist's Inlet, tile 4, temperate forest, flat, 16.6C)
 - **Difficulty**: Community Builder (Easy) — Phoebe Chillax (confounds comparison with Adventure Story / Cassandra baseline)

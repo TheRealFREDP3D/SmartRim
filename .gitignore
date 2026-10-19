@@ -10,5 +10,6 @@ memory/monitor.log
 memory/monitor.err.log
 memory/alerts/
 memory/snapshots/
+memory/snapshots_archive*/
 memory/debriefs/
 scratchpad/
