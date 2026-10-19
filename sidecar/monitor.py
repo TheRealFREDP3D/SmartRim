@@ -101,7 +101,6 @@ def run_reflex_checks(client, deep=False):
             alert_type = "urgent" if _is_urgent_label(label) else "warning"
             alerts.append({"type": alert_type, "category": "game_alert", "message": label, "timestamp": timestamp})
 
-        # Hostile and predator proximity (deep check only, every 3rd poll)
         if deep:
             try:
                 pawns_resp = client.call_tool("list_things", {"category": "pawn"})
@@ -135,7 +134,6 @@ def run_reflex_checks(client, deep=False):
             except Exception:
                 pass
 
-        # Resource checks (food, medicine) - advisory only
         try:
             res = client.call_tool("get_resources")
             if isinstance(res, dict) and not res.get("error"):
@@ -154,13 +152,11 @@ def run_reflex_checks(client, deep=False):
         except Exception:
             pass
 
-        # Colony death detection
         colonist_count = status.get("colonistCount", 0)
         days_now = status.get("daysPassed", 0)
         if colonist_count == 0 and days_now and days_now > 0:
             alerts.append({"type": "urgent", "category": "colony_death", "message": "All colonists dead — debrief recommended", "timestamp": timestamp})
 
-        # Sleeping during a threat
         try:
             if isinstance(bundled_alerts, dict):
                 threat_labels = [a.get("label", "") for a in bundled_alerts.get("activeAlerts", [])]
@@ -351,34 +347,39 @@ def main():
                     json.dump(alerts, f, indent=2)
 
                 urgent = [a for a in alerts if a.get("type") == "urgent"]
-                if urgent:
-                    print(f"{len(alerts)} alert(s) ({len(urgent)} urgent) - pausing game")
-                    try:
-                        import advice_log
-                        advice_log.log_advice(
-                            run_id=RUN_ID,
-                            snapshot_day=current_day or "unknown",
-                            trigger="reflex",
-                            severity="urgent",
-                            situation="; ".join(a.get("message", "") for a in urgent),
-                            actions=[{"rank": 1, "action": "Pause game and assess", "rationale": "Reflex check triggered urgent alert"}],
-                            risks=[{"label": a.get("message", ""), "severity": "urgent"} for a in urgent],
-                            reflex_name=",".join(sorted(set(a.get("category", "") for a in urgent))),
-                            auto_paused=True,
-                        )
-                    except Exception as e:
-                        print(f"advice log error: {e}")
-                    try:
-                        client.call_tool("set_speed", {"action": "pause"})
-                    except Exception:
-                        pass
-                    if any(a.get("category") == "colony_death" for a in alerts):
-                        if snapshotted_day != current_day:
-                            path = write_snapshot(client, current_day)
-                            print(f"Death snapshot written: {path}")
-                            snapshotted_day = current_day
-                elif alerts:
-                    print(f"{len(alerts)} alert(s)")
+                _sig = tuple(sorted((a.get("type"), a.get("category"), a.get("message")) for a in alerts))
+                if _sig != getattr(main, "_last_sig", None):
+                    main._last_sig = _sig
+                    if urgent:
+                        print(f"{len(alerts)} alert(s) ({len(urgent)} urgent) - pausing game")
+                        try:
+                            import advice_log
+                            advice_log.log_advice(
+                                run_id=RUN_ID,
+                                snapshot_day=current_day or "unknown",
+                                trigger="reflex",
+                                severity="urgent",
+                                situation="; ".join(a.get("message", "") for a in urgent),
+                                actions=[{"rank": 1, "action": "Pause game and assess", "rationale": "Reflex check triggered urgent alert"}],
+                                risks=[{"label": a.get("message", ""), "severity": "urgent"} for a in urgent],
+                                reflex_name=",".join(sorted(set(a.get("category", "") for a in urgent))),
+                                auto_paused=True,
+                            )
+                        except Exception as e:
+                            print(f"advice log error: {e}")
+                        try:
+                            client.call_tool("set_speed", {"action": "pause"})
+                        except Exception:
+                            pass
+                        if any(a.get("category") == "colony_death" for a in alerts):
+                            if snapshotted_day != current_day:
+                                path = write_snapshot(client, current_day)
+                                print(f"Death snapshot written: {path}")
+                                snapshotted_day = current_day
+                    elif alerts:
+                        print(f"{len(alerts)} alert(s): " + ", ".join(a.get("message", "") for a in alerts))
+                    else:
+                        print("No alerts.")
 
             except Exception as e:
                 consecutive_errors += 1
