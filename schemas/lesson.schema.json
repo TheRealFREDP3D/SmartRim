@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rimworld-counselor.local/schemas/lesson.schema.json",
+  "title": "Lesson",
+  "description": "One structured lesson in the counselor's memory store. JSONL: one object per line in memory/lessons.jsonl.",
+  "type": "object",
+  "required": ["id", "title", "trigger", "recommendation", "rationale", "source", "confidence", "status", "tags"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^L-\\d{4}$",
+      "description": "Stable id, never reused. Retired lessons keep their id."
+    },
+    "title": { "type": "string" },
+    "trigger": {
+      "type": "object",
+      "required": ["phases", "threats", "resources"],
+      "properties": {
+        "phases": {
+          "type": "array",
+          "items": { "enum": ["early_survival", "stabilization", "raid_prep", "expansion", "crisis"] }
+        },
+        "threats": {
+          "type": "array",
+          "items": { "enum": [
+            "colonist_downed", "mood_break_risk", "colonist_injured", "danger_high",
+            "raid_incoming", "predator_near_worker", "low_food", "medical_untreated",
+            "idle_colonists", "threat_response", "colony_death", "other_game_alert"
+          ] }
+        },
+        "resources": {
+          "type": "array",
+          "items": { "enum": ["food_under_5_days", "food_under_2_days", "no_medicine", "medicine_under_5", "low_wood", "low_steel"] }
+        },
+        "difficulty": {
+          "type": "array",
+          "items": { "enum": ["Peaceful", "Community builder", "Adventure story", "Strive to survive", "Blood and dust", "Losing is fun"] },
+          "description": "Empty array means any difficulty."
+        },
+        "storyteller": {
+          "type": "array",
+          "items": { "enum": ["Cassandra Classic", "Phoebe Chillax", "Randy Random"] },
+          "description": "Empty array means any storyteller."
+        },
+        "biome": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Empty array means any biome."
+        }
+      }
+    },
+    "recommendation": { "type": "string" },
+    "rationale": { "type": "string" },
+    "source": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Snapshot day, session log, or wiki page slug (e.g. wiki:Mental_break). Empty source caps confidence at 0.3."
+    },
+    "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+    "times_applied": { "type": "integer", "minimum": 0, "default": 0 },
+    "times_helped": { "type": "integer", "minimum": 0, "default": 0 },
+    "times_failed": { "type": "integer", "minimum": 0, "default": 0 },
+    "status": { "type": "string", "enum": ["active", "needs_review", "retired"] },
+    "tags": { "type": "array", "items": { "type": "string" } },
+    "source_runs": { "type": "array", "items": { "type": "string" } },
+    "last_updated": { "type": "string", "format": "date" }
+  }
+}
