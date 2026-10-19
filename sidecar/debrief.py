@@ -174,3 +174,7 @@ if __name__ == "__main__":
 
     run_name = sys.argv[1] if len(sys.argv) > 1 else None
     generate_debrief(SNAPSHOTS_DIR, DEBRIEFS_DIR, run_name)
+    from debrief_bundle import build_bundle
+    from advice_log import read_advice
+    rid = run_name or "current-run"
+    print("bundle:", build_bundle(SNAPSHOTS_DIR, DEBRIEFS_DIR, rid, read_advice(run_id=rid)))
