@@ -4,12 +4,6 @@ import os
 from datetime import datetime
 from mcp_client import McpClient
 from config import *
-try:
-    import situation as _situation
-    import lessons as _lessons
-except Exception:
-    _situation = None
-    _lessons = None
 
 
 def ensure_dirs():
@@ -200,7 +194,6 @@ def normalize_snapshot(snapshot):
             if isinstance(r, dict):
                 res_map[r.get("defName") or r.get("label")] = r.get("count", 0)
 
-        # Food days projection (rough: food items / (colonists * 2 meals/day))
         food_items = 0
         for k, v in res_map.items():
             kl = str(k).lower()
@@ -313,6 +306,9 @@ def write_run_end(client, run_id, days_passed):
     return marker
 
 
+OBSERVE_ONLY = os.getenv("OBSERVE_ONLY", "0") == "1"
+
+
 def main():
     ensure_dirs()
     if not _acquire_lock():
@@ -324,7 +320,7 @@ def main():
     run_ended = False
     poll_count = 0
 
-    print(f"Reflex monitor started. Polling every {POLL_INTERVAL}s (PID {os.getpid()})")
+    print(f"Reflex monitor started. Polling every {POLL_INTERVAL}s (PID {os.getpid()}) (observe_only={OBSERVE_ONLY})")
     print(f"Alerts: {ALERTS_DIR}")
     print(f"Snapshots: {SNAPSHOTS_DIR}")
 
@@ -370,47 +366,28 @@ def main():
                 _sig = tuple(sorted((a.get("type"), a.get("category"), a.get("message")) for a in alerts))
                 if _sig != getattr(main, "_last_sig", None):
                     main._last_sig = _sig
-                    # Build situation and retrieve lessons
-                    snap_summary = {}
-                    try:
-                        snap_summary = normalize_snapshot({"status": status_now, "conditions": conditions, "colonists": client.call_tool("list_colonists"), "resources": client.call_tool("get_resources"), "alerts": bundled_alerts})["summary"]
-                    except Exception:
-                        pass
-                    situation = {}
-                    lessons_list = []
-                    actions = []
-                    linked = []
-                    if _situation is not None:
-                        try:
-                            situation = _situation.build_situation(snap_summary, alerts)
-                            lessons_list = _lessons.load_lessons() if _lessons else []
-                            retrieved = _situation.retrieve(situation, lessons_list, limit=5)
-                            linked = [l.get("id") for l in retrieved]
-                            actions, _ = _situation.rank_actions(alerts, situation, retrieved, limit=5)
-                        except Exception as e:
-                            print(f"situation/lessons error: {e}")
                     if urgent:
-                        print(f"{len(alerts)} alert(s) ({len(urgent)} urgent) - pausing game")
-                        try:
-                            import advice_log
-                            advice_log.log_advice(
-                                run_id=RUN_ID,
-                                snapshot_day=current_day or "unknown",
-                                trigger="reflex",
-                                severity="urgent",
-                                situation="; ".join(a.get("message", "") for a in urgent),
-                                actions=actions if actions else [{"rank": 1, "action": "Pause game and assess", "rationale": "Reflex check triggered urgent alert"}],
-                                risks=[{"label": a.get("message", ""), "severity": "urgent"} for a in urgent],
-                                linked_lessons=linked,
-                                reflex_name=",".join(sorted(set(a.get("category", "") for a in urgent))),
-                                auto_paused=True,
-                            )
-                        except Exception as e:
-                            print(f"advice log error: {e}")
-                        try:
-                            client.call_tool("set_speed", {"action": "pause"})
-                        except Exception:
-                            pass
+                        print(f"{len(alerts)} alert(s) ({len(urgent)} urgent)")
+                        if not OBSERVE_ONLY:
+                            try:
+                                import advice_log
+                                advice_log.log_advice(
+                                    run_id=RUN_ID,
+                                    snapshot_day=current_day or "unknown",
+                                    trigger="reflex",
+                                    severity="urgent",
+                                    situation="; ".join(a.get("message", "") for a in urgent),
+                                    actions=[{"rank": 1, "action": "Pause game and assess", "rationale": "Reflex check triggered urgent alert"}],
+                                    risks=[{"label": a.get("message", ""), "severity": "urgent"} for a in urgent],
+                                    reflex_name=",".join(sorted(set(a.get("category", "") for a in urgent))),
+                                    auto_paused=True,
+                                )
+                            except Exception as e:
+                                print(f"advice log error: {e}")
+                            try:
+                                client.call_tool("set_speed", {"action": "pause"})
+                            except Exception:
+                                pass
                         if any(a.get("category") == "colony_death" for a in alerts):
                             if snapshotted_day != current_day:
                                 path = write_snapshot(client, current_day)
@@ -425,10 +402,13 @@ def main():
                     if current_day is not None and current_day != last_day and last_day is not None:
                         try:
                             import advice_log
-                            sched_situation = situation if situation else _situation.build_situation(snap_summary, alerts) if _situation else {}
-                            sched_lessons = _lessons.load_lessons() if _lessons else []
-                            sched_retrieved = _situation.retrieve(sched_situation, sched_lessons, limit=5) if _situation else []
-                            sched_actions, sched_linked = _situation.rank_actions(alerts, sched_situation, sched_retrieved, limit=5) if _situation else ([], [])
+                            import situation as _situation
+                            import lessons as _lessons
+                            snap_summary = normalize_snapshot({"status": status_now, "conditions": conditions, "colonists": client.call_tool("list_colonists"), "resources": client.call_tool("get_resources"), "alerts": bundled_alerts})["summary"]
+                            sched_situation = _situation.build_situation(snap_summary, alerts)
+                            sched_lessons = _lessons.load_lessons()
+                            sched_retrieved = _situation.retrieve(sched_situation, sched_lessons, limit=5)
+                            sched_actions, sched_linked = _situation.rank_actions(alerts, sched_situation, sched_retrieved, limit=5)
                             advice_log.log_advice(
                                 run_id=RUN_ID,
                                 snapshot_day=current_day or "unknown",
