@@ -1,9 +1,17 @@
 import time
 import json
 import os
+import sys
 from datetime import datetime
 from mcp_client import McpClient
 from config import *
+
+try:
+    import situation as _situation
+    import lessons as _lessons
+except Exception:
+    _situation = None
+    _lessons = None
 
 
 def ensure_dirs():
@@ -228,8 +236,18 @@ def normalize_snapshot(snapshot):
     return snapshot
 
 
-def write_snapshot(client, day_label):
+def snapshot_dir_for(run_id, root=None):
+    """Per-run snapshot directory. Empty run_id stays on the shared root (legacy)."""
+    root = root or SNAPSHOTS_DIR
+    if not run_id:
+        return root
+    return os.path.join(root, str(run_id))
+
+
+def write_snapshot(client, day_label, run_id=None):
+    run_id = RUN_ID if run_id is None else run_id
     snapshot = {
+        "run_id": run_id,
         "day": day_label,
         "timestamp": datetime.now().isoformat(),
         "status": client.call_tool("get_status"),
@@ -242,10 +260,27 @@ def write_snapshot(client, day_label):
     normalize_snapshot(snapshot)
 
     safe = str(day_label).replace("/", "-").replace("\\", "-")
-    path = os.path.join(SNAPSHOTS_DIR, f"day-{safe}.json")
-    with open(path, "w") as f:
+    dest = snapshot_dir_for(run_id)
+    os.makedirs(dest, exist_ok=True)
+    path = os.path.join(dest, f"day-{safe}.json")
+    with open(path, "w", encoding="utf-8") as f:
         json.dump(snapshot, f, indent=2, default=str)
     return path
+
+
+def adviser_acts(observe_only):
+    """Adviser-off runs observe and snapshot, but do not pause or write advice."""
+    return not observe_only
+
+
+def configure_observe_only(argv=None):
+    """CLI --observe-only overrides the OBSERVE_ONLY env var. Returns the flag."""
+    argv = sys.argv[1:] if argv is None else argv
+    if "--observe-only" in argv:
+        return True
+    if "--advise" in argv:
+        return False
+    return os.getenv("OBSERVE_ONLY", "0") == "1"
 
 
 PID_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "memory", "monitor.pid")
@@ -285,31 +320,113 @@ def run_length_reached(days_passed, run_days=None):
     return days_passed is not None and days_passed >= run_days
 
 
-def write_run_end(client, run_id, days_passed):
+def write_run_end(client, run_id, days_passed, observe_only=False, urgent_alerts=0,
+                  auto_pauses=0, stop_reason="run_length"):
+    # Protocol stop, not an adviser pause. Both arms pause here so the window closes.
     try:
         client.call_tool("set_speed", {"action": "pause"})
     except Exception:
         pass
     final_day = f"end-day-{days_passed}"
-    path = write_snapshot(client, final_day)
+    path = write_snapshot(client, final_day, run_id=run_id)
+    status = {}
+    try:
+        with open(path, encoding="utf-8") as fh:
+            status = (json.load(fh).get("status") or {})
+    except (OSError, json.JSONDecodeError):
+        status = {}
     runs_dir = os.path.join(os.path.dirname(ALERTS_DIR), "runs")
     os.makedirs(runs_dir, exist_ok=True)
     marker = os.path.join(runs_dir, f"{run_id}.end.json")
     with open(marker, "w", encoding="utf-8") as f:
         json.dump({
             "run_id": run_id,
+            "arm": "off" if observe_only else "on",
+            "observe_only": bool(observe_only),
             "run_days": RUN_DAYS,
             "days_passed": days_passed,
+            "stop_reason": stop_reason,
+            "urgent_alerts": urgent_alerts,
+            "auto_pauses": auto_pauses,
+            "difficulty": status.get("difficulty"),
+            "storyteller": status.get("storyteller"),
             "ended_at": datetime.now().isoformat(),
+            "snapshots_dir": snapshot_dir_for(run_id),
             "final_snapshot": path,
         }, f, indent=2)
     return marker
 
 
+def _advice_context(client, status_now, conditions, alerts):
+    """Build a situation and ranked actions. Never references loop-local names."""
+    snap_summary = {}
+    situation = {}
+    actions = []
+    linked = []
+    try:
+        snap_summary = normalize_snapshot({
+            "status": status_now,
+            "conditions": conditions,
+            "colonists": client.call_tool("list_colonists"),
+            "resources": client.call_tool("get_resources"),
+            "alerts": client.call_tool("get_alerts"),
+        }).get("summary") or {}
+    except Exception:
+        snap_summary = {}
+    if _situation is not None:
+        try:
+            situation = _situation.build_situation(snap_summary, alerts)
+            lessons_list = _lessons.load_lessons() if _lessons else []
+            retrieved = _situation.retrieve(situation, lessons_list, limit=5)
+            linked = [lesson.get("id") for lesson in retrieved]
+            actions, _ = _situation.rank_actions(alerts, situation, retrieved, limit=5)
+        except Exception as e:
+            print(f"situation/lessons error: {e}")
+    return snap_summary, situation, actions, linked
+
+
 OBSERVE_ONLY = os.getenv("OBSERVE_ONLY", "0") == "1"
 
 
+def _log_scheduled(client, status_now, conditions, alerts, day_label):
+    import advice_log
+    _, _, actions, linked = _advice_context(client, status_now, conditions, alerts)
+    advice_log.log_advice(
+        run_id=RUN_ID,
+        snapshot_day=day_label or "unknown",
+        trigger="scheduled",
+        severity="info",
+        situation=f"Daily assessment for {day_label}",
+        actions=actions,
+        linked_lessons=linked,
+        auto_paused=False,
+    )
+
+
+def _log_urgent(client, status_now, conditions, alerts, urgent, day_label):
+    import advice_log
+    _, _, actions, linked = _advice_context(client, status_now, conditions, alerts)
+    advice_log.log_advice(
+        run_id=RUN_ID,
+        snapshot_day=day_label or "unknown",
+        trigger="reflex",
+        severity="urgent",
+        situation="; ".join(a.get("message", "") for a in urgent),
+        actions=actions if actions else [{
+            "rank": 1,
+            "action": "Pause game and assess",
+            "rationale": "Reflex check triggered urgent alert",
+        }],
+        risks=[{"label": a.get("message", ""), "severity": "urgent"} for a in urgent],
+        linked_lessons=linked,
+        reflex_name=",".join(sorted(set(a.get("category", "") for a in urgent))),
+        auto_paused=True,
+    )
+
+
 def main():
+    global OBSERVE_ONLY
+    OBSERVE_ONLY = configure_observe_only()
     ensure_dirs()
     if not _acquire_lock():
         return
@@ -319,10 +436,13 @@ def main():
     consecutive_errors = 0
     run_ended = False
     poll_count = 0
+    urgent_alerts = 0
+    auto_pauses = 0
 
-    print(f"Reflex monitor started. Polling every {POLL_INTERVAL}s (PID {os.getpid()}) (observe_only={OBSERVE_ONLY})")
+    print(f"Reflex monitor started. Polling every {POLL_INTERVAL}s (PID {os.getpid()}) "
+          f"run={RUN_ID} observe_only={OBSERVE_ONLY}")
     print(f"Alerts: {ALERTS_DIR}")
-    print(f"Snapshots: {SNAPSHOTS_DIR}")
+    print(f"Snapshots: {snapshot_dir_for(RUN_ID)}")
 
     try:
         while True:
@@ -341,18 +461,32 @@ def main():
                 status_now = client.call_tool("get_status")
                 days_now = status_now.get("daysPassed") if isinstance(status_now, dict) else None
                 if run_length_reached(days_now) and not run_ended:
-                    marker = write_run_end(client, RUN_ID, days_now)
+                    marker = write_run_end(
+                        client, RUN_ID, days_now, observe_only=OBSERVE_ONLY,
+                        urgent_alerts=urgent_alerts, auto_pauses=auto_pauses,
+                        stop_reason="run_length",
+                    )
                     print(f"RUN COMPLETE at {days_now} days (limit {RUN_DAYS}). Marker: {marker}")
                     run_ended = True
                     break
 
                 current_day = conditions.get("date")
+                day_rolled = False
 
                 if current_day is not None and current_day != last_day:
                     if last_day is not None and snapshotted_day != last_day:
                         path = write_snapshot(client, last_day)
                         print(f"Snapshot written: {path}")
                         snapshotted_day = last_day
+                        day_rolled = True
+                        if adviser_acts(OBSERVE_ONLY):
+                            try:
+                                import outcomes
+                                with open(path, encoding="utf-8") as fh:
+                                    closed = json.load(fh)
+                                outcomes.close_outcomes(closed.get("summary") or {}, run_id=RUN_ID)
+                            except Exception as e:
+                                print(f"outcome close error: {e}")
                     last_day = current_day
 
                 poll_count += 1
@@ -362,65 +496,42 @@ def main():
                 with open(alert_path, "w") as f:
                     json.dump(alerts, f, indent=2)
 
+                if day_rolled and adviser_acts(OBSERVE_ONLY):
+                    try:
+                        _log_scheduled(client, status_now, conditions, alerts, current_day)
+                    except Exception as e:
+                        print(f"scheduled advice error: {e}")
+
                 urgent = [a for a in alerts if a.get("type") == "urgent"]
                 _sig = tuple(sorted((a.get("type"), a.get("category"), a.get("message")) for a in alerts))
                 if _sig != getattr(main, "_last_sig", None):
                     main._last_sig = _sig
                     if urgent:
+                        urgent_alerts += 1
                         print(f"{len(alerts)} alert(s) ({len(urgent)} urgent)")
-                        if not OBSERVE_ONLY:
+                        if adviser_acts(OBSERVE_ONLY):
                             try:
-                                import advice_log
-                                advice_log.log_advice(
-                                    run_id=RUN_ID,
-                                    snapshot_day=current_day or "unknown",
-                                    trigger="reflex",
-                                    severity="urgent",
-                                    situation="; ".join(a.get("message", "") for a in urgent),
-                                    actions=[{"rank": 1, "action": "Pause game and assess", "rationale": "Reflex check triggered urgent alert"}],
-                                    risks=[{"label": a.get("message", ""), "severity": "urgent"} for a in urgent],
-                                    reflex_name=",".join(sorted(set(a.get("category", "") for a in urgent))),
-                                    auto_paused=True,
-                                )
+                                _log_urgent(client, status_now, conditions, alerts, urgent, current_day)
                             except Exception as e:
                                 print(f"advice log error: {e}")
                             try:
                                 client.call_tool("set_speed", {"action": "pause"})
+                                auto_pauses += 1
                             except Exception:
                                 pass
-                        if any(a.get("category") == "colony_death" for a in alerts):
-                            if snapshotted_day != current_day:
-                                path = write_snapshot(client, current_day)
-                                print(f"Death snapshot written: {path}")
-                                snapshotted_day = current_day
+                        if any(a.get("category") == "colony_death" for a in alerts) and not run_ended:
+                            marker = write_run_end(
+                                client, RUN_ID, days_now, observe_only=OBSERVE_ONLY,
+                                urgent_alerts=urgent_alerts, auto_pauses=auto_pauses,
+                                stop_reason="colony_death",
+                            )
+                            print(f"COLONY DEATH. Marker: {marker}")
+                            run_ended = True
+                            break
                     elif alerts:
                         print(f"{len(alerts)} alert(s): " + ", ".join(a.get("message", "") for a in alerts))
                     else:
                         print("No alerts.")
-
-                    # Daily scheduled advice (on day rollover, after snapshot)
-                    if current_day is not None and current_day != last_day and last_day is not None:
-                        try:
-                            import advice_log
-                            import situation as _situation
-                            import lessons as _lessons
-                            snap_summary = normalize_snapshot({"status": status_now, "conditions": conditions, "colonists": client.call_tool("list_colonists"), "resources": client.call_tool("get_resources"), "alerts": bundled_alerts})["summary"]
-                            sched_situation = _situation.build_situation(snap_summary, alerts)
-                            sched_lessons = _lessons.load_lessons()
-                            sched_retrieved = _situation.retrieve(sched_situation, sched_lessons, limit=5)
-                            sched_actions, sched_linked = _situation.rank_actions(alerts, sched_situation, sched_retrieved, limit=5)
-                            advice_log.log_advice(
-                                run_id=RUN_ID,
-                                snapshot_day=current_day or "unknown",
-                                trigger="scheduled",
-                                severity="info",
-                                situation=f"Daily assessment for {current_day}",
-                                actions=sched_actions,
-                                linked_lessons=sched_linked,
-                                auto_paused=False,
-                            )
-                        except Exception as e:
-                            print(f"scheduled advice error: {e}")
 
             except Exception as e:
                 consecutive_errors += 1

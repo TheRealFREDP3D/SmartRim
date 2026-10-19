@@ -238,6 +238,10 @@ if __name__ == "__main__":
     from advice_log import read_advice
 
     run = sys.argv[1] if len(sys.argv) > 1 else "current-run"
-    b, r = build_bundle(SNAPSHOTS_DIR, DEBRIEFS_DIR, run, read_advice(run_id=run))
+    snap_dir = SNAPSHOTS_DIR
+    nested = os.path.join(SNAPSHOTS_DIR, run)
+    if glob.glob(os.path.join(nested, "day-*.json")):
+        snap_dir = nested
+    b, r = build_bundle(snap_dir, DEBRIEFS_DIR, run, read_advice(run_id=run))
     print("bundle:", b)
     print("response template:", r)

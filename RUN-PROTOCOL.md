@@ -20,10 +20,11 @@ Day counting: the run starts on the 1st day (`daysPassed` = 0). Ten full days mu
 ## Start
 
 1. Start RimWorld and load the MCP server (RimMolt mod).
-2. Start the run's monitor with a fresh run id:
+2. Start the run's monitor with a fresh run id. Evaluation runs alternate adviser on, then off.
    ```powershell
    $env:RUN_ID = "run-NNN-adv-cassandra"   # NNN = next run number
-   .\start-monitor.ps1
+   .\start-monitor.ps1                     # adviser on: pauses and logs advice
+   .\start-monitor.ps1 -ObserveOnly        # adviser off: snapshots only, no pause, no advice
    ```
 3. Create the colony with the fixed settings above. Record the tile id and team names in `memory/session-logs/<run-id>.md`.
 4. Confirm the monitor log shows `Reflex monitor started` with the run id.

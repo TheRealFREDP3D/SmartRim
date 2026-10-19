@@ -278,8 +278,15 @@ usage: evaluate.py summarize [--runs-dir memory/runs]
 - Analysis is descriptive only — with n=3, report medians and ranges, no
   significance claims (risk already noted in the plan).
 
+**Code status (2026-10-19):** `sidecar/evaluate.py` prints the summary table
+and writes the markdown report with `--write`. Adviser-off is
+`.\start-monitor.ps1 -ObserveOnly` (no alert pause, no advice). Both arms still
+pause once at the protocol stop so the window closes; that stop is not an
+auto-pause. Snapshots for a run go in `memory/snapshots/<run-id>/`.
+
 **Exit:** harness prints the summary table; both arms ≥3 runs; results written
-to `memory/eval-2026-XX.md` with the protocol's comparison metrics.
+to `memory/eval-2026-XX.md` with the protocol's comparison metrics. The live
+runs are still open. Do not treat a table with n<3 as a result.
 
 ## 11. Code-hygiene items folded into Phase 2
 

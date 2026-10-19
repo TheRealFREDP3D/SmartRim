@@ -1,4 +1,9 @@
 # RimWorld Counselor Sidecar — Reflex Monitor Launcher
+# Adviser on (default): .\start-monitor.ps1
+# Adviser off:          .\start-monitor.ps1 -ObserveOnly
+param(
+    [switch]$ObserveOnly
+)
 $ErrorActionPreference = "Stop"
 
 $monitorScript = "sidecar\monitor.py"
@@ -33,8 +38,16 @@ try {
 }
 
 # Start monitor in background
-Write-Host "Starting reflex monitor..." -ForegroundColor Cyan
-Start-Process -FilePath $pythonExe -ArgumentList "-u", $monitorScript -RedirectStandardOutput $logFile -RedirectStandardError "memory\monitor.err.log" -NoNewWindow -PassThru | Select-Object Id, StartTime
+$pyArgs = @("-u", $monitorScript)
+if ($ObserveOnly) {
+    $env:OBSERVE_ONLY = "1"
+    $pyArgs += "--observe-only"
+    Write-Host "Starting reflex monitor (adviser OFF: observe only, no pause, no advice)..." -ForegroundColor Cyan
+} else {
+    $env:OBSERVE_ONLY = "0"
+    Write-Host "Starting reflex monitor (adviser ON)..." -ForegroundColor Cyan
+}
+Start-Process -FilePath $pythonExe -ArgumentList $pyArgs -RedirectStandardOutput $logFile -RedirectStandardError "memory\monitor.err.log" -NoNewWindow -PassThru | Select-Object Id, StartTime
 
 Write-Host "Monitor started. Alerts: memory\alerts\current.json" -ForegroundColor Green
 Write-Host "Log: $logFile"
