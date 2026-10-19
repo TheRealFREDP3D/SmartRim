@@ -137,5 +137,36 @@ class TestRetrieve(unittest.TestCase):
             self.assertEqual(l.get("status"), "active")
 
 
+class TestRankActions(unittest.TestCase):
+    def setUp(self):
+        self.lessons = lessons.load_lessons()
+
+    def test_rank_actions_returns_tuple(self):
+        sit = {"phase": "early_survival", "difficulty": "Adventure story", "storyteller": "Cassandra Classic", "biome": "any", "threats": ["low_food"], "resources": ["food_under_5_days"]}
+        alerts = [{"type": "warning", "category": "food_low", "message": "Food stock low (5 units)"}]
+        actions, linked = situation.rank_actions(alerts, sit, self.lessons, limit=5)
+        self.assertIsInstance(actions, list)
+        self.assertIsInstance(linked, list)
+
+    def test_rank_actions_capped_at_limit(self):
+        sit = {"phase": "early_survival", "difficulty": "Adventure story", "storyteller": "Cassandra Classic", "biome": "any", "threats": ["low_food", "mood_break_risk"], "resources": ["food_under_5_days"]}
+        alerts = [{"type": "warning", "category": "food_low", "message": "Food stock low"}]
+        actions, linked = situation.rank_actions(alerts, sit, self.lessons, limit=2)
+        self.assertLessEqual(len(actions), 2)
+
+    def test_rank_actions_deterministic(self):
+        sit = {"phase": "early_survival", "difficulty": "Adventure story", "storyteller": "Cassandra Classic", "biome": "any", "threats": ["low_food"], "resources": ["food_under_5_days"]}
+        alerts = [{"type": "warning", "category": "food_low", "message": "Food stock low"}]
+        a1, l1 = situation.rank_actions(alerts, sit, self.lessons, limit=5)
+        a2, l2 = situation.rank_actions(alerts, sit, self.lessons, limit=5)
+        self.assertEqual(a1, a2)
+        self.assertEqual(l1, l2)
+
+    def test_rank_actions_empty_alerts(self):
+        sit = {"phase": "early_survival", "difficulty": "Adventure story", "storyteller": "Cassandra Classic", "biome": "any", "threats": [], "resources": []}
+        actions, linked = situation.rank_actions([], sit, self.lessons, limit=5)
+        self.assertIsInstance(actions, list)
+
+
 if __name__ == "__main__":
     unittest.main()

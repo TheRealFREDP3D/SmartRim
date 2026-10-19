@@ -134,6 +134,93 @@ def build_situation(snapshot_summary, alerts):
     }
 
 
+SEVERITY_ORDER = {"critical": 0, "urgent": 1, "warning": 2, "info": 3}
+
+
+def rank_actions(alerts, situation, lessons_list, limit=5):
+    """Rank actions from alerts + retrieved lessons. Deterministic.
+
+    Returns list of action dicts: {rank, action, rationale, estimated_time, auto_paused}.
+    Also returns the list of linked lesson ids.
+    """
+    # Map alert severity to risk severity
+    risks = []
+    for a in alerts:
+        sev = a.get("type", "warning")
+        risk_sev = "critical" if sev == "urgent" else sev
+        risks.append((risk_sev, a))
+
+    # For each risk, retrieve matching lessons and produce candidate actions
+    candidates = []
+    linked = set()
+    for risk_sev, alert in risks:
+        # Build a mini-situation for this risk's threat
+        cat = alert.get("category", "")
+        threat_tag = ALERT_TO_THREAT.get(cat, "other_game_alert")
+        mini_sit = dict(situation)
+        mini_sit["threats"] = [threat_tag]
+        # Retrieve lessons for this specific threat
+        matched = retrieve(mini_sit, lessons_list, limit=3)
+        for lesson in matched:
+            linked.add(lesson.get("id"))
+            action_text = lesson.get("recommendation", "")
+            rationale = lesson.get("rationale", "")
+            tags = lesson.get("tags", [])
+            est_time = None
+            if "early_game" in tags:
+                est_time = "immediate"
+            elif "early" in str(tags):
+                est_time = "soon"
+            candidates.append({
+                "risk_severity": risk_sev,
+                "confidence": lesson.get("confidence", 0.0),
+                "action": action_text,
+                "rationale": rationale,
+                "estimated_time": est_time,
+                "lesson_id": lesson.get("id"),
+            })
+
+    # If no lessons matched, produce a generic action from the alert itself
+    if not candidates:
+        for risk_sev, alert in risks:
+            candidates.append({
+                "risk_severity": risk_sev,
+                "confidence": 0.3,
+                "action": f"Address: {alert.get('message', '')}",
+                "rationale": "Reflex alert fired",
+                "estimated_time": "immediate",
+                "lesson_id": None,
+            })
+
+    # Sort: risk severity first, then confidence desc
+    candidates.sort(key=lambda c: (SEVERITY_ORDER.get(c["risk_severity"], 9), -c["confidence"]))
+
+    # Deduplicate by action text
+    seen = set()
+    unique = []
+    for c in candidates:
+        if c["action"] in seen:
+            continue
+        seen.add(c["action"])
+        unique.append(c)
+
+    # Cap at limit
+    unique = unique[:limit]
+
+    # Assign ranks
+    actions = []
+    for i, c in enumerate(unique, 1):
+        actions.append({
+            "rank": i,
+            "action": c["action"],
+            "rationale": c["rationale"],
+            "estimated_time": c["estimated_time"],
+            "auto_paused": False,
+        })
+
+    return actions, sorted(linked)
+
+
 def load_lessons(path=None):
     path = path or LESSONS_FILE
     lessons = []
