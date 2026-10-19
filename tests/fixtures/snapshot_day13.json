@@ -1,0 +1,41 @@
+{
+  "day": "13th of Septober, 5500",
+  "timestamp": "2026-10-18T21:55:17.111869",
+  "status": {
+    "loaded": false,
+    "programState": "Entry"
+  },
+  "conditions": {
+    "loaded": false,
+    "message": "No colony is currently loaded."
+  },
+  "colonists": {
+    "loaded": false,
+    "message": "No colony is currently loaded. Start or load a save to query game state."
+  },
+  "resources": {
+    "loaded": false,
+    "message": "No colony is currently loaded. Start or load a save to query game state."
+  },
+  "research": {
+    "loaded": false,
+    "message": "No colony is currently loaded. Start or load a save to query game state."
+  },
+  "alerts": {
+    "loaded": false,
+    "message": "No colony is currently loaded. Start or load a save to query game state."
+  },
+  "summary": {
+    "day": "13th of Septober, 5500",
+    "hour": null,
+    "season": null,
+    "temp": null,
+    "colonist_count": null,
+    "min_mood": null,
+    "min_health": null,
+    "downed": [],
+    "alerts": [],
+    "resources": {},
+    "wealth": null
+  }
+}
