@@ -77,8 +77,15 @@ def _parse_day(day_str):
     month = mm.group(1) if mm else ""
     ym = re.search(r",\s*(\d+)", day)
     year = int(ym.group(1)) if ym else 0
-    order = {"Jugust": 0, "Septober": 1, "Decembary": 2, "Aprimay": 3, "Jumay": 4}
+    # RimWorld quadrum order: Aprimay (spring) -> Jugust (summer) -> Septober (autumn) -> Decembary (winter).
+    order = {"Aprimay": 0, "Jugust": 1, "Septober": 2, "Decembary": 3}
     return (year, order.get(month, 99), num)
+
+
+def _make_sort_key(snap):
+    cond = snap.get("conditions") or {}
+    hour = cond.get("hour")
+    return _parse_day(_day_label(snap)) + (hour if isinstance(hour, int) else 0,)
 
 
 def _colonists(snap):
@@ -140,6 +147,47 @@ def _advice_section(advice_records):
     return out
 
 
+def _load_run_marker(run_id):
+    """Read memory/runs/<run_id>.end.json (monitor) and <run_id>.meta.json (human/agent notes)."""
+    out = {}
+    for suffix in (".meta.json", ".end.json"):
+        path = os.path.join(BASE_DIR, "memory", "runs", f"{run_id}{suffix}")
+        try:
+            with open(path, encoding="utf-8") as f:
+                data = json.load(f)
+            if isinstance(data, dict):
+                out.update(data)
+        except (OSError, json.JSONDecodeError):
+            continue
+    return out
+
+
+def _derive_outcome(marker, final_summary):
+    if not marker and not final_summary:
+        return None
+    parts = []
+    if marker.get("stop_reason") == "run_length":
+        parts.append(f"survived the full run ({marker.get('days_passed')} days, run-limited)")
+    elif marker.get("stop_reason"):
+        parts.append(f"run ended early: {marker.get('stop_reason')}")
+    if final_summary:
+        cols = final_summary.get("colonist_count")
+        if cols is not None:
+            downed = final_summary.get("downed") or []
+            parts.append(f"{cols} colonist(s) alive at the end" + (f", downed: {', '.join(downed)}" if downed else ", none downed"))
+        if final_summary.get("min_mood") is not None:
+            parts.append(f"lowest end-of-day mood {final_summary.get('min_mood')}%")
+        if final_summary.get("food_days") is not None:
+            parts.append(f"{final_summary.get('food_days')} days of food")
+        if final_summary.get("medicine_count") is not None:
+            parts.append(f"{final_summary.get('medicine_count')} medicine")
+        if final_summary.get("wealth") is not None:
+            parts.append(f"wealth {final_summary.get('wealth')}")
+    if marker:
+        parts.append(f"urgent alerts {marker.get('urgent_alerts')}, auto-pauses {marker.get('auto_pauses')}")
+    return "; ".join(parts) if parts else None
+
+
 def build_bundle(snapshots_dir, debriefs_dir, run_id, advice_records=None, meta=None):
     """Write the paste-ready bundle and the response template. Returns (bundle_path, response_path)."""
     files = sorted(glob.glob(os.path.join(snapshots_dir, "day-*.json")))
@@ -152,9 +200,17 @@ def build_bundle(snapshots_dir, debriefs_dir, run_id, advice_records=None, meta=
             continue
         snap["_file"] = os.path.basename(f)
         snapshots.append(snap)
-    snapshots.sort(key=lambda s: _parse_day(_day_label(s)))
+    snapshots.sort(key=_make_sort_key)
 
-    meta = meta or {}
+    meta = dict(meta or {})
+    marker = _load_run_marker(run_id)
+    final_summary = (snapshots[-1].get("summary") or {}) if snapshots else {}
+    if not meta.get("outcome"):
+        derived = _derive_outcome(marker, final_summary)
+        if derived:
+            meta["outcome"] = derived
+    if not meta.get("biome"):
+        meta["biome"] = marker.get("biome") or "unknown"
     timeline, skipped = _timeline(snapshots)
     now = datetime.now().isoformat(timespec="seconds")
 

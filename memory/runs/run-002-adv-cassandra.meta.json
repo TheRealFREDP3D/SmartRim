@@ -1,0 +1,7 @@
+{
+  "run_id": "run-002-adv-cassandra",
+  "biome": "temperate forest (flat, tile 17, 13.4 C at landing)",
+  "scenario": "Crashlanded",
+  "team": ["Matthew Po", "Antonino 'Toni' Cefalu", "Niklas Fischer"],
+  "notes": "Adviser arm (on). No reloads. Monitor ended the run at daysPassed 11."
+}

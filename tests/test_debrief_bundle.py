@@ -76,6 +76,39 @@ class TestDebriefBundle(unittest.TestCase):
         self.assertIn("adv-1", text)
         self.assertIn("A is DOWNED", text)
 
+    def test_timeline_is_chronological_across_quadrums(self):
+        """Aprimay comes before Jugust; file names sort the other way round."""
+        snaps = os.path.join(self.tmp, "order")
+        os.makedirs(snaps)
+        json.dump(valid_snapshot("1st of Jugust, 5500"), open(os.path.join(snaps, "day-a.json"), "w"))
+        json.dump(valid_snapshot("15th of Aprimay, 5500"), open(os.path.join(snaps, "day-b.json"), "w"))
+        json.dump(valid_snapshot("9th of Aprimay, 5500"), open(os.path.join(snaps, "day-c.json"), "w"))
+
+        bundle, _ = build_bundle(snaps, self.debs, "t-order", advice_records=[])
+        text = open(bundle, encoding="utf-8").read()
+
+        apr9 = text.index("### 9th of Aprimay")
+        apr15 = text.index("### 15th of Aprimay")
+        jug1 = text.index("### 1st of Jugust")
+        self.assertLess(apr9, apr15)
+        self.assertLess(apr15, jug1)
+
+    def test_outcome_and_biome_come_from_run_meta(self):
+        import debrief_bundle as db
+
+        old_base = db.BASE_DIR
+        try:
+            db.BASE_DIR = self.tmp
+            os.makedirs(os.path.join(self.tmp, "memory", "runs"))
+            with open(os.path.join(self.tmp, "memory", "runs", "t-meta.meta.json"), "w") as f:
+                json.dump({"biome": "temperate forest (flat)"}, f)
+            bundle, _ = build_bundle(self.snaps, self.debs, "t-meta", advice_records=[])
+            text = open(bundle, encoding="utf-8").read()
+            self.assertIn("temperate forest (flat)", text)
+            self.assertNotIn("outcome: not stated by the user", text)
+        finally:
+            db.BASE_DIR = old_base
+
 
 if __name__ == "__main__":
     unittest.main()
