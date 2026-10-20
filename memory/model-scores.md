@@ -14,6 +14,7 @@ Rules:
 
 | Model | Provider | Date | Bundle version | Total | Weakest criteria | Notes |
 |---|---|---|---|---|---|---|
+| opencode / deepseek-v4.1-flash-free | opencode | 2026-10-19 | digest | 18 / 20 | 5 invention, 10 calibration | **Author-scored** — same agent played the run, so this is a ceiling for the bundle, not a cold baseline. Dated the raid to the 12th and the injury to the 13th correctly. |
 | unknown (pasted 2026-10-19) | not recorded | 2026-10-19 | pre-digest | 16 / 20 | 2 grounding, 4 unverified, 5 invention, 10 calibration | Dated the fire + raid to 13th Aprimay; monitor logged it on the 12th. The bundle at the time carried no in-game day on advice records, so criterion 2 is partly a bundle defect — re-run on the current bundle before comparing. |
 
 Bundle versions:
@@ -33,3 +34,4 @@ Bundle versions:
 - Treating real timestamps as in-game days (fixed in the digest bundle, but check future models still cite days).
 - Optimistic resource claims ("food transition was smooth") when the food alert was up for days.
 - Confidence above 0.5 on a single observation; the rubric ladder is 0.3 single / 0.5 wiki-backed / 0.7 repeated.
+- Asserting a sequence the bundle cannot prove, e.g. "the joiner was downed before he joined" — snapshot absence plus an advice timestamp is suggestive, not evidence. Put it under unverified_claims.
