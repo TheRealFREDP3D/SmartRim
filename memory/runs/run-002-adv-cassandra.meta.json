@@ -2,6 +2,42 @@
   "run_id": "run-002-adv-cassandra",
   "biome": "temperate forest (flat, tile 17, 13.4 C at landing)",
   "scenario": "Crashlanded",
-  "team": ["Matthew Po", "Antonino 'Toni' Cefalu", "Niklas Fischer"],
-  "notes": "Adviser arm (on). No reloads. Monitor ended the run at daysPassed 11."
+  "team": [
+    "Matthew Po",
+    "Antonino 'Toni' Cefalu",
+    "Niklas Fischer"
+  ],
+  "notes": "Adviser arm (on). No reloads. Monitor ended the run at daysPassed 11.",
+  "quests": [
+    {
+      "id": 0,
+      "name": "Mechanoid Signal",
+      "states": [
+        "Ongoing"
+      ],
+      "accepter": null,
+      "description": "Signals from a mechanoid cluster were detected nearby. Not approached during this run."
+    },
+    {
+      "id": 1,
+      "name": "The Hunted Knight",
+      "states": [
+        "NotYetAccepted",
+        "Ongoing",
+        "EndedSuccess"
+      ],
+      "accepter": "Matthew",
+      "description": "Antigonos Baspho, a knight of The Shattered Empire, is calling from nearby. His guards were killed in an ambush. He escaped, but is now being followed by a manhunting rat. Antigonos wants you to keep him safe at Tesnus for a few hours until his shuttle can come pick him up."
+    },
+    {
+      "id": 2,
+      "name": "Matthew's Novice Ceremony",
+      "states": [
+        "NotYetAccepted"
+      ],
+      "accepter": null,
+      "description": "The Shattered Empire is ready to grant Matthew the title of novice and a level 1 psylink in a bestowing ceremony. The bestower will arrive by shuttle and perform the ceremony."
+    }
+  ],
+  "quests_recorded_after_run": true
 }

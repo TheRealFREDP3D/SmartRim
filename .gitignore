@@ -8,6 +8,7 @@ dist/
 build/
 memory/monitor.log
 memory/monitor.err.log
+memory/quests/registry.json
 memory/alerts/
 memory/snapshots/
 memory/snapshots_archive*/

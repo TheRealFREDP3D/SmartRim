@@ -2,6 +2,7 @@ import time
 import json
 import os
 import sys
+import glob
 from datetime import datetime
 from mcp_client import McpClient
 from config import *
@@ -12,6 +13,15 @@ try:
 except Exception:
     _situation = None
     _lessons = None
+
+try:
+    import quests as _quests
+except Exception:
+    _quests = None
+
+# A reflex snapshot is taken when a new urgent alert appears, so incidents that start and
+# end between two daily snapshots (a raid, a fire) still leave evidence for the debrief.
+REFLEX_SNAPSHOT_LIMIT = 40
 
 
 def ensure_dirs():
@@ -275,7 +285,8 @@ def snapshot_dir_for(run_id, root=None):
     return os.path.join(root, str(run_id))
 
 
-def write_snapshot(client, day_label, run_id=None):
+def write_snapshot(client, day_label, run_id=None, prefix="day", quest_registry_path=None,
+                   filename_stem=None):
     run_id = RUN_ID if run_id is None else run_id
     snapshot = {
         "run_id": run_id,
@@ -288,15 +299,46 @@ def write_snapshot(client, day_label, run_id=None):
         "research": client.call_tool("get_research"),
         "alerts": client.call_tool("get_alerts"),
     }
+    # Quest context. Optional: an older game build without get_quest must not break snapshots.
+    if _quests is not None:
+        try:
+            snapshot["quests"] = _quests.update(client, day_label=str(day_label), path=quest_registry_path)
+        except Exception:
+            snapshot["quests"] = []
     normalize_snapshot(snapshot)
 
     safe = str(day_label).replace("/", "-").replace("\\", "-")
     dest = snapshot_dir_for(run_id)
     os.makedirs(dest, exist_ok=True)
-    path = os.path.join(dest, f"day-{safe}.json")
+    stem = filename_stem or f"{prefix}-{safe}"
+    path = os.path.join(dest, f"{stem}.json")
+    if filename_stem:
+        # Incident snapshots must each keep their own file, even if two fire in one second.
+        suffix = 2
+        while os.path.exists(path):
+            path = os.path.join(dest, f"{stem}-{suffix}.json")
+            suffix += 1
     with open(path, "w", encoding="utf-8") as f:
         json.dump(snapshot, f, indent=2, default=str)
     return path
+
+
+def reflex_snapshot_name(now=None):
+    """Filename stem for an incident snapshot. Sortable, filesystem-safe, no spaces."""
+    now = now or datetime.now()
+    return f"reflex-{now.strftime('%Y%m%d-%H%M%S')}"
+
+
+def write_reflex_snapshot(client, run_id=None, limit=REFLEX_SNAPSHOT_LIMIT, quest_registry_path=None):
+    """Snapshot at the moment an urgent alert fires. Returns the path, or None when capped."""
+    run_id = RUN_ID if run_id is None else run_id
+    dest = snapshot_dir_for(run_id)
+    if os.path.isdir(dest) and len(glob.glob(os.path.join(dest, "reflex-*.json"))) >= limit:
+        return None
+    return write_snapshot(client, reflex_snapshot_name(), run_id=run_id, prefix="reflex",
+                         quest_registry_path=quest_registry_path,
+                         filename_stem=reflex_snapshot_name())
+
 
 
 def adviser_acts(observe_only):
@@ -352,7 +394,7 @@ def run_length_reached(days_passed, run_days=None):
 
 
 def write_run_end(client, run_id, days_passed, observe_only=False, urgent_alerts=0,
-                  auto_pauses=0, stop_reason="run_length"):
+                  auto_pauses=0, stop_reason="run_length", reflex_snapshots=0):
     # Protocol stop, not an adviser pause. Both arms pause here so the window closes.
     try:
         client.call_tool("set_speed", {"action": "pause"})
@@ -379,6 +421,7 @@ def write_run_end(client, run_id, days_passed, observe_only=False, urgent_alerts
             "stop_reason": stop_reason,
             "urgent_alerts": urgent_alerts,
             "auto_pauses": auto_pauses,
+            "reflex_snapshots": reflex_snapshots,
             "difficulty": status.get("difficulty"),
             "storyteller": status.get("storyteller"),
             "ended_at": datetime.now().isoformat(),
@@ -478,6 +521,7 @@ def main():
     poll_count = 0
     urgent_alerts = 0
     auto_pauses = 0
+    reflex_snapshots = 0
 
     print(f"Reflex monitor started. Polling every {POLL_INTERVAL}s (PID {os.getpid()}) "
           f"run={RUN_ID} observe_only={OBSERVE_ONLY}")
@@ -505,7 +549,7 @@ def main():
                     marker = write_run_end(
                         client, RUN_ID, days_now, observe_only=OBSERVE_ONLY,
                         urgent_alerts=urgent_alerts, auto_pauses=auto_pauses,
-                        stop_reason="run_length",
+                        stop_reason="run_length", reflex_snapshots=reflex_snapshots,
                     )
                     print(f"RUN COMPLETE at {days_now} days (limit {RUN_DAYS}). Marker: {marker}")
                     run_ended = True
@@ -563,11 +607,18 @@ def main():
                                     auto_pauses += 1
                             except Exception:
                                 pass
+                        try:
+                            rpath = write_reflex_snapshot(client)
+                            if rpath:
+                                reflex_snapshots += 1
+                                print(f"Reflex snapshot: {rpath}")
+                        except Exception as e:
+                            print(f"reflex snapshot error: {e}")
                         if any(a.get("category") == "colony_death" for a in alerts) and not run_ended:
                             marker = write_run_end(
                                 client, RUN_ID, days_now, observe_only=OBSERVE_ONLY,
                                 urgent_alerts=urgent_alerts, auto_pauses=auto_pauses,
-                                stop_reason="colony_death",
+                                stop_reason="colony_death", reflex_snapshots=reflex_snapshots,
                             )
                             print(f"COLONY DEATH. Marker: {marker}")
                             run_ended = True

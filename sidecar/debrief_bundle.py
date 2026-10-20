@@ -52,10 +52,12 @@ Rules:
 1. The wiki facts below are the source of truth. If a claim contradicts them, say so.
 2. Cite evidence by in-game day (for example "Day 6, 12th of Septober") and by advice id.
 3. Do not invent game mechanics. If you are unsure, list the claim under unverified_claims.
-4. Do not repeat the timeline. Analyse it.
-5. Propose at most 6 candidate lessons. Prefer fewer, better-supported ones.
-6. Each candidate needs a trigger (phases, threats, resources, difficulty, storyteller, biome). Use "any" for unscoped fields.
-7. Output exactly the two sections below, in this order, and nothing else.
+4. Read the quest context before calling a pawn a colonist. A quest target has an objective and a leaving condition, and treating them as a settler produces the wrong lesson.
+5. Where a record carries "cause (recorded after the run)", that is ground truth from the player. Do not re-diagnose against it; build the lesson on it.
+6. Do not repeat the timeline. Analyse it.
+7. Propose at most 6 candidate lessons. Prefer fewer, better-supported ones.
+8. Each candidate needs a trigger (phases, threats, resources, difficulty, storyteller, biome). Use "any" for unscoped fields.
+9. Output exactly the two sections below, in this order, and nothing else.
 
 Section A: a JSON array of candidate lessons. Each object has exactly these keys:
   title, cause_chain (array of short strings), trigger (object with phases, threats, resources, difficulty, storyteller, biome), recommendation, rationale, source (array of day strings or wiki page names), wiki_pages_used (array), unverified_claims (array), confidence (number 0.3 to 0.7).
@@ -67,6 +69,9 @@ PHASE_NOTE = (
     "Phases (our own labels, not wiki terms): early_survival (day 0-7), stabilization (day 8-20), "
     "raid_prep, expansion, crisis."
 )
+
+# Bump when the bundle's shape changes: scores are only comparable within one version.
+BUNDLE_VERSION = "v3 (quests, event causes, incident snapshots)"
 
 
 def _parse_day(day_str):
@@ -143,6 +148,8 @@ def _advice_section(advice_records):
             f"| severity={rec.get('severity')} | status={rec.get('status')} | auto_paused={rec.get('auto_paused')}"
         )
         out.append(f"  situation: {rec.get('situation', '')}")
+        if rec.get("event_cause"):
+            out.append(f"  cause (recorded after the run): {rec.get('event_cause')}")
     out.append("")
     return out
 
@@ -159,11 +166,58 @@ def _food_units(snap):
     return total
 
 
-def _event_digest(snapshots, advice_records):
+def _quest_records(snapshots):
+    """Quest context embedded in snapshots, merged by id. Missing module is not fatal."""
+    try:
+        import quests as quests_mod
+        return quests_mod.quests_from_snapshots(snapshots)
+    except Exception:
+        return []
+
+
+def _incident_lines(reflex_snapshots):
+    """One block per incident snapshot: what the colony looked like when an urgent alert fired."""
+    out = []
+    for snap in reflex_snapshots or []:
+        if not _is_valid(snap):
+            continue
+        cond = snap.get("conditions") or {}
+        stamp = str(snap.get("timestamp") or "")
+        clock = stamp[11:16] if len(stamp) >= 16 else ""
+        when = _day_label(snap)
+        if cond.get("hour") is not None:
+            when += f", hour {cond.get('hour')}"
+        if clock:
+            when += f" ({clock})"
+        alerts = [a.get("label") for a in (snap.get("alerts") or {}).get("activeAlerts") or [] if a.get("label")]
+        out.append(f"- {when}: " + ("alerts: " + "; ".join(alerts) if alerts else "no active alerts"))
+        for c in _colonists(snap):
+            flags = []
+            if c.get("downed"):
+                flags.append("DOWNED")
+            if c.get("dead"):
+                flags.append("DEAD")
+            out.append(
+                f"  - {c.get('name')}: HP {c.get('health')}%, mood {c.get('mood')}%, job: {c.get('job')}"
+                + (f" [{', '.join(flags)}]" if flags else "")
+            )
+        quests_now = snap.get("quests") or []
+        if quests_now:
+            out.append("  - quests: " + "; ".join(
+                f"[{q.get('id')}] {q.get('name')} ({q.get('last_state') or q.get('state') or '?'})"
+                for q in quests_now if isinstance(q, dict)
+            ))
+    if out:
+        out.append("")
+    return out
+
+
+def _event_digest(snapshots, advice_records, reflex_snapshots=None):
     """Transitions between daily snapshots: what changed, not what the day looked like.
 
     The timeline shows daily stills; this section names the changes (new alerts, injuries,
-    downed pawns, food swings) and the urgent advice that fired between snapshots.
+    downed pawns, food swings), the incident snapshots taken when an urgent alert fired, and
+    the urgent advice that fired between snapshots.
     """
     events = []
     prev_alerts = set()
@@ -208,6 +262,16 @@ def _event_digest(snapshots, advice_records):
     else:
         out.append("(no transitions detected between snapshots)")
         out.append("")
+
+    incidents = _incident_lines(reflex_snapshots)
+    if incidents:
+        out.append("Incident snapshots (taken when an urgent alert fired, so short events survive):")
+        out.append("")
+        out.extend(incidents)
+    elif reflex_snapshots is not None:
+        out.append("(no incident snapshots for this run - they are captured only when an urgent alert fires)")
+        out.append("")
+
     if urgent:
         out.append("Urgent advice recorded (in-game day from the monitor, real timestamp in section 7):")
         out.append("")
@@ -215,15 +279,20 @@ def _event_digest(snapshots, advice_records):
         for rec in urgent:
             text = re.sub(r"<[^>]+>", "", str(rec.get("situation") or "")).strip()
             key = (rec.get("snapshot_day"), text)
-            if grouped and grouped[-1][0] == key:
-                grouped[-1][1] += 1
+            cause = rec.get("event_cause")
+            if grouped and grouped[-1]["key"] == key:
+                grouped[-1]["count"] += 1
+                grouped[-1]["cause"] = cause or grouped[-1]["cause"]
             else:
-                grouped.append([key, 1, rec.get("status")])
-        for (day, text), count, status in grouped:
-            suffix = f" ({count}x)" if count > 1 else ""
-            out.append(f"- {day}: {text}{suffix} [{status}]")
+                grouped.append({"key": key, "count": 1, "status": rec.get("status"), "cause": cause})
+        for item in grouped:
+            day, text = item["key"]
+            suffix = f" ({item['count']}x)" if item["count"] > 1 else ""
+            cause_txt = f" - cause: {item['cause']}" if item["cause"] else ""
+            out.append(f"- {day}: {text}{suffix} [{item['status']}]{cause_txt}")
         out.append("")
     return out
+
 
 
 def _load_run_marker(run_id):
@@ -281,6 +350,19 @@ def build_bundle(snapshots_dir, debriefs_dir, run_id, advice_records=None, meta=
         snapshots.append(snap)
     snapshots.sort(key=_make_sort_key)
 
+    # Incident snapshots: taken by the monitor when a new urgent alert fires. They are kept
+    # out of the timeline (which stays one still per day) and shown in the digest instead.
+    reflex = []
+    for f in sorted(glob.glob(os.path.join(snapshots_dir, "reflex-*.json"))):
+        try:
+            with open(f, encoding="utf-8") as fh:
+                snap = json.load(fh)
+        except (OSError, json.JSONDecodeError):
+            continue
+        snap["_file"] = os.path.basename(f)
+        reflex.append(snap)
+    reflex.sort(key=lambda s: (_make_sort_key(s), str(s.get("timestamp") or "")))
+
     meta = dict(meta or {})
     marker = _load_run_marker(run_id)
     final_summary = (snapshots[-1].get("summary") or {}) if snapshots else {}
@@ -290,6 +372,10 @@ def build_bundle(snapshots_dir, debriefs_dir, run_id, advice_records=None, meta=
             meta["outcome"] = derived
     if not meta.get("biome"):
         meta["biome"] = marker.get("biome") or "unknown"
+    if not meta.get("quests") and marker.get("quests"):
+        meta["quests"] = marker.get("quests")
+        if marker.get("quests_recorded_after_run"):
+            meta["quests_recorded_after_run"] = True
     timeline, skipped = _timeline(snapshots)
     now = datetime.now().isoformat(timespec="seconds")
 
@@ -307,6 +393,7 @@ def build_bundle(snapshots_dir, debriefs_dir, run_id, advice_records=None, meta=
     lines.append("## 2. Run metadata")
     lines.append("")
     lines.append(f"- run_id: {run_id}")
+    lines.append(f"- bundle version: {BUNDLE_VERSION}")
     lines.append(f"- difficulty: {meta.get('difficulty', 'Adventure story (baseline)')}")
     lines.append(f"- storyteller: {meta.get('storyteller', 'Cassandra Classic (baseline)')}")
     lines.append(f"- biome: {meta.get('biome', 'unknown')}")
@@ -314,6 +401,28 @@ def build_bundle(snapshots_dir, debriefs_dir, run_id, advice_records=None, meta=
     lines.append(f"- snapshots used: {len(snapshots) - len(skipped)}")
     if skipped:
         lines.append(f"- snapshots skipped (no colony data): {', '.join(skipped)}")
+    if reflex:
+        lines.append(f"- incident snapshots (urgent-alert moments): {len(reflex)}")
+    quest_records = _quest_records(snapshots + reflex)
+    quest_note = None
+    if not quest_records and meta.get("quests"):
+        quest_records = meta["quests"]
+        if meta.get("quests_recorded_after_run"):
+            quest_note = "recorded after the run; this run's snapshots predate quest capture"
+    if quest_records:
+        lines.append("")
+        lines.append("Quest context from the game (colour tags removed; this is where quest objectives live):")
+        if quest_note:
+            lines.append(f"({quest_note})")
+        lines.append("")
+        try:
+            import quests as quests_mod
+            lines.extend(quests_mod.summary_lines(quest_records))
+        except Exception:
+            for rec in quest_records:
+                lines.append(f"- [{rec.get('id')}] {rec.get('name')}: {rec.get('description') or 'no description'}")
+    else:
+        lines.append("- quests: none recorded")
     lines.append("")
     lines.append("## 3. Wiki facts (source of truth, verified)")
     lines.append("")
@@ -328,9 +437,9 @@ def build_bundle(snapshots_dir, debriefs_dir, run_id, advice_records=None, meta=
     lines.append("## 5. Colony timeline")
     lines.append("")
     lines.extend(timeline if timeline else ["(no valid snapshots)", ""])
-    lines.append("## 6. Notable changes (event digest)")
+    lines.append("## 6. Notable changes and incidents (event digest)")
     lines.append("")
-    lines.extend(_event_digest(snapshots, advice_records or []))
+    lines.extend(_event_digest(snapshots, advice_records or [], reflex_snapshots=reflex))
     lines.append("## 7. Advice log")
     lines.append("")
     lines.extend(_advice_section(advice_records or []))

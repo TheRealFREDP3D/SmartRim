@@ -52,7 +52,15 @@ Until the bundle carries these, scores measure the bundle, not the models. The c
 
 ## Follow-ups
 
-- Add active quests to the daily snapshot and to section 2 of the bundle.
-- Add an `event_cause` field to advice records, filled in after the run ("raider arson", "quest target"), and render it in the digest.
-- Capture a snapshot when a reflex alert fires, not only at the daily hour, so short incidents survive.
+Bundle v3 (2026-10-19) closes these:
+
+- **Quests** — `sidecar/quests.py` reads `get_quest`, keeps a description registry, and every
+  snapshot embeds the quest list; section 2 of the bundle prints the objective text.
+- **Event causes** — `advice_log.py cause <id>` / `cause-match <run> <needle> <text>`; section 6 and
+  section 7 render `cause: ...`, and the prompt tells models it is ground truth.
+- **Incident state** — the monitor writes a `reflex-*.json` snapshot when a new urgent alert fires
+  (capped at 40 per run), rendered in section 6 without polluting the daily timeline.
+
+Still open: a run scored with v3 to confirm the ceiling actually moves (expect 2 grounding +
+9 failure analysis to recover, i.e. 18+ achievable without author knowledge).
 

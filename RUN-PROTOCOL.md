@@ -40,10 +40,15 @@ Day counting: the run starts on the 1st day (`daysPassed` = 0). Ten full days mu
 
 1. The monitor pauses the game at 10 days, writes the final snapshot, and writes `memory/runs/<run-id>.end.json`. Confirm the marker exists.
 2. Update the advice log outcomes for any open records.
-3. Write the session log (`memory/session-logs/<run-id>.md`): setup, timeline by day, decisions, outcome, and what surprised you.
-4. Generate the debrief bundle: `python sidecar/debrief.py <run-id>`. Paste the bundle into the chosen model, record the answer in the response file, and score it with `memory/debrief-rubric.md`.
-5. Commit the session log and the run-end marker (snapshots and debriefs stay gitignored).
-6. End the session. Do not continue the colony past day 10.
+3. **Record event causes.** The bundle can see symptoms but not causes. Tag the incidents before generating it:
+   - `python sidecar/advice_log.py cause-match <run-id> fire "raider arson"` (one tag covers the whole burst)
+   - `python sidecar/advice_log.py cause <advice-id> "quest target downed before extraction"`
+   Ask the player what happened whenever the cause is not obvious from the game text.
+4. Write the session log (`memory/session-logs/<run-id>.md`): setup, timeline by day, decisions, outcome, and what surprised you.
+5. Generate the debrief bundle: `python sidecar/debrief.py <run-id>`. Check that the quest context (section 2) and any recorded causes appear; if a quest was involved and the game did not report it, add it to `memory/runs/<run-id>.meta.json` under `quests`.
+6. Paste the bundle into the chosen model, record the answer in the response file, and score it with `memory/debrief-rubric.md`. Ask the player for corrections before finalising the score.
+7. Commit the session log and the run-end marker (snapshots and debriefs stay gitignored).
+8. End the session. Do not continue the colony past day 10.
 
 ## What is compared across runs
 
