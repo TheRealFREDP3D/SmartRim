@@ -51,3 +51,13 @@
 
 ## Notes
 <!-- Add new mechanic discoveries here with dates -->
+
+### 2026-10-19 (run-002)
+- **Smithing is its own work type**, separate from Crafting. Smithy bills (weapons, simple helmet) need Smithing enabled; a colonist on Crafting only will ignore them.
+- **Work type order matters more than priority ties**: a priority-1 Cooking bill with repeat mode "forever" keeps a colonist at the stove all day. Use target counts (10-12 meals) so other work resumes.
+- **Recipe costs**: longsword = 100 steel, simple helmet = 40 steel. Compacted steel tiles give ~40 steel each and sit next to the workshop on this map.
+- **Modal dialogs force-pause the game** and make `wait_for_event` return `ticksWaited: 0` with the same hour. `list_windows` shows them (`forcePause: true`); close with `window_action` before waiting again. "Research finished: X" is the common one.
+- **`get_resource_readout` counts stored items only.** Harvested rice/berries lying in the field are invisible until hauled, and a full stockpile silently blocks hauling.
+- **`daysPassed` = floor(ticksGame / 60000)**, so the run-length check fires 24 in-game hours after the previous increment, not at calendar midnight.
+- **Quest colonists wander** without an allowed area; the Hunted Knight walked ~100 cells to a river and was downed by a manhunter rat.
+

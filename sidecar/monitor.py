@@ -19,6 +19,30 @@ def ensure_dirs():
     os.makedirs(SNAPSHOTS_DIR, exist_ok=True)
 
 
+SIG_FILE = os.path.join(ALERTS_DIR, "last_signature.json")
+
+
+def _load_last_sig():
+    """Load the last alert signature so a monitor restart does not re-log the same urgent set."""
+    try:
+        with open(SIG_FILE, encoding="utf-8") as f:
+            data = json.load(f)
+        if data.get("run_id") == RUN_ID and isinstance(data.get("sig"), list):
+            return tuple(tuple(x) for x in data["sig"])
+    except Exception:
+        pass
+    return None
+
+
+def _save_last_sig(sig):
+    try:
+        os.makedirs(ALERTS_DIR, exist_ok=True)
+        with open(SIG_FILE, "w", encoding="utf-8") as f:
+            json.dump({"run_id": RUN_ID, "sig": [list(x) for x in (sig or ())]}, f, indent=2)
+    except Exception:
+        pass
+
+
 def _is_urgent_label(label):
     low = (label or "").lower()
     return any(kw in low for kw in URGENT_KEYWORDS)
@@ -146,23 +170,30 @@ def run_reflex_checks(client, deep=False):
             res = client.call_tool("get_resources")
             if isinstance(res, dict) and not res.get("error"):
                 res_list = res.get("resources", [])
-                res_map = {(r.get("defName") or r.get("label")): r.get("count", 0) for r in res_list if isinstance(r, dict)}
-                med = sum(v for k, v in res_map.items() if "medicine" in str(k).lower())
-                if med < 5:
-                    alerts.append({"type": "warning", "category": "medicine_low", "message": f"Medicine stock low ({med})", "timestamp": timestamp})
-                food = 0
-                for k, v in res_map.items():
-                    kl = str(k).lower()
-                    if "meal" in kl or "rice" in kl or "corn" in kl or "potato" in kl or "berry" in kl or "meat" in kl or "bread" in kl:
-                        food += v
-                if food < 20:
-                    alerts.append({"type": "warning", "category": "food_low", "message": f"Food stock low ({food} units)", "timestamp": timestamp})
+                # An empty readout means the game is still loading (or the readout failed);
+                # it must not be reported as "medicine 0 / food 0".
+                if res_list:
+                    res_map = {(r.get("defName") or r.get("label")): r.get("count", 0) for r in res_list if isinstance(r, dict)}
+                    med = sum(v for k, v in res_map.items() if "medicine" in str(k).lower())
+                    if med < 5:
+                        alerts.append({"type": "warning", "category": "medicine_low", "message": f"Medicine stock low ({med})", "timestamp": timestamp})
+                    food = 0
+                    for k, v in res_map.items():
+                        kl = str(k).lower()
+                        if "meal" in kl or "rice" in kl or "corn" in kl or "potato" in kl or "berry" in kl or "meat" in kl or "bread" in kl:
+                            food += v
+                    if food < 20:
+                        alerts.append({"type": "warning", "category": "food_low", "message": f"Food stock low ({food} units)", "timestamp": timestamp})
         except Exception:
             pass
 
         colonist_count = status.get("colonistCount", 0)
         days_now = status.get("daysPassed", 0)
-        if colonist_count == 0 and days_now and days_now > 0:
+        # Only call colony death once this process has actually seen the colony alive;
+        # during a save load the status briefly reports zero colonists.
+        if colonists:
+            run_reflex_checks._seen_colonists = True
+        if colonist_count == 0 and days_now and days_now > 0 and getattr(run_reflex_checks, "_seen_colonists", False):
             alerts.append({"type": "urgent", "category": "colony_death", "message": "All colonists dead — debrief recommended", "timestamp": timestamp})
 
         try:
@@ -405,13 +436,21 @@ def _log_scheduled(client, status_now, conditions, alerts, day_label):
 
 def _log_urgent(client, status_now, conditions, alerts, urgent, day_label):
     import advice_log
+    situation = "; ".join(a.get("message", "") for a in urgent)
+    # Do not re-log an identical urgent situation that is still open for this run
+    # (monitor restarts used to duplicate advice records and auto-pause counts).
+    try:
+        if advice_log.find_open_duplicate(RUN_ID, situation):
+            return None
+    except Exception:
+        pass
     _, _, actions, linked = _advice_context(client, status_now, conditions, alerts)
     advice_log.log_advice(
         run_id=RUN_ID,
         snapshot_day=day_label or "unknown",
         trigger="reflex",
         severity="urgent",
-        situation="; ".join(a.get("message", "") for a in urgent),
+        situation=situation,
         actions=actions if actions else [{
             "rank": 1,
             "action": "Pause game and assess",
@@ -422,6 +461,7 @@ def _log_urgent(client, status_now, conditions, alerts, urgent, day_label):
         reflex_name=",".join(sorted(set(a.get("category", "") for a in urgent))),
         auto_paused=True,
     )
+    return situation
 
 
 def main():
@@ -443,6 +483,7 @@ def main():
           f"run={RUN_ID} observe_only={OBSERVE_ONLY}")
     print(f"Alerts: {ALERTS_DIR}")
     print(f"Snapshots: {snapshot_dir_for(RUN_ID)}")
+    main._last_sig = _load_last_sig()
 
     try:
         while True:
@@ -506,17 +547,20 @@ def main():
                 _sig = tuple(sorted((a.get("type"), a.get("category"), a.get("message")) for a in alerts))
                 if _sig != getattr(main, "_last_sig", None):
                     main._last_sig = _sig
+                    _save_last_sig(_sig)
                     if urgent:
                         urgent_alerts += 1
                         print(f"{len(alerts)} alert(s) ({len(urgent)} urgent)")
                         if adviser_acts(OBSERVE_ONLY):
+                            logged = True
                             try:
-                                _log_urgent(client, status_now, conditions, alerts, urgent, current_day)
+                                logged = _log_urgent(client, status_now, conditions, alerts, urgent, current_day) is not None
                             except Exception as e:
                                 print(f"advice log error: {e}")
                             try:
                                 client.call_tool("set_speed", {"action": "pause"})
-                                auto_pauses += 1
+                                if logged:
+                                    auto_pauses += 1
                             except Exception:
                                 pass
                         if any(a.get("category") == "colony_death" for a in alerts) and not run_ended:

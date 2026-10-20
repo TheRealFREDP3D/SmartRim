@@ -75,6 +75,18 @@ def update_outcome(advice_id, status, outcome_note=None):
     return True
 
 
+def find_open_duplicate(run_id, situation):
+    """Return the advice_id of an already-open record with the same situation, if any.
+
+    Used to stop monitor restarts (or repeated polls after a restart) from writing the
+    same urgent advice again and again.
+    """
+    for rec in read_advice(run_id=run_id, status="open"):
+        if rec.get("situation") == situation:
+            return rec.get("advice_id")
+    return None
+
+
 def read_advice(run_id=None, status=None):
     """Read advice records, optionally filtered by run_id or status."""
     _ensure_dir()
