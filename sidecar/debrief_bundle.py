@@ -139,11 +139,90 @@ def _advice_section(advice_records):
     out = []
     for rec in advice_records:
         out.append(
-            f"- {rec.get('advice_id')} | {rec.get('timestamp')} | trigger={rec.get('trigger')} "
+            f"- {rec.get('advice_id')} | day={rec.get('snapshot_day')} | {rec.get('timestamp')} | trigger={rec.get('trigger')} "
             f"| severity={rec.get('severity')} | status={rec.get('status')} | auto_paused={rec.get('auto_paused')}"
         )
         out.append(f"  situation: {rec.get('situation', '')}")
     out.append("")
+    return out
+
+
+FOOD_KEYS = ("meal", "rice", "corn", "potato", "berry", "meat", "bread", "kibble")
+
+
+def _food_units(snap):
+    total = 0
+    for r in (snap.get("resources") or {}).get("resources") or []:
+        label = str(r.get("label") or r.get("defName") or "").lower()
+        if any(k in label for k in FOOD_KEYS):
+            total += r.get("count") or 0
+    return total
+
+
+def _event_digest(snapshots, advice_records):
+    """Transitions between daily snapshots: what changed, not what the day looked like.
+
+    The timeline shows daily stills; this section names the changes (new alerts, injuries,
+    downed pawns, food swings) and the urgent advice that fired between snapshots.
+    """
+    events = []
+    prev_alerts = set()
+    prev_hp = {}
+    prev_food = None
+    for snap in snapshots:
+        label = _day_label(snap)
+        cond = snap.get("conditions") or {}
+        hour = cond.get("hour")
+        alerts = {a.get("label") for a in (snap.get("alerts") or {}).get("activeAlerts") or [] if a.get("label")}
+        new = sorted(alerts - prev_alerts)
+        if new:
+            events.append((label, hour, "new alerts: " + "; ".join(new)))
+        for c in _colonists(snap):
+            name = c.get("name")
+            hp = c.get("health")
+            old = prev_hp.get(name)
+            if old is not None and hp is not None and old - hp >= 10:
+                events.append((label, hour, f"{name} health {old}% -> {hp}% (injury)"))
+            if c.get("downed"):
+                events.append((label, hour, f"{name} DOWNED"))
+            if hp is not None:
+                prev_hp[name] = hp
+        food = _food_units(snap)
+        if prev_food is not None and food >= 0:
+            if prev_food - food >= max(20, prev_food * 0.5):
+                events.append((label, hour, f"food stock fell {prev_food} -> {food} units"))
+            elif food - prev_food >= max(50, prev_food * 2):
+                events.append((label, hour, f"food stock jumped {prev_food} -> {food} units"))
+        prev_food = food
+        prev_alerts = alerts
+
+    urgent = [r for r in advice_records or [] if r.get("trigger") == "reflex" and r.get("severity") == "urgent"]
+    out = []
+    if events:
+        out.append("Transitions between snapshots:")
+        out.append("")
+        for label, hour, text in events:
+            when = label + (f", hour {hour}" if hour is not None else "")
+            out.append(f"- {when}: {text}")
+        out.append("")
+    else:
+        out.append("(no transitions detected between snapshots)")
+        out.append("")
+    if urgent:
+        out.append("Urgent advice recorded (in-game day from the monitor, real timestamp in section 7):")
+        out.append("")
+        grouped = []
+        for rec in urgent:
+            text = re.sub(r"<[^>]+>", "", str(rec.get("situation") or "")).strip()
+            key = (rec.get("snapshot_day"), text)
+            if grouped and grouped[-1][0] == key:
+                grouped[-1][1] += 1
+            else:
+                grouped.append([key, 1, rec.get("status")])
+        for (day, text), count, status in grouped:
+            suffix = f" ({count}x)" if count > 1 else ""
+            out.append(f"- {day}: {text}{suffix} [{status}]")
+        out.append("")
     return out
 
 
@@ -249,10 +328,13 @@ def build_bundle(snapshots_dir, debriefs_dir, run_id, advice_records=None, meta=
     lines.append("## 5. Colony timeline")
     lines.append("")
     lines.extend(timeline if timeline else ["(no valid snapshots)", ""])
-    lines.append("## 6. Advice log")
+    lines.append("## 6. Notable changes (event digest)")
+    lines.append("")
+    lines.extend(_event_digest(snapshots, advice_records or []))
+    lines.append("## 7. Advice log")
     lines.append("")
     lines.extend(_advice_section(advice_records or []))
-    lines.append("## 7. Task")
+    lines.append("## 8. Task")
     lines.append("")
     lines.append("Produce Section A (JSON array) and Section B (markdown summary) as described in the instructions.")
     lines.append("")

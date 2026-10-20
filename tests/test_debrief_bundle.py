@@ -45,7 +45,7 @@ class TestDebriefBundle(unittest.TestCase):
         text = open(bundle, encoding="utf-8").read()
         for section in ["## 1. Instructions", "## 2. Run metadata", "## 3. Wiki facts",
                         "## 4. Claims that are NOT verified", "## 5. Colony timeline",
-                        "## 6. Advice log", "## 7. Task"]:
+                        "## 6. Notable changes", "## 7. Advice log", "## 8. Task"]:
             self.assertIn(section, text)
 
     def test_invalid_snapshot_is_skipped_and_reported(self):
@@ -108,6 +108,27 @@ class TestDebriefBundle(unittest.TestCase):
             self.assertNotIn("outcome: not stated by the user", text)
         finally:
             db.BASE_DIR = old_base
+
+    def test_event_digest_reports_transitions_and_urgent_advice(self):
+        snaps = os.path.join(self.tmp, "events")
+        os.makedirs(snaps)
+        first = valid_snapshot("1st of Aprimay, 5500")
+        first["alerts"] = {"activeAlerts": []}
+        second = valid_snapshot("2nd of Aprimay, 5500")
+        second["alerts"] = {"activeAlerts": [{"label": "Low food"}]}
+        second["colonists"]["colonists"][0]["health"] = 70
+        json.dump(first, open(os.path.join(snaps, "day-1.json"), "w"))
+        json.dump(second, open(os.path.join(snaps, "day-2.json"), "w"))
+
+        rec = {"advice_id": "adv-9", "snapshot_day": "2nd of Aprimay, 5500", "timestamp": "t",
+               "trigger": "reflex", "severity": "urgent", "status": "helped", "auto_paused": True,
+               "situation": "Fire!"}
+        bundle, _ = build_bundle(snaps, self.debs, "t-events", advice_records=[rec])
+        text = open(bundle, encoding="utf-8").read()
+
+        self.assertIn("new alerts: Low food", text)
+        self.assertIn("health 100% -> 70%", text)
+        self.assertIn("2nd of Aprimay, 5500: Fire!", text)
 
 
 if __name__ == "__main__":
