@@ -61,3 +61,13 @@
 - **`daysPassed` = floor(ticksGame / 60000)**, so the run-length check fires 24 in-game hours after the previous increment, not at calendar midnight.
 - **Quest colonists wander** without an allowed area; the Hunted Knight walked ~100 cells to a river and was downed by a manhunter rat.
 
+### 2026-10-19 (run-002, player corrections)
+
+Confirmed by the player after the run — these are ground truth, not inferences from snapshots:
+
+- **Research cannot be queued in vanilla.** There is one active project and it is set by hand; the "Need research project" alert means the bench is idle. A multi-project queue is a mod feature, so the fix is deciding the next project in advance, not queueing.
+- **A fire during a raid is arson.** The 12th Aprimay fire was lit by the raider, not by a wooden wall or a torch lamp. Firefighting is part of the battle, not cleanup afterwards.
+- **Protection quests end when the target boards the shuttle** — the player had to order Antigonos into the vehicle when it landed next to the base. Until then he was a guest to keep alive, not a colonist to settle in; he had 18% mood and no weapon, and the "No acceptable food" alert was about his own restrictions.
+- **The downing on 1st of Jugust happened before he joined**: he was chased and downed while still a quest guest, hence the rescue away from base.
+
+
