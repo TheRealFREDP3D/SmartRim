@@ -1,4 +1,4 @@
-# RimWorld Counselor Sidecar — Reflex Monitor Launcher
+﻿# SmartRim Sidecar — Reflex Monitor Launcher
 # Adviser on (default): .\start-monitor.ps1
 # Adviser off:          .\start-monitor.ps1 -ObserveOnly
 param(
@@ -8,6 +8,16 @@ $ErrorActionPreference = "Stop"
 
 $monitorScript = "sidecar\monitor.py"
 $logFile = "memory\monitor.log"
+
+# Rotate oversized log files to keep them manageable
+if (Test-Path $logFile) {
+    $size = (Get-Item $logFile).Length
+    if ($size -gt 5MB) {
+        $archive = "memory\monitor.$(Get-Date -Format 'yyyyMMdd-HHmmss').log"
+        Move-Item $logFile $archive -Force
+        Write-Host "Rotated oversized log to $archive" -ForegroundColor Yellow
+    }
+}
 
 $venvPython = Join-Path $PSScriptRoot ".venv\Scripts\python.exe"
 $pythonExe = if (Test-Path $venvPython) { $venvPython } else { "python" }

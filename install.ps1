@@ -1,7 +1,7 @@
-# RimWorld Counselor Sidecar — Installer
+﻿# SmartRim Sidecar — Installer
 $ErrorActionPreference = "Stop"
 
-Write-Host "=== RimWorld Counselor Sidecar Installer ===" -ForegroundColor Cyan
+Write-Host "=== SmartRim Installer ===" -ForegroundColor Cyan
 
 # Prefer the project venv if present
 $venvPython = Join-Path $PSScriptRoot ".venv\Scripts\python.exe"

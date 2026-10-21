@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://rimworld-counselor.local/schemas/snapshot.schema.json",
+  "$id": "https://smartrim.local/schemas/snapshot.schema.json",
   "title": "Colony snapshot",
   "description": "One timestamped observation of a colony, written by the sidecar monitor (or by hand at session end).",
   "type": "object",

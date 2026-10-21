@@ -24,15 +24,16 @@ MOOD_MAJOR_THRESHOLD = int(os.getenv("MOOD_MAJOR_THRESHOLD", "20"))
 MOOD_EXTREME_THRESHOLD = int(os.getenv("MOOD_EXTREME_THRESHOLD", "5"))
 MOOD_THRESHOLD = MOOD_MINOR_THRESHOLD
 
-# Legacy aliases (kept for .env compatibility)
-HEALTH_THRESHOLD = int(os.getenv("HEALTH_THRESHOLD", "50"))
+# (Threshold names standardized: MOOD_*_THRESHOLD / HEALTH_THRESHOLD)
 
 URGENT_KEYWORDS = ["fire", "predator", "raid", "attack", "downed", "berserk", "pyromaniac"]
 
 # Optional LLM provider for debrief generation (Phase 1 optional)
+# Providers: openai | anthropic | ollama
 LLM_API_KEY = os.getenv("LLM_API_KEY") or os.getenv("OPENAI_API_KEY") or os.getenv("ANTHROPIC_API_KEY")
-LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openai")  # openai | anthropic
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openai")  # openai | anthropic | ollama
 LLM_MODEL = os.getenv("LLM_MODEL", "gpt-4o-mini")
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 
 # Run identity for advice logging
 RUN_ID = os.getenv("RUN_ID", "current-run")

@@ -366,9 +366,10 @@ def render_markdown(path=None):
     return "\n".join(lines)
 
 
-if __name__ == "__main__":
+def main(argv=None):
     import sys
-    cmd = sys.argv[1] if len(sys.argv) > 1 else "help"
+    argv = argv if argv is not None else sys.argv
+    cmd = argv[1] if len(argv) > 1 else "help"
     if cmd == "validate":
         errs = validate_all()
         if errs:
@@ -379,7 +380,7 @@ if __name__ == "__main__":
     elif cmd == "render":
         print(render_markdown())
     elif cmd == "retrieve":
-        path = sys.argv[2] if len(sys.argv) > 2 else None
+        path = argv[2] if len(argv) > 2 else None
         if path:
             sit = json.load(open(path))
         else:
@@ -387,9 +388,13 @@ if __name__ == "__main__":
         for l in retrieve(sit):
             print(l.get("id"), l.get("title"), f"(conf {l.get('confidence')})")
     elif cmd == "build-situation":
-        snap = json.load(open(sys.argv[2])) if len(sys.argv) > 2 else {}
-        alerts = json.load(open(sys.argv[3])) if len(sys.argv) > 3 else []
+        snap = json.load(open(argv[2])) if len(argv) > 2 else {}
+        alerts = json.load(open(argv[3])) if len(argv) > 3 else []
         sit = build_situation(snap.get("summary", snap), alerts)
         print(json.dumps(sit, indent=2))
     else:
         print("usage: lessons.py validate | render | retrieve <sit.json> | build-situation <snap.json> <alerts.json>")
+
+
+if __name__ == "__main__":
+    main()

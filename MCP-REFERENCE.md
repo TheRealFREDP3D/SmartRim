@@ -14,7 +14,7 @@ This project uses a Model Context Protocol (MCP) server running inside RimWorld 
 Load the helper at the start of each session:
 
 ```powershell
-. C:\Users\fred\Desktop\RimWorld Consellor\RimAutonomous\mcp-helper.ps1
+. C:\Users\fred\Desktop\RimWorld Consellor\SmartRim\mcp-helper.ps1
 ```
 
 Then use natural commands:

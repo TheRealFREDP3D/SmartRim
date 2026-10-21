@@ -1,4 +1,4 @@
-# RimWorld Counselor Sidecar — Stop Reflex Monitor
+﻿# SmartRim Sidecar — Stop Reflex Monitor
 $procs = Get-CimInstance Win32_Process -Filter "Name='python.exe'" |
     Where-Object { $_.CommandLine -like "*monitor.py*" }
 if (-not $procs) {

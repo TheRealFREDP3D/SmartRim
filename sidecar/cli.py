@@ -1,4 +1,4 @@
-"""RimWorld Counselor CLI - Command-line interface for game interaction."""
+"""SmartRim CLI - Command-line interface for game interaction."""
 
 import sys
 import json

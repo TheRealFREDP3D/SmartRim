@@ -1,4 +1,4 @@
-"""RimWorld Counselor - Reusable tool library for game interaction via MCP."""
+"""SmartRim - Reusable tool library for game interaction via MCP."""
 
 import json
 import os

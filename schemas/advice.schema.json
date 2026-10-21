@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://rimworld-counselor.local/schemas/advice.schema.json",
+  "$id": "https://smartrim.local/schemas/advice.schema.json",
   "title": "Advice record",
   "description": "One piece of advice given by the counselor or its reflex layer, with its trigger, rationale, and (later) outcome.",
   "type": "object",

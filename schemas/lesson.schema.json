@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://rimworld-counselor.local/schemas/lesson.schema.json",
+  "$id": "https://smartrim.local/schemas/lesson.schema.json",
   "title": "Lesson",
   "description": "One structured lesson in the counselor's memory store. JSONL: one object per line in memory/lessons.jsonl.",
   "type": "object",

@@ -1,0 +1,13 @@
+repos:
+  - repo: local
+    hooks:
+      - id: validate-lessons
+        name: Validate lessons.jsonl
+        entry: python sidecar/lessons.py validate
+        language: system
+        pass_filenames: false
+      - id: pytest
+        name: Run test suite
+        entry: python -m pytest
+        language: system
+        pass_filenames: false
