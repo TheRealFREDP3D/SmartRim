@@ -1,5 +1,5 @@
 import json, sys
-sys.path.insert(0, r"C:\Users\fred\Desktop\RimWorld Consellor\RimAutonomous\sidecar")
+sys.path.insert(0, r"C:\Users\fred\Desktop\SmartRim\sidecar")
 from counselor import _call
 
 names = ["Taten 'Tater' Stamm", "Baran Gargatosh", "Bran 'Sawyher' Shawb"]

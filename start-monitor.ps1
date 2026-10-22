@@ -1,8 +1,10 @@
-﻿# SmartRim Sidecar — Reflex Monitor Launcher
+# SmartRim Sidecar — Reflex Monitor Launcher
 # Adviser on (default): .\start-monitor.ps1
 # Adviser off:          .\start-monitor.ps1 -ObserveOnly
+# Bypass pre-check:     .\start-monitor.ps1 -Force
 param(
-    [switch]$ObserveOnly
+    [switch]$ObserveOnly,
+    [switch]$Force
 )
 $ErrorActionPreference = "Stop"
 
@@ -36,15 +38,37 @@ if (Test-Path $pidFile) {
     Remove-Item $pidFile -Force -ErrorAction SilentlyContinue
 }
 
-# Check MCP server reachable
+# Pre-flight check: MCP server reachable
+$mcpUrl = "http://localhost:8787/"
+Write-Host "Checking MCP connectivity ($mcpUrl)... " -NoNewline
 try {
-    $response = Invoke-WebRequest -Uri "http://localhost:8787/" -Method POST -Body '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' -ContentType "application/json" -UseBasicParsing -TimeoutSec 3
-    Write-Host "MCP server: OK" -ForegroundColor Green
+    $response = Invoke-WebRequest -Uri $mcpUrl -Method POST -Body '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' -ContentType "application/json" -UseBasicParsing -TimeoutSec 2
+    Write-Host "[OK]" -ForegroundColor Green
 } catch {
-    Write-Host "WARNING: MCP server not reachable at localhost:8787" -ForegroundColor Red
-    Write-Host "Start RimWorld with the RimMolt mod before using the monitor" -ForegroundColor Yellow
-    $continue = Read-Host "Start monitor anyway? (y/N)"
-    if ($continue -ne "y") { exit 1 }
+    Write-Host "[OFFLINE]" -ForegroundColor Red
+    Write-Host ""
+    Write-Host "============================================================" -ForegroundColor Yellow
+    Write-Host "[!] RimWorld MCP Server Not Reachable at $mcpUrl" -ForegroundColor Red
+    Write-Host "============================================================" -ForegroundColor Yellow
+    Write-Host "The reflex monitor requires a live connection to RimWorld." -ForegroundColor Gray
+    Write-Host ""
+    Write-Host "Please ensure:" -ForegroundColor Cyan
+    Write-Host "  1. RimWorld is running." -ForegroundColor White
+    Write-Host "  2. The RimMolt mod is active (listening on port 8787)." -ForegroundColor White
+    Write-Host "  3. A colony / save game is loaded in-game." -ForegroundColor White
+    Write-Host "============================================================" -ForegroundColor Yellow
+    Write-Host ""
+
+    if (-not $Force) {
+        $continue = Read-Host "Start monitor anyway (it will retry every 30s)? (y/N)"
+        if ($continue -notmatch '^[Yy]$') {
+            Write-Host "Startup aborted. Start RimWorld and try again." -ForegroundColor Yellow
+            exit 1
+        }
+        Write-Host "Proceeding with monitor startup..." -ForegroundColor DarkYellow
+    } else {
+        Write-Host "[-Force specified: proceeding with monitor startup]" -ForegroundColor DarkYellow
+    }
 }
 
 # Start monitor in background

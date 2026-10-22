@@ -1,4 +1,4 @@
-path = r"C:\Users\fred\Desktop\RimWorld Consellor\RimAutonomous\sidecar\situation.py"
+path = r"C:\Users\fred\Desktop\SmartRim\sidecar\situation.py"
 s = open(path, encoding="utf-8").read()
 
 old = '''        if cat == "game_alert":

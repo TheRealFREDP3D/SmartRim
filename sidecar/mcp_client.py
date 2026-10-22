@@ -15,6 +15,24 @@ class McpClient:
         self.max_retries = max_retries
         self._last_call = 0.0
 
+    def ping(self, timeout=1.5):
+        """Quick check if MCP server is reachable.
+
+        Returns (True, None) if reachable, or (False, error_message).
+        """
+        payload = {
+            "jsonrpc": "2.0",
+            "id": 0,
+            "method": "tools/list",
+            "params": {},
+        }
+        try:
+            resp = requests.post(self.url, json=payload, timeout=timeout)
+            resp.raise_for_status()
+            return True, None
+        except Exception as e:
+            return False, str(e)
+
     def _throttle(self):
         now = time.time()
         elapsed = now - self._last_call

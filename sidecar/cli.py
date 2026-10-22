@@ -4,7 +4,39 @@ import sys
 import json
 import counselor as c
 
+
+def run_ping(args=None):
+    """Check MCP server status and return a structured dict."""
+    ok, err = c.ping(timeout=1.5)
+    return {
+        "status": "connected" if ok else "offline",
+        "url": getattr(c, "MCP_URL", "http://localhost:8787/"),
+        "error": err,
+    }
+
+
+def check_connection(timeout=1.5):
+    """Quick pre-flight check to verify RimMolt MCP connectivity."""
+    ok, err = c.ping(timeout=timeout)
+    if not ok:
+        print("=" * 64, file=sys.stderr)
+        print("[!] ERROR: Cannot connect to RimWorld MCP server at http://localhost:8787/", file=sys.stderr)
+        print("=" * 64, file=sys.stderr)
+        print("RimWorld / RimMolt does not appear to be running or responding.", file=sys.stderr)
+        print("\nPlease ensure:", file=sys.stderr)
+        print("  1. RimWorld is running.", file=sys.stderr)
+        print("  2. The RimMolt mod is active and listening on port 8787.", file=sys.stderr)
+        print("  3. A colony / save game is loaded in-game.", file=sys.stderr)
+        if err:
+            print(f"\nConnection details: {err}", file=sys.stderr)
+        print("=" * 64, file=sys.stderr)
+        print("Tip: Use '--force' to bypass this check.", file=sys.stderr)
+        return False
+    return True
+
+
 COMMANDS = {
+    "ping": run_ping,
     "status": lambda args: c.game_state(),
     "colonists": lambda args: c.colonists(),
     "alerts": lambda args: c.alerts(),
@@ -37,24 +69,42 @@ COMMANDS = {
 
 
 def main():
-    if len(sys.argv) < 2:
-        print("Usage: python cli.py <command> [args...]")
+    raw_args = sys.argv[1:]
+    force = False
+    if "--force" in raw_args:
+        force = True
+        raw_args.remove("--force")
+
+    if not raw_args:
+        print("Usage: python cli.py [--force] <command> [args...]")
         print(f"Commands: {', '.join(sorted(COMMANDS.keys()))}")
         return
 
-    cmd = sys.argv[1]
-    args = sys.argv[2:]
+    cmd = raw_args[0]
+    args = raw_args[1:]
 
     if cmd not in COMMANDS:
         print(f"Unknown command: {cmd}")
         print(f"Available: {', '.join(sorted(COMMANDS.keys()))}")
+        sys.exit(1)
+
+    # Pre-flight check for all commands except 'ping' (unless --force is passed)
+    if cmd == "ping":
+        result = COMMANDS["ping"](args)
+        print(json.dumps(result, indent=2))
+        if result.get("status") != "connected":
+            sys.exit(1)
         return
+
+    if not force and not check_connection():
+        sys.exit(1)
 
     try:
         result = COMMANDS[cmd](args)
         print(json.dumps(result, indent=2, default=str)[:3000])
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
 
 
 if __name__ == "__main__":

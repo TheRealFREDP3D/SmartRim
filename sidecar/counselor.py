@@ -24,6 +24,14 @@ def _call(name, arguments=None):
 
 # === Game State ===
 
+def ping(timeout=1.5):
+    """Check if the RimMolt MCP server is running and reachable.
+    
+    Returns (True, None) or (False, error_message).
+    """
+    return _client.ping(timeout=timeout)
+
+
 def status():
     """Get full game status including bundled colonists and alerts."""
     return _call("get_status")

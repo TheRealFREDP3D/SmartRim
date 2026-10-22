@@ -17,3 +17,8 @@ memory/candidates/
 scratchpad/
 sessions/*-transcript.md
 Session1-2.zip
+
+# workspace/tooling (not part of the repo)
+/.DEV
+/.kilo
+/.kilocode
