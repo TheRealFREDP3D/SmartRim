@@ -3,6 +3,7 @@ import json
 import os
 import sys
 import time
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
@@ -584,6 +585,143 @@ def _log_urgent(client, status_now, conditions, alerts, urgent, day_label):
     return situation
 
 
+@dataclass
+class PollResult:
+    """Mutable state carried across poll iterations."""
+    last_day: str | None = None
+    snapshotted_day: str | None = None
+    last_say_day: str | None = None
+    last_say_hour: int | None = None
+    consecutive_errors: int = 0
+    poll_count: int = 0
+    urgent_alerts: int = 0
+    auto_pauses: int = 0
+    reflex_snapshots: int = 0
+    run_ended: bool = False
+    last_sig: Any | None = None
+
+
+def poll_once(client: McpClient, state: PollResult) -> PollResult:
+    """Perform one monitoring iteration. Mutates and returns ``state``."""
+    try:
+        conditions = client.call_tool("get_conditions")
+        if not conditions or not isinstance(conditions, dict) or conditions.get("error"):
+            state.consecutive_errors += 1
+            if state.consecutive_errors >= 5:
+                alert_path = os.path.join(ALERTS_DIR, "current.json")
+                with open(alert_path, "w") as f:
+                    json.dump([{"type": "urgent", "category": "system", "message": f"MCP unreachable for {state.consecutive_errors} polls", "timestamp": datetime.now().isoformat()}], f, indent=2)
+            return state
+
+        state.consecutive_errors = 0
+        status_now = client.call_tool("get_status")
+        days_now = status_now.get("daysPassed") if isinstance(status_now, dict) else None
+        if run_length_reached(days_now) and not state.run_ended:
+            marker = write_run_end(
+                client, RUN_ID, days_now, observe_only=OBSERVE_ONLY,
+                urgent_alerts=state.urgent_alerts, auto_pauses=state.auto_pauses,
+                stop_reason="run_length", reflex_snapshots=state.reflex_snapshots,
+            )
+            logger.info(f"RUN COMPLETE at {days_now} days (limit {RUN_DAYS}). Marker: {marker}")
+            state.run_ended = True
+            return state
+
+        current_day = conditions.get("date")
+        current_hour = conditions.get("hour", 0) if isinstance(conditions, dict) else 0
+        day_rolled = False
+
+        # Daily say: display status + advice at configured hours (default 6am and 6pm)
+        try:
+            if isinstance(current_hour, int) and current_hour in SAY_DAILY_HOURS:
+                say_key = (current_day, current_hour)
+                if say_key != (state.last_say_day, state.last_say_hour):
+                    if adviser_acts(OBSERVE_ONLY):
+                        slot = "morning" if current_hour < 12 else "evening"
+                        _say_daily_message(client, conditions, slot=slot)
+                    state.last_say_day = current_day
+                    state.last_say_hour = current_hour
+        except Exception as e:
+            logger.error(f"Daily say check error: {e}")
+
+        if current_day is not None and (state.last_day is None or current_day != state.last_day) and state.snapshotted_day != current_day:
+            path = write_snapshot(client, current_day)
+            logger.info(f"Snapshot written: {path}")
+            state.snapshotted_day = current_day
+            day_rolled = True
+            if adviser_acts(OBSERVE_ONLY):
+                try:
+                    import outcomes
+                    with open(path, encoding="utf-8") as fh:
+                        closed = json.load(fh)
+                    outcomes.close_outcomes(closed.get("summary") or {}, run_id=RUN_ID)
+                except Exception as e:
+                    logger.error(f"outcome close error: {e}")
+        if current_day is not None:
+            state.last_day = current_day
+
+        state.poll_count += 1
+        alerts = run_reflex_checks(client)
+        alert_path = os.path.join(ALERTS_DIR, "current.json")
+        with open(alert_path, "w") as f:
+            json.dump(alerts, f, indent=2)
+
+        if day_rolled and adviser_acts(OBSERVE_ONLY):
+            try:
+                _log_scheduled(client, status_now, conditions, alerts, current_day)
+            except Exception as e:
+                logger.error(f"scheduled advice error: {e}")
+
+        urgent = [a for a in alerts if a.get("type") == "urgent"]
+        _sig = tuple(sorted((a.get("type"), a.get("category"), a.get("message")) for a in alerts))
+        if _sig != state.last_sig:
+            state.last_sig = _sig
+            _save_last_sig(_sig)
+            if urgent:
+                state.urgent_alerts += 1
+                logger.warning(f"{len(alerts)} alert(s) ({len(urgent)} urgent)")
+                if adviser_acts(OBSERVE_ONLY):
+                    logged = True
+                    try:
+                        logged = _log_urgent(client, status_now, conditions, alerts, urgent, current_day) is not None
+                    except Exception as e:
+                        logger.error(f"advice log error: {e}")
+                    try:
+                        client.call_tool("set_speed", {"action": "pause"})
+                        if logged:
+                            state.auto_pauses += 1
+                    except Exception:
+                        pass
+                try:
+                    rpath = write_reflex_snapshot(client)
+                    if rpath:
+                        state.reflex_snapshots += 1
+                        logger.info(f"Reflex snapshot: {rpath}")
+                except Exception as e:
+                    logger.error(f"reflex snapshot error: {e}")
+                if any(a.get("category") == "colony_death" for a in alerts) and not state.run_ended:
+                    marker = write_run_end(
+                        client, RUN_ID, days_now, observe_only=OBSERVE_ONLY,
+                        urgent_alerts=state.urgent_alerts, auto_pauses=state.auto_pauses,
+                        stop_reason="colony_death", reflex_snapshots=state.reflex_snapshots,
+                    )
+                    logger.critical(f"COLONY DEATH. Marker: {marker}")
+                    state.run_ended = True
+            elif alerts:
+                logger.info(f"{len(alerts)} alert(s): " + ", ".join(a.get("message", "") for a in alerts))
+            else:
+                logger.debug("No alerts.")
+
+    except Exception as e:
+        state.consecutive_errors += 1
+        logger.error(f"Error: {e}")
+        if state.consecutive_errors >= 5:
+            alert_path = os.path.join(ALERTS_DIR, "current.json")
+            with open(alert_path, "w") as f:
+                json.dump([{"type": "urgent", "category": "system", "message": f"Monitor error: {e}", "timestamp": datetime.now().isoformat()}], f, indent=2)
+
+    return state
+
+
 def main() -> None:
     global OBSERVE_ONLY
     OBSERVE_ONLY = configure_observe_only()
@@ -591,143 +729,16 @@ def main() -> None:
     if not _acquire_lock():
         return
     client = McpClient(MCP_URL, delay=MCP_DELAY)
-    last_day = None
-    snapshotted_day = None
-    last_say_day = None
-    last_say_hour = None
-    consecutive_errors = 0
-    run_ended = False
-    poll_count = 0
-    urgent_alerts = 0
-    auto_pauses = 0
-    reflex_snapshots = 0
 
     logger.info(f"Reflex monitor started. Polling every {POLL_INTERVAL}s (PID {os.getpid()}) "
                 f"run={RUN_ID} observe_only={OBSERVE_ONLY}")
     logger.info(f"Alerts: {ALERTS_DIR}")
     logger.info(f"Snapshots: {snapshot_dir_for(RUN_ID)}")
-    main._last_sig = _load_last_sig()
 
+    state = PollResult(last_sig=_load_last_sig())
     try:
-        while True:
-            try:
-                conditions = client.call_tool("get_conditions")
-                if not conditions or not isinstance(conditions, dict) or conditions.get("error"):
-                    consecutive_errors += 1
-                    if consecutive_errors >= 5:
-                        alert_path = os.path.join(ALERTS_DIR, "current.json")
-                        with open(alert_path, "w") as f:
-                            json.dump([{"type": "urgent", "category": "system", "message": f"MCP unreachable for {consecutive_errors} polls", "timestamp": datetime.now().isoformat()}], f, indent=2)
-                    time.sleep(POLL_INTERVAL)
-                    continue
-
-                consecutive_errors = 0
-                status_now = client.call_tool("get_status")
-                days_now = status_now.get("daysPassed") if isinstance(status_now, dict) else None
-                if run_length_reached(days_now) and not run_ended:
-                    marker = write_run_end(
-                        client, RUN_ID, days_now, observe_only=OBSERVE_ONLY,
-                        urgent_alerts=urgent_alerts, auto_pauses=auto_pauses,
-                        stop_reason="run_length", reflex_snapshots=reflex_snapshots,
-                    )
-                    logger.info(f"RUN COMPLETE at {days_now} days (limit {RUN_DAYS}). Marker: {marker}")
-                    run_ended = True
-                    break
-
-                current_day = conditions.get("date")
-                current_hour = conditions.get("hour", 0) if isinstance(conditions, dict) else 0
-                day_rolled = False
-
-                # Daily say: display status + advice at configured hours (default 6am and 6pm)
-                try:
-                    if isinstance(current_hour, int) and current_hour in SAY_DAILY_HOURS:
-                        say_key = (current_day, current_hour)
-                        if say_key != (last_say_day, last_say_hour):
-                            if adviser_acts(OBSERVE_ONLY):
-                                slot = "morning" if current_hour < 12 else "evening"
-                                _say_daily_message(client, conditions, slot=slot)
-                            last_say_day = current_day
-                            last_say_hour = current_hour
-                except Exception as e:
-                    logger.error(f"Daily say check error: {e}")
-
-                if current_day is not None and (last_day is None or current_day != last_day) and snapshotted_day != current_day:
-                    path = write_snapshot(client, current_day)
-                    logger.info(f"Snapshot written: {path}")
-                    snapshotted_day = current_day
-                    day_rolled = True
-                    if adviser_acts(OBSERVE_ONLY):
-                        try:
-                            import outcomes
-                            with open(path, encoding="utf-8") as fh:
-                                closed = json.load(fh)
-                            outcomes.close_outcomes(closed.get("summary") or {}, run_id=RUN_ID)
-                        except Exception as e:
-                            logger.error(f"outcome close error: {e}")
-                if current_day is not None:
-                    last_day = current_day
-
-                poll_count += 1
-                alerts = run_reflex_checks(client)
-                alert_path = os.path.join(ALERTS_DIR, "current.json")
-                with open(alert_path, "w") as f:
-                    json.dump(alerts, f, indent=2)
-
-                if day_rolled and adviser_acts(OBSERVE_ONLY):
-                    try:
-                        _log_scheduled(client, status_now, conditions, alerts, current_day)
-                    except Exception as e:
-                        logger.error(f"scheduled advice error: {e}")
-
-                urgent = [a for a in alerts if a.get("type") == "urgent"]
-                _sig = tuple(sorted((a.get("type"), a.get("category"), a.get("message")) for a in alerts))
-                if _sig != getattr(main, "_last_sig", None):
-                    main._last_sig = _sig
-                    _save_last_sig(_sig)
-                    if urgent:
-                        urgent_alerts += 1
-                        logger.warning(f"{len(alerts)} alert(s) ({len(urgent)} urgent)")
-                        if adviser_acts(OBSERVE_ONLY):
-                            logged = True
-                            try:
-                                logged = _log_urgent(client, status_now, conditions, alerts, urgent, current_day) is not None
-                            except Exception as e:
-                                logger.error(f"advice log error: {e}")
-                            try:
-                                client.call_tool("set_speed", {"action": "pause"})
-                                if logged:
-                                    auto_pauses += 1
-                            except Exception:
-                                pass
-                        try:
-                            rpath = write_reflex_snapshot(client)
-                            if rpath:
-                                reflex_snapshots += 1
-                                logger.info(f"Reflex snapshot: {rpath}")
-                        except Exception as e:
-                            logger.error(f"reflex snapshot error: {e}")
-                        if any(a.get("category") == "colony_death" for a in alerts) and not run_ended:
-                            marker = write_run_end(
-                                client, RUN_ID, days_now, observe_only=OBSERVE_ONLY,
-                                urgent_alerts=urgent_alerts, auto_pauses=auto_pauses,
-                                stop_reason="colony_death", reflex_snapshots=reflex_snapshots,
-                            )
-                            logger.critical(f"COLONY DEATH. Marker: {marker}")
-                            run_ended = True
-                            break
-                    elif alerts:
-                        logger.info(f"{len(alerts)} alert(s): " + ", ".join(a.get("message", "") for a in alerts))
-                    else:
-                        logger.debug("No alerts.")
-
-            except Exception as e:
-                consecutive_errors += 1
-                logger.error(f"Error: {e}")
-                if consecutive_errors >= 5:
-                    alert_path = os.path.join(ALERTS_DIR, "current.json")
-                    with open(alert_path, "w") as f:
-                        json.dump([{"type": "urgent", "category": "system", "message": f"Monitor error: {e}", "timestamp": datetime.now().isoformat()}], f, indent=2)
-
+        while not state.run_ended:
+            state = poll_once(client, state)
             time.sleep(POLL_INTERVAL)
     finally:
         _release_lock()

@@ -7,7 +7,7 @@ SIDEcar = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 sys.path.insert(0, SIDEcar)
 
 from debrief import generate_debrief
-from monitor import normalize_snapshot, run_reflex_checks
+from monitor import PollResult, normalize_snapshot, poll_once, run_reflex_checks
 
 
 class FakeClient:
@@ -90,6 +90,54 @@ class TestNormalizeSnapshot(unittest.TestCase):
         # 4 meals / (2 colonists * 2 meals per day) = 1.0 day
         self.assertEqual(out["summary"]["food_days"], 1.0)
 
+
+class TestPollOnce(unittest.TestCase):
+    def _client(self, snapshot):
+        return FakeClient(snapshot)
+
+    def test_day_rolled(self):
+        snapshot = {
+            "status": {"colonistCount": 3, "daysPassed": 2, "loaded": True, "programState": "Playing"},
+            "conditions": {"date": "3rd of Aprimay, 5500", "hour": 6},
+            "colonists": {"colonists": [{"name": "A", "mood": 80, "health": 100}]},
+            "resources": {"resources": []},
+            "alerts": {"activeAlerts": []},
+            "research": {},
+        }
+        client = self._client(snapshot)
+        state = PollResult(last_day=None, snapshotted_day=None)
+        new = poll_once(client, state)
+        self.assertEqual(new.snapshotted_day, "3rd of Aprimay, 5500")
+        self.assertEqual(new.last_day, "3rd of Aprimay, 5500")
+        self.assertFalse(new.run_ended)
+
+    def test_run_length_reached(self):
+        snapshot = {
+            "status": {"colonistCount": 3, "daysPassed": 11, "loaded": True, "programState": "Playing"},
+            "conditions": {"date": "12th of Aprimay, 5500", "hour": 6},
+            "colonists": {"colonists": [{"name": "A", "mood": 80, "health": 100}]},
+            "resources": {"resources": []},
+            "alerts": {"activeAlerts": []},
+            "research": {},
+        }
+        client = self._client(snapshot)
+        state = PollResult()
+        new = poll_once(client, state)
+        self.assertTrue(new.run_ended)
+
+    def test_urgent_alert_fired(self):
+        snapshot = {
+            "status": {"colonistCount": 3, "daysPassed": 2, "loaded": True, "programState": "Playing"},
+            "conditions": {"date": "3rd of Aprimay, 5500", "hour": 6},
+            "colonists": {"colonists": [{"name": "A", "mood": 1, "health": 100, "downed": False}]},
+            "resources": {"resources": []},
+            "alerts": {"activeAlerts": [{"label": "Raid: enemies"}]},
+            "research": {},
+        }
+        client = self._client(snapshot)
+        state = PollResult(last_day="3rd of Aprimay, 5500", snapshotted_day="3rd of Aprimay, 5500")
+        new = poll_once(client, state)
+        self.assertGreaterEqual(new.urgent_alerts, 1)
 
 class TestDebrief(unittest.TestCase):
     def test_generate_debrief_with_fixture(self):
