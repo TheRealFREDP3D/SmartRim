@@ -17,6 +17,7 @@ memory/candidates/
 scratchpad/
 sessions/*-transcript.md
 Session1-2.zip
+*.zip
 
 # workspace/tooling (not part of the repo)
 
