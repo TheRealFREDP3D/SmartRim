@@ -1,7 +1,7 @@
 """Outcome tracking: close open advice records at each daily snapshot and update lesson confidence."""
 
-import os
 import json
+import os
 from datetime import datetime
 
 try:
@@ -16,7 +16,7 @@ def _read_advice():
     if not os.path.exists(ADVICE_FILE):
         return []
     out = []
-    with open(ADVICE_FILE, "r", encoding="utf-8") as f:
+    with open(ADVICE_FILE, encoding="utf-8") as f:
         for line in f:
             line = line.strip()
             if not line:
@@ -28,15 +28,14 @@ def _read_advice():
 def _write_advice(records):
     os.makedirs(os.path.dirname(ADVICE_FILE), exist_ok=True)
     with open(ADVICE_FILE, "w", encoding="utf-8") as f:
-        for rec in records:
-            f.write(json.dumps(rec, default=str) + "\n")
+        f.writelines(json.dumps(rec, default=str) + "\n" for rec in records)
 
 
 def _read_lessons():
     if not os.path.exists(LESSONS_FILE):
         return []
     out = []
-    with open(LESSONS_FILE, "r", encoding="utf-8") as f:
+    with open(LESSONS_FILE, encoding="utf-8") as f:
         for line in f:
             line = line.strip()
             if not line:
@@ -47,13 +46,11 @@ def _read_lessons():
 
 def _write_lessons(lessons):
     with open(LESSONS_FILE, "w", encoding="utf-8") as f:
-        for l in lessons:
-            f.write(json.dumps(l, default=str) + "\n")
+        f.writelines(json.dumps(lesson, default=str) + "\n" for lesson in lessons)
 
 
 def _close_advice(advice, snapshot_summary):
     """Return (new_status, outcome_note) for an open advice record."""
-    situation_risks = set()
     # Determine if the risk cleared or worsened
     threats = set()
     alerts = snapshot_summary.get("alerts", [])
@@ -77,12 +74,13 @@ def _close_advice(advice, snapshot_summary):
     # Medical risk (only if this advice is about medicine/health)
     if "medicine" in trigger_text or "health" in trigger_text or "injur" in trigger_text:
         med = snapshot_summary.get("medicine_count")
-        if med is not None and med == 0:
-            colonists = snapshot_summary.get("colonists", [])
-            if isinstance(colonists, list):
-                injured = any((c.get("health") or 100) < 90 for c in colonists if isinstance(c, dict))
-                if injured:
-                    return "failed", "medicine 0 and colonist injured"
+        if med is not None:
+            min_health = snapshot_summary.get("min_health")
+            injured = min_health is not None and min_health < 90
+            if med == 0 and injured:
+                return "failed", "medicine 0 and colonist injured"
+            if med >= 5 and not injured:
+                return "helped", f"medicine stock {med}, no injured colonists"
         return None, None
 
     # Mood risk (only if this advice is about mood)
@@ -114,7 +112,7 @@ def close_outcomes(snapshot_summary, run_id=None):
     """Close open advice records and update lesson confidence. Idempotent."""
     records = _read_advice()
     lessons = _read_lessons()
-    lesson_map = {l["id"]: l for l in lessons}
+    lesson_map = {lesson["id"]: lesson for lesson in lessons}
 
     changed = False
     for rec in records:
@@ -137,10 +135,10 @@ def close_outcomes(snapshot_summary, run_id=None):
                 continue
             if new_status == "helped":
                 lesson["times_helped"] = lesson.get("times_helped", 0) + 1
-                lesson["confidence"] = min(1.0, lesson.get("confidence", 0.3) + 0.1)
+                lesson["confidence"] = round(min(1.0, lesson.get("confidence", 0.3) + 0.1), 2)
             elif new_status == "failed":
                 lesson["times_failed"] = lesson.get("times_failed", 0) + 1
-                lesson["confidence"] = max(0.0, lesson.get("confidence", 0.3) - 0.15)
+                lesson["confidence"] = round(max(0.0, lesson.get("confidence", 0.3) - 0.15), 2)
                 if lesson.get("times_failed", 0) >= 3 and lesson.get("times_failed", 0) > lesson.get("times_helped", 0):
                     lesson["status"] = "needs_review"
             lesson["times_applied"] = lesson.get("times_applied", 0) + 1

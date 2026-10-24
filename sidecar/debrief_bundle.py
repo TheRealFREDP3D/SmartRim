@@ -6,9 +6,9 @@ Writes one self-contained markdown file per run that can be pasted into any chat
 The wiki facts block is copied from memory/wiki-audit-20261018.md (verified entries only).
 """
 
+import glob
 import json
 import os
-import glob
 import re
 from datetime import datetime
 
@@ -93,7 +93,7 @@ def _parse_day(day_str):
 def _make_sort_key(snap):
     cond = snap.get("conditions") or {}
     hour = cond.get("hour")
-    return _parse_day(_day_label(snap)) + (hour if isinstance(hour, int) else 0,)
+    return (*_parse_day(_day_label(snap)), hour if isinstance(hour, int) else 0)
 
 
 def _colonists(snap):
@@ -112,7 +112,7 @@ def _is_valid(snap):
     if cc and cc > 0:
         return True
     day_label = str(_day_label(snap) or "").lower()
-    if day_label.startswith("end") or day_label.startswith("reflex") or day_label.startswith("day"):
+    if day_label.startswith(("end", "reflex", "day")):
         if cc == 0 or cc is None:
             return False
         return bool(cc)
@@ -496,8 +496,9 @@ def build_bundle(snapshots_dir, debriefs_dir, run_id, advice_records=None, meta=
 
 if __name__ == "__main__":
     import sys
-    from config import SNAPSHOTS_DIR, DEBRIEFS_DIR
+
     from advice_log import read_advice
+    from config import DEBRIEFS_DIR, SNAPSHOTS_DIR
 
     run = sys.argv[1] if len(sys.argv) > 1 else "current-run"
     snap_dir = SNAPSHOTS_DIR

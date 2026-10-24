@@ -1,8 +1,8 @@
-import os
-import sys
-import json
 import glob
+import json
+import os
 import re
+import sys
 from datetime import datetime
 
 try:
@@ -170,7 +170,7 @@ def generate_debrief(snapshots_dir, debriefs_dir, run_name=None):
 
 
 if __name__ == "__main__":
-    from config import SNAPSHOTS_DIR, DEBRIEFS_DIR
+    from config import DEBRIEFS_DIR, SNAPSHOTS_DIR
 
     run_name = sys.argv[1] if len(sys.argv) > 1 else None
     snap_dir = SNAPSHOTS_DIR
@@ -179,7 +179,7 @@ if __name__ == "__main__":
         if glob.glob(os.path.join(nested, "day-*.json")):
             snap_dir = nested
     generate_debrief(snap_dir, DEBRIEFS_DIR, run_name)
-    from debrief_bundle import build_bundle
     from advice_log import read_advice
+    from debrief_bundle import build_bundle
     rid = run_name or "current-run"
     print("bundle:", build_bundle(snap_dir, DEBRIEFS_DIR, rid, read_advice(run_id=rid)))

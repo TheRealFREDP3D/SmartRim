@@ -1,7 +1,8 @@
 """SmartRim CLI - Command-line interface for game interaction."""
 
-import sys
 import json
+import sys
+
 import counselor as c
 
 

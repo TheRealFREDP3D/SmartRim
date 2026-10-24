@@ -1,15 +1,34 @@
-import time
+import glob
 import json
 import os
 import sys
-import glob
+import time
 from datetime import datetime
+from typing import Any
+
+from config import (
+    ALERTS_DIR,
+    HEALTH_THRESHOLD,
+    MCP_DELAY,
+    MCP_URL,
+    MOOD_EXTREME_THRESHOLD,
+    MOOD_MAJOR_THRESHOLD,
+    MOOD_MINOR_THRESHOLD,
+    POLL_INTERVAL,
+    RUN_DAYS,
+    RUN_ID,
+    SAY_DAILY_HOURS,
+    SNAPSHOTS_DIR,
+    URGENT_KEYWORDS,
+)
+from logging_config import get_logger
 from mcp_client import McpClient
-from config import *
+
+logger = get_logger(__name__)
 
 try:
-    import situation as _situation
     import lessons as _lessons
+    import situation as _situation
 except Exception:
     _situation = None
     _lessons = None
@@ -29,7 +48,7 @@ except Exception:
 REFLEX_SNAPSHOT_LIMIT = 40
 
 
-def ensure_dirs():
+def ensure_dirs() -> None:
     os.makedirs(ALERTS_DIR, exist_ok=True)
     os.makedirs(SNAPSHOTS_DIR, exist_ok=True)
 
@@ -37,7 +56,7 @@ def ensure_dirs():
 SIG_FILE = os.path.join(ALERTS_DIR, "last_signature.json")
 
 
-def _load_last_sig():
+def _load_last_sig() -> dict[str, Any] | None:
     """Load the last alert signature so a monitor restart does not re-log the same urgent set."""
     try:
         with open(SIG_FILE, encoding="utf-8") as f:
@@ -49,7 +68,7 @@ def _load_last_sig():
     return None
 
 
-def _save_last_sig(sig):
+def _save_last_sig(sig: dict[str, Any]) -> None:
     try:
         os.makedirs(ALERTS_DIR, exist_ok=True)
         with open(SIG_FILE, "w", encoding="utf-8") as f:
@@ -65,8 +84,8 @@ def _is_urgent_label(label):
 
 
 
-def run_reflex_checks(client):
-    alerts = []
+def run_reflex_checks(client: McpClient) -> list[dict[str, Any]]:
+    alerts: list[dict[str, Any]] = []
     timestamp = datetime.now().isoformat()
 
     try:
@@ -96,7 +115,6 @@ def run_reflex_checks(client):
             mood = colonist.get("mood")
             health = colonist.get("health")
             downed = colonist.get("downed")
-            cid = colonist.get("id")
 
             if downed:
                 alerts.append({"type": "urgent", "category": "downed", "message": f"{name} is DOWNED", "timestamp": timestamp})
@@ -175,7 +193,7 @@ def run_reflex_checks(client):
         try:
             if isinstance(bundled_alerts, dict):
                 threat_labels = [a.get("label", "") for a in bundled_alerts.get("activeAlerts", [])]
-                if any("raid" in l.lower() or "attack" in l.lower() or "enemy" in l.lower() for l in threat_labels):
+                if any("raid" in lbl.lower() or "attack" in lbl.lower() or "enemy" in lbl.lower() for lbl in threat_labels):
                     for colonist in colonists:
                         job = str(colonist.get("job", "")).lower()
                         if "sleep" in job or "rest" in job:
@@ -184,12 +202,12 @@ def run_reflex_checks(client):
             pass
 
     except Exception as e:
-        alerts.append({"type": "error", "category": "system", "message": f"Reflex check failed: {str(e)}", "timestamp": timestamp})
+        alerts.append({"type": "error", "category": "system", "message": f"Reflex check failed: {e!s}", "timestamp": timestamp})
 
     return alerts
 
 
-def normalize_snapshot(snapshot):
+def normalize_snapshot(snapshot: dict[str, Any]) -> dict[str, Any]:
     try:
         status = snapshot.get("status", {}) or {}
         conditions = snapshot.get("conditions", {}) or {}
@@ -244,6 +262,26 @@ def normalize_snapshot(snapshot):
         }
     except Exception:
         snapshot["summary"] = {"error": "normalization failed"}
+    # Populate biome from run metadata when available, so biome-scoped lessons can match.
+    try:
+        if isinstance(snapshot.get("summary"), dict) and "error" not in snapshot["summary"]:
+            rid = snapshot.get("run_id")
+            if rid:
+                meta_path = os.path.join(os.path.dirname(ALERTS_DIR), "runs", f"{rid}.meta.json")
+                if os.path.exists(meta_path):
+                    with open(meta_path, encoding="utf-8") as _f:
+                        _meta = json.load(_f)
+                    if isinstance(_meta, dict) and _meta.get("biome"):
+                        snapshot["summary"]["biome"] = _meta.get("biome")
+                else:
+                    end_path = os.path.join(os.path.dirname(ALERTS_DIR), "runs", f"{rid}.end.json")
+                    if os.path.exists(end_path):
+                        with open(end_path, encoding="utf-8") as _f:
+                            _end = json.load(_f)
+                        if isinstance(_end, dict) and _end.get("biome"):
+                            snapshot["summary"]["biome"] = _end.get("biome")
+    except Exception:
+        pass
     return snapshot
 
 
@@ -255,7 +293,7 @@ def snapshot_dir_for(run_id, root=None):
     return os.path.join(root, str(run_id))
 
 
-def write_snapshot(client, day_label, run_id=None, prefix="day", quest_registry_path=None,
+def write_snapshot(client: McpClient, day_label: str, run_id: str | None = None, prefix: str = "day", quest_registry_path: str | None = None,
                    filename_stem=None):
     run_id = RUN_ID if run_id is None else run_id
     status = client.call_tool("get_status")
@@ -312,7 +350,7 @@ def reflex_snapshot_name(now=None):
     return f"reflex-{now.strftime('%Y%m%d-%H%M%S')}"
 
 
-def write_reflex_snapshot(client, run_id=None, limit=REFLEX_SNAPSHOT_LIMIT, quest_registry_path=None):
+def write_reflex_snapshot(client: McpClient, run_id: str | None = None, limit: int = REFLEX_SNAPSHOT_LIMIT, quest_registry_path: str | None = None) -> str | None:
     """Snapshot at the moment an urgent alert fires. Returns the path, or None when capped."""
     run_id = RUN_ID if run_id is None else run_id
     dest = snapshot_dir_for(run_id)
@@ -375,20 +413,19 @@ def _pid_alive(pid):
         return False
 
 
-def _acquire_lock():
+def _acquire_lock() -> bool:
     if os.path.exists(PID_FILE):
         try:
             with open(PID_FILE) as f:
                 old_pid = int(f.read().strip())
             if _pid_alive(old_pid):
-                print(f"Monitor already running (PID {old_pid}). Exiting.")
+                logger.warning(f"Monitor already running (PID {old_pid}). Exiting.")
                 return False
         except (ValueError, OSError):
             pass
-    try:
+    import contextlib
+    with contextlib.suppress(Exception):
         os.makedirs(os.path.dirname(PID_FILE), exist_ok=True)
-    except Exception:
-        pass
     with open(PID_FILE, "w") as f:
         f.write(str(os.getpid()))
     return True
@@ -405,20 +442,19 @@ def _release_lock():
         pass
 
 
-def run_length_reached(days_passed, run_days=None):
+def run_length_reached(days_passed: int, run_days: int | None = None) -> bool:
     run_days = RUN_DAYS if run_days is None else run_days
     return days_passed is not None and days_passed >= run_days
 
 
-def write_run_end(client, run_id, days_passed, observe_only=False, urgent_alerts=0,
+def write_run_end(client: McpClient, run_id: str, days_passed: int, observe_only: bool = False, urgent_alerts: int = 0,
                   auto_pauses=0, stop_reason="run_length", reflex_snapshots=0):
     # Protocol stop. Adviser-on runs pause so the window closes; observe-only runs
     # never pause (observe only, no intervention), even at the end of the run.
     if not observe_only:
-        try:
+        import contextlib
+        with contextlib.suppress(Exception):
             client.call_tool("set_speed", {"action": "pause"})
-        except Exception:
-            pass
     final_day = f"end-day-{days_passed}"
     path = write_snapshot(client, final_day, run_id=run_id)
     status = {}
@@ -474,14 +510,14 @@ def _advice_context(client, status_now, conditions, alerts):
             linked = [lesson.get("id") for lesson in retrieved]
             actions, _ = _situation.rank_actions(alerts, situation, retrieved, limit=5)
         except Exception as e:
-            print(f"situation/lessons error: {e}")
+            logger.error(f"situation/lessons error: {e}")
     return snap_summary, situation, actions, linked
 
 
 OBSERVE_ONLY = os.getenv("OBSERVE_ONLY", "0") == "1"
 
 
-def _say_daily_message(client, conditions, slot=None):
+def _say_daily_message(client: McpClient, conditions: dict[str, Any], slot: str | None = None) -> bool:
     """Display a daily status + advice message via the in-game say command."""
     if _say_daily is None:
         return False
@@ -493,13 +529,13 @@ def _say_daily_message(client, conditions, slot=None):
         message, _ = _say_daily.build_message(slot, use_llm=use_llm)
         result = client.call_tool("say", {"text": message})
         if isinstance(result, dict) and result.get("shown"):
-            print(f"Daily say ({slot}, hour {hour}): displayed {result.get('chars', 0)} chars")
+            logger.info(f"Daily say ({slot}, hour {hour}): displayed {result.get('chars', 0)} chars")
             return True
         else:
-            print(f"Daily say ({slot}): not shown: {result}")
+            logger.warning(f"Daily say ({slot}): not shown: {result}")
             return False
     except Exception as e:
-        print(f"Daily say error: {e}")
+        logger.error(f"Daily say error: {e}")
         return False
 
 
@@ -542,13 +578,13 @@ def _log_urgent(client, status_now, conditions, alerts, urgent, day_label):
         }],
         risks=[{"label": a.get("message", ""), "severity": "urgent"} for a in urgent],
         linked_lessons=linked,
-        reflex_name=",".join(sorted(set(a.get("category", "") for a in urgent))),
+        reflex_name=",".join(sorted({a.get("category", "") for a in urgent})),
         auto_paused=True,
     )
     return situation
 
 
-def main():
+def main() -> None:
     global OBSERVE_ONLY
     OBSERVE_ONLY = configure_observe_only()
     ensure_dirs()
@@ -566,10 +602,10 @@ def main():
     auto_pauses = 0
     reflex_snapshots = 0
 
-    print(f"Reflex monitor started. Polling every {POLL_INTERVAL}s (PID {os.getpid()}) "
-          f"run={RUN_ID} observe_only={OBSERVE_ONLY}")
-    print(f"Alerts: {ALERTS_DIR}")
-    print(f"Snapshots: {snapshot_dir_for(RUN_ID)}")
+    logger.info(f"Reflex monitor started. Polling every {POLL_INTERVAL}s (PID {os.getpid()}) "
+                f"run={RUN_ID} observe_only={OBSERVE_ONLY}")
+    logger.info(f"Alerts: {ALERTS_DIR}")
+    logger.info(f"Snapshots: {snapshot_dir_for(RUN_ID)}")
     main._last_sig = _load_last_sig()
 
     try:
@@ -594,7 +630,7 @@ def main():
                         urgent_alerts=urgent_alerts, auto_pauses=auto_pauses,
                         stop_reason="run_length", reflex_snapshots=reflex_snapshots,
                     )
-                    print(f"RUN COMPLETE at {days_now} days (limit {RUN_DAYS}). Marker: {marker}")
+                    logger.info(f"RUN COMPLETE at {days_now} days (limit {RUN_DAYS}). Marker: {marker}")
                     run_ended = True
                     break
 
@@ -613,39 +649,23 @@ def main():
                             last_say_day = current_day
                             last_say_hour = current_hour
                 except Exception as e:
-                    print(f"Daily say check error: {e}")
+                    logger.error(f"Daily say check error: {e}")
 
+                if current_day is not None and (last_day is None or current_day != last_day) and snapshotted_day != current_day:
+                    path = write_snapshot(client, current_day)
+                    logger.info(f"Snapshot written: {path}")
+                    snapshotted_day = current_day
+                    day_rolled = True
+                    if adviser_acts(OBSERVE_ONLY):
+                        try:
+                            import outcomes
+                            with open(path, encoding="utf-8") as fh:
+                                closed = json.load(fh)
+                            outcomes.close_outcomes(closed.get("summary") or {}, run_id=RUN_ID)
+                        except Exception as e:
+                            logger.error(f"outcome close error: {e}")
                 if current_day is not None:
-                    if last_day is None:
-                        if snapshotted_day != current_day:
-                            path = write_snapshot(client, current_day)
-                            print(f"Snapshot written: {path}")
-                            snapshotted_day = current_day
-                            day_rolled = True
-                            if adviser_acts(OBSERVE_ONLY):
-                                try:
-                                    import outcomes
-                                    with open(path, encoding="utf-8") as fh:
-                                        closed = json.load(fh)
-                                    outcomes.close_outcomes(closed.get("summary") or {}, run_id=RUN_ID)
-                                except Exception as e:
-                                    print(f"outcome close error: {e}")
-                        last_day = current_day
-                    elif current_day != last_day:
-                        if snapshotted_day != current_day:
-                            path = write_snapshot(client, current_day)
-                            print(f"Snapshot written: {path}")
-                            snapshotted_day = current_day
-                            day_rolled = True
-                            if adviser_acts(OBSERVE_ONLY):
-                                try:
-                                    import outcomes
-                                    with open(path, encoding="utf-8") as fh:
-                                        closed = json.load(fh)
-                                    outcomes.close_outcomes(closed.get("summary") or {}, run_id=RUN_ID)
-                                except Exception as e:
-                                    print(f"outcome close error: {e}")
-                        last_day = current_day
+                    last_day = current_day
 
                 poll_count += 1
                 alerts = run_reflex_checks(client)
@@ -657,7 +677,7 @@ def main():
                     try:
                         _log_scheduled(client, status_now, conditions, alerts, current_day)
                     except Exception as e:
-                        print(f"scheduled advice error: {e}")
+                        logger.error(f"scheduled advice error: {e}")
 
                 urgent = [a for a in alerts if a.get("type") == "urgent"]
                 _sig = tuple(sorted((a.get("type"), a.get("category"), a.get("message")) for a in alerts))
@@ -666,13 +686,13 @@ def main():
                     _save_last_sig(_sig)
                     if urgent:
                         urgent_alerts += 1
-                        print(f"{len(alerts)} alert(s) ({len(urgent)} urgent)")
+                        logger.warning(f"{len(alerts)} alert(s) ({len(urgent)} urgent)")
                         if adviser_acts(OBSERVE_ONLY):
                             logged = True
                             try:
                                 logged = _log_urgent(client, status_now, conditions, alerts, urgent, current_day) is not None
                             except Exception as e:
-                                print(f"advice log error: {e}")
+                                logger.error(f"advice log error: {e}")
                             try:
                                 client.call_tool("set_speed", {"action": "pause"})
                                 if logged:
@@ -683,26 +703,26 @@ def main():
                             rpath = write_reflex_snapshot(client)
                             if rpath:
                                 reflex_snapshots += 1
-                                print(f"Reflex snapshot: {rpath}")
+                                logger.info(f"Reflex snapshot: {rpath}")
                         except Exception as e:
-                            print(f"reflex snapshot error: {e}")
+                            logger.error(f"reflex snapshot error: {e}")
                         if any(a.get("category") == "colony_death" for a in alerts) and not run_ended:
                             marker = write_run_end(
                                 client, RUN_ID, days_now, observe_only=OBSERVE_ONLY,
                                 urgent_alerts=urgent_alerts, auto_pauses=auto_pauses,
                                 stop_reason="colony_death", reflex_snapshots=reflex_snapshots,
                             )
-                            print(f"COLONY DEATH. Marker: {marker}")
+                            logger.critical(f"COLONY DEATH. Marker: {marker}")
                             run_ended = True
                             break
                     elif alerts:
-                        print(f"{len(alerts)} alert(s): " + ", ".join(a.get("message", "") for a in alerts))
+                        logger.info(f"{len(alerts)} alert(s): " + ", ".join(a.get("message", "") for a in alerts))
                     else:
-                        print("No alerts.")
+                        logger.debug("No alerts.")
 
             except Exception as e:
                 consecutive_errors += 1
-                print(f"Error: {e}")
+                logger.error(f"Error: {e}")
                 if consecutive_errors >= 5:
                     alert_path = os.path.join(ALERTS_DIR, "current.json")
                     with open(alert_path, "w") as f:

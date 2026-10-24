@@ -7,11 +7,11 @@ Usage:
 
 import json
 import os
-import urllib.request
 import urllib.error
+import urllib.request
 
 try:
-    from config import LLM_PROVIDER, LLM_MODEL, LLM_API_KEY, OLLAMA_BASE_URL
+    from config import LLM_API_KEY, LLM_MODEL, LLM_PROVIDER, OLLAMA_BASE_URL
 except Exception:
     LLM_PROVIDER = os.getenv("LLM_PROVIDER", "ollama")
     LLM_MODEL = os.getenv("LLM_MODEL", "qwen3-rimworld")

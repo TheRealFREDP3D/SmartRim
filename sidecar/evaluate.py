@@ -9,10 +9,10 @@ Usage:
     evaluate.py compare  --runs <id> <id> ... [--write memory/eval-YYYY-MM-DD.md]
 """
 
-import os
-import json
-import glob
 import argparse
+import glob
+import json
+import os
 import statistics
 from datetime import date
 
@@ -154,7 +154,7 @@ def _is_day10(snap):
     if passed == 10:
         return True
     label = str(_day_label(snap) or "")
-    return label.startswith("10th") or label.startswith("10 ")
+    return label.startswith(("10th", "10 "))
 
 
 def _colonists_alive(snap):
@@ -205,7 +205,7 @@ def _is_break(text):
     return any(phrase in text for phrase in _BREAK_PHRASES)
 
 
-def _arm(marker, advice):
+def _arm(marker):
     if marker:
         arm = marker.get("arm")
         if arm in ("on", "off"):
@@ -260,7 +260,7 @@ def summarize_run(run_id, runs_dir, advice_file, snapshots_root=None):
 
     return {
         "run_id": run_id,
-        "arm": _arm(marker, advice),
+        "arm": _arm(marker),
         "days_survived": days_survived,
         "colonists_alive_day10": colonists,
         "lowest_mood": lowest_mood,
@@ -362,10 +362,10 @@ def render_report(rows):
     lines = [
         f"# Evaluation {date.today().isoformat()}",
         "",
-        "Protocol: Crashlanded, Cassandra Classic, Adventure story, flat temperate forest, "
-        "no reload. Adviser-on pauses and logs advice. Adviser-off observes only.",
-        "Both arms pause once at the protocol stop (run length or colony death). "
-        "That stop is not counted as an adviser auto-pause.",
+        ("Protocol: Crashlanded, Cassandra Classic, Adventure story, flat temperate forest, "
+         "no reload. Adviser-on pauses and logs advice. Adviser-off observes only."),
+        ("Both arms pause once at the protocol stop (run length or colony death). "
+         "That stop is not counted as an adviser auto-pause."),
         "",
         "This report is descriptive. Medians and ranges only. No significance claim.",
         "",

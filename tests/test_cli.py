@@ -1,6 +1,6 @@
-import sys
 import os
-from unittest.mock import patch, MagicMock
+import sys
+from unittest.mock import MagicMock, patch
 
 # Ensure sidecar is on sys.path
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -8,9 +8,9 @@ SIDECAR_DIR = os.path.join(BASE_DIR, "sidecar")
 if SIDECAR_DIR not in sys.path:
     sys.path.insert(0, SIDECAR_DIR)
 
-from mcp_client import McpClient
-import counselor
 import cli
+import counselor
+from mcp_client import McpClient
 
 
 def test_mcp_client_ping_success():

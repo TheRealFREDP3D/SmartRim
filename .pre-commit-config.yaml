@@ -6,6 +6,11 @@ repos:
         entry: python sidecar/lessons.py validate
         language: system
         pass_filenames: false
+      - id: ruff
+        name: Ruff lint
+        entry: python -m ruff check sidecar tests
+        language: system
+        pass_filenames: false
       - id: pytest
         name: Run test suite
         entry: python -m pytest

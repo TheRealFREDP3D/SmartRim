@@ -1,16 +1,22 @@
-import os
-import json
 import glob
-from datetime import datetime
+import json
+import os
 import sys
 
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import streamlit as st
 import pandas as pd
 import plotly.express as px
-from config import *
+import streamlit as st
+from config import (
+    ALERTS_DIR,
+    BASE_DIR,
+    MCP_DELAY,
+    MCP_URL,
+    RUN_ID,
+    SNAPSHOTS_DIR,
+)
 
 # Page configuration
 st.set_page_config(
@@ -56,7 +62,7 @@ def load_current_alerts():
     """Load current alerts from the monitor."""
     alert_path = os.path.join(ALERTS_DIR, "current.json")
     if os.path.exists(alert_path):
-        with open(alert_path, 'r', encoding='utf-8') as f:
+        with open(alert_path, encoding='utf-8') as f:
             return json.load(f)
     return []
 
@@ -67,7 +73,7 @@ def load_all_advice():
     advice_path = os.path.join(BASE_DIR, "memory", "advice", "advice.jsonl")
     advice_list = []
     if os.path.exists(advice_path):
-        with open(advice_path, 'r', encoding='utf-8') as f:
+        with open(advice_path, encoding='utf-8') as f:
             for line in f:
                 if line.strip():
                     advice_list.append(json.loads(line))
@@ -80,7 +86,7 @@ def load_lessons():
     lessons_path = os.path.join(BASE_DIR, "memory", "lessons.jsonl")
     lessons_list = []
     if os.path.exists(lessons_path):
-        with open(lessons_path, 'r', encoding='utf-8') as f:
+        with open(lessons_path, encoding='utf-8') as f:
             for line in f:
                 if line.strip():
                     lessons_list.append(json.loads(line))
@@ -94,7 +100,7 @@ def load_runs_metadata():
     runs = []
     if os.path.exists(runs_dir):
         for file in glob.glob(os.path.join(runs_dir, "*.end.json")):
-            with open(file, 'r', encoding='utf-8') as f:
+            with open(file, encoding='utf-8') as f:
                 runs.append(json.load(f))
     return runs
 
@@ -106,7 +112,7 @@ def load_run_snapshots(run_id):
     snapshots = []
     if os.path.exists(snapshot_dir):
         for file in glob.glob(os.path.join(snapshot_dir, "day-*.json")):
-            with open(file, 'r', encoding='utf-8') as f:
+            with open(file, encoding='utf-8') as f:
                 snapshots.append(json.load(f))
         # Sort by day
         snapshots.sort(key=lambda x: x.get('day', ''))
@@ -120,7 +126,7 @@ def load_debriefs():
     debriefs = []
     if os.path.exists(debriefs_dir):
         for file in glob.glob(os.path.join(debriefs_dir, "*.md")):
-            with open(file, 'r', encoding='utf-8') as f:
+            with open(file, encoding='utf-8') as f:
                 content = f.read()
                 debriefs.append({
                     'filename': os.path.basename(file),

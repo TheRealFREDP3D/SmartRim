@@ -72,7 +72,7 @@ class TestRunEndMarker(unittest.TestCase):
         self.assertTrue(os.path.exists(data["final_snapshot"]))
         names = [c[0] for c in client.calls]
         self.assertIn("set_speed", names)
-        pause = [c for c in client.calls if c[0] == "set_speed"][0]
+        pause = next(c for c in client.calls if c[0] == "set_speed")
         self.assertEqual(pause[1], {"action": "pause"})
 
 

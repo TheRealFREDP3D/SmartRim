@@ -1,4 +1,3 @@
-import json
 import os
 import sys
 import unittest
@@ -8,7 +7,13 @@ sys.path.insert(0, SIDECAR)
 
 import lessons
 import situation
-from situation import classify_phase, build_situation, build_threats, build_resources, retrieve
+from situation import (
+    build_resources,
+    build_situation,
+    build_threats,
+    classify_phase,
+    retrieve,
+)
 
 
 class TestClassifyPhase(unittest.TestCase):
@@ -108,20 +113,26 @@ class TestRetrieve(unittest.TestCase):
         sit = {"phase": "early_survival", "difficulty": "Adventure story", "storyteller": "Cassandra Classic", "biome": "any", "threats": ["low_food"], "resources": ["food_under_5_days"]}
         r1 = retrieve(sit, self.lessons, limit=5)
         r2 = retrieve(sit, self.lessons, limit=5)
-        self.assertEqual([l["id"] for l in r1], [l["id"] for l in r2])
+        self.assertEqual([lesson["id"] for lesson in r1], [lesson["id"] for lesson in r2])
 
     def test_scope_strict(self):
         # A lesson scoped to Community builder should not appear for Adventure story
         sit = {"phase": "early_survival", "difficulty": "Adventure story", "storyteller": "Cassandra Classic", "biome": "any", "threats": ["raid_incoming"], "resources": []}
         result = retrieve(sit, self.lessons, limit=10)
-        for l in result:
-            diff = l.get("trigger", {}).get("difficulty", [])
+        for lesson in result:
+            diff = lesson.get("trigger", {}).get("difficulty", [])
             if diff:
                 self.assertIn("Adventure story", diff)
 
     def test_no_match_returns_empty(self):
-        sit = {"phase": "expansion", "difficulty": "Adventure story", "storyteller": "Cassandra Classic", "biome": "any", "threats": [], "resources": []}
-        result = retrieve(sit, self.lessons, limit=5)
+        # A lesson with no scoping criteria at all is too broad to ever retrieve.
+        unscoped = [{"id": "L-9999", "title": "t", "status": "active", "confidence": 0.5,
+                     "trigger": {"phases": [], "threats": [], "resources": [],
+                                 "difficulty": [], "storyteller": [], "biome": []},
+                     "times_helped": 0, "times_failed": 0, "times_applied": 0}]
+        sit = {"phase": "expansion", "difficulty": "Adventure story", "storyteller": "Cassandra Classic",
+               "biome": "any", "threats": [], "resources": []}
+        result = retrieve(sit, unscoped, limit=5)
         self.assertEqual(result, [])
 
     def test_limit_respected(self):
@@ -133,8 +144,8 @@ class TestRetrieve(unittest.TestCase):
         # needs_review lessons should not be retrieved
         sit = {"phase": "early_survival", "difficulty": "Adventure story", "storyteller": "Cassandra Classic", "biome": "any", "threats": ["raid_incoming"], "resources": []}
         result = retrieve(sit, self.lessons, limit=10)
-        for l in result:
-            self.assertEqual(l.get("status"), "active")
+        for lesson in result:
+            self.assertEqual(lesson.get("status"), "active")
 
 
 class TestRankActions(unittest.TestCase):
@@ -151,7 +162,7 @@ class TestRankActions(unittest.TestCase):
     def test_rank_actions_capped_at_limit(self):
         sit = {"phase": "early_survival", "difficulty": "Adventure story", "storyteller": "Cassandra Classic", "biome": "any", "threats": ["low_food", "mood_break_risk"], "resources": ["food_under_5_days"]}
         alerts = [{"type": "warning", "category": "food_low", "message": "Food stock low"}]
-        actions, linked = situation.rank_actions(alerts, sit, self.lessons, limit=2)
+        actions, _linked = situation.rank_actions(alerts, sit, self.lessons, limit=2)
         self.assertLessEqual(len(actions), 2)
 
     def test_rank_actions_deterministic(self):
@@ -164,7 +175,7 @@ class TestRankActions(unittest.TestCase):
 
     def test_rank_actions_empty_alerts(self):
         sit = {"phase": "early_survival", "difficulty": "Adventure story", "storyteller": "Cassandra Classic", "biome": "any", "threats": [], "resources": []}
-        actions, linked = situation.rank_actions([], sit, self.lessons, limit=5)
+        actions, _ = situation.rank_actions([], sit, self.lessons, limit=5)
         self.assertIsInstance(actions, list)
 
 

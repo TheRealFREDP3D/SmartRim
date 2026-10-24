@@ -1,0 +1,18 @@
+# Ruff configuration for SmartRim
+target-version = "py313"
+line-length = 100
+
+[lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "C4", "ISC", "PIE", "RUF"]
+ignore = [
+    "BLE001",  # blind-except: intentional graceful degradation for MCP/LLM calls
+    "S110",    # try-except-pass: intentional best-effort cleanup
+    "SIM115",  # open-file-with-context-handler: many legacy call sites
+    "E402",    # module-import-not-at-top: sys.path.insert patterns
+    "E501",    # line-too-long: handled by line-length + formatter
+    "RUF001",  # ambiguous-unicode: emoji icons in dashboard are intentional
+]
+
+[lint.per-file-ignores]
+"tests/*" = ["RUF059"]  # unused unpacked vars are fine in tests
+"sidecar/lessons.py" = ["F403", "F405"]  # intentional re-export shim

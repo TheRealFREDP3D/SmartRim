@@ -7,8 +7,8 @@ import unittest
 SIDECAR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "sidecar")
 sys.path.insert(0, SIDECAR)
 
-import outcomes
 import advice_log
+import outcomes
 
 
 class TestOutcomes(unittest.TestCase):
@@ -105,19 +105,19 @@ class TestCloseAdvice(unittest.TestCase):
     def test_food_failed(self):
         advice = {"situation": "Food stock low", "trigger": "reflex"}
         snap = {"food_days": 1, "medicine_count": 5, "min_mood": 50, "alerts": []}
-        status, note = outcomes._close_advice(advice, snap)
+        status, _note = outcomes._close_advice(advice, snap)
         self.assertEqual(status, "failed")
 
     def test_mood_helped(self):
         advice = {"situation": "Mood major break risk", "trigger": "reflex"}
         snap = {"food_days": 5, "medicine_count": 5, "min_mood": 40, "alerts": []}
-        status, note = outcomes._close_advice(advice, snap)
+        status, _note = outcomes._close_advice(advice, snap)
         self.assertEqual(status, "helped")
 
     def test_expired_when_risk_cleared(self):
         advice = {"situation": "Unknown risk", "trigger": "reflex"}
         snap = {"food_days": 6, "medicine_count": 5, "min_mood": 50, "alerts": []}
-        status, note = outcomes._close_advice(advice, snap)
+        status, _note = outcomes._close_advice(advice, snap)
         self.assertEqual(status, "expired")
 
 

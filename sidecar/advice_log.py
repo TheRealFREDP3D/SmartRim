@@ -1,7 +1,7 @@
 """Advice log: append-only JSONL of every piece of advice given, with outcome tracking."""
 
-import os
 import json
+import os
 import uuid
 from datetime import datetime
 
@@ -63,7 +63,7 @@ def update_outcome(advice_id, status, outcome_note=None):
         return False
     records = []
     found = False
-    with open(ADVICE_FILE, "r", encoding="utf-8") as f:
+    with open(ADVICE_FILE, encoding="utf-8") as f:
         for line in f:
             line = line.strip()
             if not line:
@@ -94,7 +94,7 @@ def set_event_cause(advice_id, cause):
         return False
     records = []
     found = False
-    with open(ADVICE_FILE, "r", encoding="utf-8") as f:
+    with open(ADVICE_FILE, encoding="utf-8") as f:
         for line in f:
             line = line.strip()
             if not line:
@@ -124,7 +124,7 @@ def set_cause_matching(run_id, needle, cause):
     needle_low = str(needle).lower()
     records = []
     changed = 0
-    with open(ADVICE_FILE, "r", encoding="utf-8") as f:
+    with open(ADVICE_FILE, encoding="utf-8") as f:
         for line in f:
             line = line.strip()
             if not line:
@@ -159,7 +159,7 @@ def read_advice(run_id=None, status=None):
     if not os.path.exists(ADVICE_FILE):
         return []
     out = []
-    with open(ADVICE_FILE, "r", encoding="utf-8") as f:
+    with open(ADVICE_FILE, encoding="utf-8") as f:
         for line in f:
             line = line.strip()
             if not line:

@@ -1,13 +1,15 @@
-import time
-import requests
 import json
+import time
+from typing import Any
+
+import requests
 
 
 class McpError(Exception):
-    pass
+    """Base exception for MCP client errors."""
 
 
-READ_ONLY_TOOLS = {
+READ_ONLY_TOOLS: set[str] = {
     "get_status",
     "get_conditions",
     "list_colonists",
@@ -22,14 +24,14 @@ READ_ONLY_TOOLS = {
 
 
 class McpClient:
-    def __init__(self, url, delay=0.15, max_retries=3):
+    def __init__(self, url: str, delay: float = 0.15, max_retries: int = 3) -> None:
         self.url = url
         self.id_counter = 0
         self.delay = delay
         self.max_retries = max_retries
         self._last_call = 0.0
 
-    def ping(self, timeout=1.5):
+    def ping(self, timeout: float = 1.5) -> tuple[bool, str | None]:
         """Quick check if MCP server is reachable.
 
         Returns (True, None) if reachable, or (False, error_message).
@@ -47,14 +49,14 @@ class McpClient:
         except Exception as e:
             return False, str(e)
 
-    def _throttle(self):
+    def _throttle(self) -> None:
         now = time.time()
         elapsed = now - self._last_call
         if elapsed < self.delay:
             time.sleep(self.delay - elapsed)
         self._last_call = time.time()
 
-    def call_tool(self, name, arguments=None):
+    def call_tool(self, name: str, arguments: dict[str, Any] | None = None) -> dict[str, Any]:
         self.id_counter += 1
         payload = {
             "jsonrpc": "2.0",
@@ -86,6 +88,4 @@ class McpClient:
                 last_err = e
                 if attempt < max_attempts - 1:
                     time.sleep(0.5 * (attempt + 1))
-        if max_attempts == 1:
-            raise McpError(f"transport/parse error calling {name}: {last_err}")
         raise McpError(f"transport/parse error calling {name}: {last_err}")

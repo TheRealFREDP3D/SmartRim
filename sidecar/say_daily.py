@@ -8,41 +8,42 @@ Can be run standalone:
 
 Or imported by the monitor for automatic twice-daily display.
 """
+import argparse
 import json
 import os
 import sys
-import argparse
 
 # Allow running from repo root or sidecar dir
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 try:
-    import requests
-except ImportError:
-    requests = None
-
-try:
-    from config import MCP_URL, MCP_DELAY
+    from config import MCP_DELAY, MCP_URL
 except ImportError:
     MCP_URL = os.getenv("MCP_URL", "http://localhost:8787/")
     MCP_DELAY = 0.15
 
 URL = os.getenv("MCP_URL", MCP_URL)
 
+# Reuse the shared MCP client instead of reimplementing JSON-RPC transport.
+try:
+    from mcp_client import McpClient
+    _client = McpClient(URL, delay=MCP_DELAY)
+except Exception:  # pragma: no cover - requests missing
+    _client = None
+
 
 def call(name, args=None):
-    if requests is None:
-        import urllib.request
-        payload = {"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": name, "arguments": args or {}}}
-        req = urllib.request.Request(URL, data=json.dumps(payload).encode(), headers={"Content-Type": "application/json"})
-        with urllib.request.urlopen(req, timeout=5) as resp:
-            data = json.loads(resp.read())
-        text = data["result"]["content"][0]["text"]
-    else:
-        payload = {"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": name, "arguments": args or {}}}
-        resp = requests.post(URL, json=payload, timeout=5)
-        data = resp.json()
-        text = data["result"]["content"][0]["text"]
+    if _client is not None:
+        return _client.call_tool(name, args)
+    # Fallback for environments without the shared client/requests.
+    import urllib.request
+    payload = {"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+               "params": {"name": name, "arguments": args or {}}}
+    req = urllib.request.Request(URL, data=json.dumps(payload).encode(),
+                                headers={"Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=5) as resp:
+        data = json.loads(resp.read())
+    text = data["result"]["content"][0]["text"]
     try:
         return json.loads(text)
     except (json.JSONDecodeError, TypeError):
@@ -85,7 +86,6 @@ def build_message(slot="auto", use_llm=False):
     temp = cond.get("temperature", {}).get("outdoorC", "?") if isinstance(cond.get("temperature"), dict) else "?"
     weather = cond.get("weather", {}).get("current", "?") if isinstance(cond.get("weather"), dict) else "?"
     season = cond.get("seasonLabel", "?")
-    date = cond.get("date", f"Day {day}")
 
     colonists = []
     if isinstance(status, dict):

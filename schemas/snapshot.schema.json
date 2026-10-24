@@ -2,76 +2,63 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://smartrim.local/schemas/snapshot.schema.json",
   "title": "Colony snapshot",
-  "description": "One timestamped observation of a colony, written by the sidecar monitor (or by hand at session end).",
+  "description": "One timestamped observation of a colony, written by the sidecar monitor (sidecar/monitor.py write_snapshot).",
   "type": "object",
-  "required": ["run_id", "day", "timestamp", "difficulty", "storyteller", "biome", "colonists", "resources", "alerts"],
+  "required": ["run_id", "day", "timestamp"],
   "properties": {
-    "run_id": { "type": "string", "description": "Stable id for the colony run, e.g. run-20261018-175044 or session-5" },
+    "run_id": { "type": "string", "description": "Stable id for the colony run, e.g. run-002-adv-cassandra" },
     "day": { "type": "string", "description": "In-game date string, e.g. '13th of Septober, 5500'" },
-    "hour": { "type": ["integer", "null"], "minimum": 0, "maximum": 23 },
     "timestamp": { "type": "string", "format": "date-time" },
-    "difficulty": { "type": "string", "enum": ["Peaceful", "Community builder", "Adventure story", "Strive to survive", "Blood and dust", "Losing is fun"] },
-    "storyteller": { "type": "string", "enum": ["Cassandra Classic", "Phoebe Chillax", "Randy Random"] },
-    "biome": { "type": "string" },
-    "season": { "type": ["string", "null"] },
-    "weather": { "type": ["string", "null"] },
-    "temperature_c": { "type": ["number", "null"] },
-    "colonist_count": { "type": "integer", "minimum": 0 },
+    "status": {
+      "type": "object",
+      "description": "Raw get_status response (loaded, colonyName, storyteller, difficulty, daysPassed, colonistCount, ...)"
+    },
+    "conditions": {
+      "type": "object",
+      "description": "Raw get_conditions response (date, hour, season, temperature, weather, ...)"
+    },
     "colonists": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": ["id", "name", "health", "mood", "downed"],
-        "properties": {
-          "id": { "type": "string" },
-          "name": { "type": "string" },
-          "health": { "type": "number", "minimum": 0, "maximum": 100 },
-          "mood": { "type": "number", "minimum": 0, "maximum": 100 },
-          "downed": { "type": "boolean" },
-          "dead": { "type": "boolean" },
-          "job": { "type": ["string", "null"] },
-          "incapable_of": { "type": "array", "items": { "type": "string" } },
-          "top_skills": { "type": "array", "items": { "type": "string" } },
-          "x": { "type": ["integer", "null"] },
-          "z": { "type": ["integer", "null"] }
-        }
-      }
+      "type": "object",
+      "description": "Raw list_colonists response, typically {colonists: [...]}"
     },
     "resources": {
       "type": "object",
-      "additionalProperties": { "type": "integer", "minimum": 0 },
-      "description": "Map of resource defName/label to count"
+      "description": "Raw get_resources response, typically {resources: [...], wealthTotal}"
     },
-    "food_days": {
-      "type": ["number", "null"],
-      "description": "Projected days of food remaining, computed from the last 24 game hours of consumption"
-    },
-    "medicine_count": { "type": "integer", "minimum": 0 },
-    "wealth": { "type": ["number", "null"] },
     "research": {
       "type": "object",
-      "properties": {
-        "current": { "type": ["string", "null"] },
-        "progress_percent": { "type": "number", "minimum": 0, "maximum": 100 },
-        "completed_count": { "type": "integer", "minimum": 0 }
-      }
+      "description": "Raw get_research response"
     },
     "alerts": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": ["label"],
-        "properties": {
-          "label": { "type": "string" },
-          "priority": { "type": "string" },
-          "explanation": { "type": "string" }
-        }
-      }
-    },
-    "danger_rating": { "type": ["string", "null"] },
-    "raw": {
       "type": "object",
-      "description": "The un-normalized tool responses, kept for debugging"
+      "description": "Raw get_alerts response (activeAlerts, dangerByMap, ...)"
+    },
+    "quests": {
+      "type": "array",
+      "description": "Quest records captured for this snapshot (see sidecar/quests.py)"
+    },
+    "summary": {
+      "type": "object",
+      "description": "Normalized summary produced by normalize_snapshot (day, days_passed, hour, season, temp, colonist_count, min_mood, min_health, downed, alerts, resources, food_days, medicine_count, wealth, difficulty, storyteller, biome)",
+      "properties": {
+        "day": { "type": ["string", "null"] },
+        "days_passed": { "type": ["integer", "null"] },
+        "hour": { "type": ["integer", "null"] },
+        "season": { "type": ["string", "null"] },
+        "temp": { "type": ["number", "null"] },
+        "colonist_count": { "type": ["integer", "null"], "minimum": 0 },
+        "min_mood": { "type": ["number", "null"] },
+        "min_health": { "type": ["number", "null"] },
+        "downed": { "type": "array", "items": { "type": "string" } },
+        "alerts": { "type": "array", "items": { "type": "string" } },
+        "resources": { "type": "object", "additionalProperties": { "type": "integer", "minimum": 0 } },
+        "food_days": { "type": ["number", "null"] },
+        "medicine_count": { "type": ["integer", "null"], "minimum": 0 },
+        "wealth": { "type": ["number", "null"] },
+        "difficulty": { "type": ["string", "null"] },
+        "storyteller": { "type": ["string", "null"] },
+        "biome": { "type": ["string", "null"] }
+      }
     }
   }
 }

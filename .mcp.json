@@ -2,7 +2,11 @@
   "mcpServers": {
     "rimmolt": {
       "type": "http",
-      "url": "http://localhost:8787/mcp"
+      "url": "http://localhost:8787/"
+    },
+    "atomicviz": {
+      "type": "http",
+      "url": "http://127.0.0.1:3940/mcp"
     }
   }
 }

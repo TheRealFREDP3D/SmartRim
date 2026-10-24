@@ -6,8 +6,8 @@ import unittest
 SIDEcar = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "sidecar")
 sys.path.insert(0, SIDEcar)
 
-from monitor import run_reflex_checks, normalize_snapshot
 from debrief import generate_debrief
+from monitor import normalize_snapshot, run_reflex_checks
 
 
 class FakeClient:
@@ -93,14 +93,14 @@ class TestNormalizeSnapshot(unittest.TestCase):
 
 class TestDebrief(unittest.TestCase):
     def test_generate_debrief_with_fixture(self):
-        import tempfile, shutil
+        import shutil
+        import tempfile
         d = tempfile.mkdtemp()
         sdir = os.path.join(d, "snapshots")
         ddir = os.path.join(d, "debriefs")
         os.makedirs(sdir)
         os.makedirs(ddir)
         # copy fixture as a snapshot
-        import shutil
         shutil.copy(
             os.path.join(os.path.dirname(__file__), "fixtures", "snapshot_day13.json"),
             os.path.join(sdir, "day-13th of Septober, 5500.json"),

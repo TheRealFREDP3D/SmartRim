@@ -5,7 +5,7 @@ import json
 from mcp_client import McpClient, McpError
 
 try:
-    from config import MCP_URL, MCP_DELAY
+    from config import MCP_DELAY, MCP_URL
 except Exception:
     MCP_URL = "http://localhost:8787/"
     MCP_DELAY = 0.15

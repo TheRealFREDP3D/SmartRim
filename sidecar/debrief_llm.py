@@ -7,16 +7,16 @@ Usage:
 Reads a debrief bundle markdown, sends it to the local Ollama model, and
 writes the analysis to memory/debriefs/<run>-llm.md (or prints to stdout).
 """
-import os
-import sys
-import json
 import argparse
 import glob
+import json
+import os
+import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+from config import CANDIDATES_DIR, DEBRIEFS_DIR
 from llm import generate
-from config import DEBRIEFS_DIR, SNAPSHOTS_DIR, CANDIDATES_DIR
 
 DEBRIEF_SYSTEM = """You are a RimWorld colony analyst. Given a colony run debrief
 bundle (timeline, alerts, resources, advice log), provide a structured analysis:
@@ -97,8 +97,7 @@ def write_analysis(run_id, analysis, model):
         else:
             f.write(f"## Primary Cause\n{analysis.get('cause', 'N/A')}\n\n")
             f.write("## What Worked\n")
-            for w in analysis.get("worked", []):
-                f.write(f"- {w}\n")
+            f.writelines(f"- {w}\n" for w in analysis.get("worked", []))
             f.write("\n## Lessons\n")
             for lesson in analysis.get("lessons", []):
                 f.write(f"- **Trigger**: {lesson.get('trigger', '?')}\n")

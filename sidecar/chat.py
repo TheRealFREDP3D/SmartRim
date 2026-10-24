@@ -7,16 +7,15 @@ Usage:
 Type questions about the colony. The LLM has access to current game state.
 Commands: quit/exit to leave, status to refresh colony state, say to display last answer in-game.
 """
+import argparse
+import json
 import os
 import sys
-import json
-import argparse
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from counselor import game_state, say
 from llm import generate
-
 
 SYSTEM = """You are SmartRim, a RimWorld colony advisor. You have access to the
 current colony state (provided below). Answer questions concisely and practically.
@@ -30,7 +29,7 @@ def get_context():
     return gs
 
 
-def chat_loop(model="gemma4-e2b-rimworld", display_in_game=False):
+def chat_loop(model="gemma4-e2b-rimworld"):
     print("SmartRim Chat (type 'quit' to exit, 'status' to refresh, 'say' to display last answer in-game)")
     print("Model:", model)
     print("-" * 60)
@@ -72,7 +71,7 @@ def main():
     parser.add_argument("--model", default="gemma4-e2b-rimworld")
     parser.add_argument("--say", action="store_true", help="Display answers in-game")
     args = parser.parse_args()
-    chat_loop(model=args.model, display_in_game=args.say)
+    chat_loop(model=args.model)
 
 
 if __name__ == "__main__":
