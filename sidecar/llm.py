@@ -12,7 +12,7 @@ import urllib.request
 
 try:
     from config import LLM_API_KEY, LLM_MODEL, LLM_PROVIDER, OLLAMA_BASE_URL
-except Exception:
+except ImportError:
     LLM_PROVIDER = os.getenv("LLM_PROVIDER", "ollama")
     LLM_MODEL = os.getenv("LLM_MODEL", "qwen3-rimworld")
     LLM_API_KEY = os.getenv("LLM_API_KEY")

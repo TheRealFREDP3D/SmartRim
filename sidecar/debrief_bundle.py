@@ -8,13 +8,16 @@ The wiki facts block is copied from memory/wiki-audit-20261018.md (verified entr
 
 import glob
 import json
+import logging
 import os
 import re
 from datetime import datetime
 
+logger = logging.getLogger(__name__)
+
 try:
     from config import BASE_DIR
-except Exception:
+except ImportError:
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # Verified wiki facts (memory/wiki-audit-20261018.md, section D). Keep this list short and cited.
@@ -185,8 +188,13 @@ def _quest_records(snapshots):
     """Quest context embedded in snapshots, merged by id. Missing module is not fatal."""
     try:
         import quests as quests_mod
+    except ImportError as e:
+        logger.debug("quests module unavailable: %s", e)
+        return []
+    try:
         return quests_mod.quests_from_snapshots(snapshots)
-    except Exception:
+    except (OSError, ValueError, TypeError, KeyError) as e:
+        logger.debug("quest records failed: %s", e)
         return []
 
 
@@ -433,7 +441,12 @@ def build_bundle(snapshots_dir, debriefs_dir, run_id, advice_records=None, meta=
         try:
             import quests as quests_mod
             lines.extend(quests_mod.summary_lines(quest_records))
-        except Exception:
+        except ImportError as e:
+            logger.debug("quests module unavailable: %s", e)
+            for rec in quest_records:
+                lines.append(f"- [{rec.get('id')}] {rec.get('name')}: {rec.get('description') or 'no description'}")
+        except (TypeError, AttributeError, KeyError) as e:
+            logger.debug("quest summary failed: %s", e)
             for rec in quest_records:
                 lines.append(f"- [{rec.get('id')}] {rec.get('name')}: {rec.get('description') or 'no description'}")
     else:

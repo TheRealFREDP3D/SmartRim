@@ -11,6 +11,7 @@ import argparse
 import json
 import os
 import sys
+import urllib.error
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -60,7 +61,7 @@ def chat_loop(model="gemma4-e2b-rimworld"):
         try:
             answer = generate(prompt, provider="ollama", model=model,
                              system=SYSTEM, temperature=0.5, num_ctx=8192)
-        except Exception as e:
+        except (urllib.error.URLError, json.JSONDecodeError, OSError, ValueError) as e:
             answer = f"(LLM error: {e})"
         last_answer = answer
         print(f"\nSmartRim: {answer}")

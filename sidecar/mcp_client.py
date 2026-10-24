@@ -46,7 +46,7 @@ class McpClient:
             resp = requests.post(self.url, json=payload, timeout=timeout)
             resp.raise_for_status()
             return True, None
-        except Exception as e:
+        except requests.RequestException as e:
             return False, str(e)
 
     def _throttle(self) -> None:

@@ -17,8 +17,13 @@ from datetime import datetime
 
 try:
     from config import BASE_DIR
-except Exception:
+except ImportError:
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+try:
+    from mcp_client import McpError
+except ImportError:
+    McpError = Exception
 DEFAULT_REGISTRY = os.path.join(BASE_DIR, "memory", "quests", "registry.json")
 
 TAG_RE = re.compile(r"<[^>]+>")
@@ -57,7 +62,7 @@ def list_quests(client):
     """Ask the game for its quest list. Returns [] on any problem; never raises."""
     try:
         resp = client.call_tool("get_quest")
-    except Exception:
+    except McpError:
         return []
     if not isinstance(resp, dict):
         return []
@@ -74,7 +79,7 @@ def list_quests(client):
 def _detail(client, quest_id):
     try:
         resp = client.call_tool("get_quest", {"id": quest_id})
-    except Exception:
+    except McpError:
         return None
     if not isinstance(resp, dict) or resp.get("error"):
         return None

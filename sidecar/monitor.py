@@ -23,25 +23,25 @@ from config import (
     URGENT_KEYWORDS,
 )
 from logging_config import get_logger
-from mcp_client import McpClient
+from mcp_client import McpClient, McpError
 
 logger = get_logger(__name__)
 
 try:
     import lessons as _lessons
     import situation as _situation
-except Exception:
+except ImportError:
     _situation = None
     _lessons = None
 
 try:
     import quests as _quests
-except Exception:
+except ImportError:
     _quests = None
 
 try:
     import say_daily as _say_daily
-except Exception:
+except ImportError:
     _say_daily = None
 
 # A reflex snapshot is taken when a new urgent alert appears, so incidents that start and
@@ -64,7 +64,7 @@ def _load_last_sig() -> dict[str, Any] | None:
             data = json.load(f)
         if data.get("run_id") == RUN_ID and isinstance(data.get("sig"), list):
             return tuple(tuple(x) for x in data["sig"])
-    except Exception:
+    except (OSError, json.JSONDecodeError, TypeError, KeyError):
         pass
     return None
 
@@ -74,8 +74,8 @@ def _save_last_sig(sig: dict[str, Any]) -> None:
         os.makedirs(ALERTS_DIR, exist_ok=True)
         with open(SIG_FILE, "w", encoding="utf-8") as f:
             json.dump({"run_id": RUN_ID, "sig": [list(x) for x in (sig or ())]}, f, indent=2)
-    except Exception:
-        pass
+    except (OSError, TypeError, ValueError) as e:
+        logger.debug("sig save failed: %s", e)
 
 
 def _is_urgent_label(label):
@@ -179,7 +179,7 @@ def run_reflex_checks(client: McpClient) -> list[dict[str, Any]]:
                             food += v
                     if food < 20:
                         alerts.append({"type": "warning", "category": "food_low", "message": f"Food stock low ({food} units)", "timestamp": timestamp})
-        except Exception:
+        except (McpError, OSError, ValueError, TypeError, KeyError, AttributeError):
             pass
 
         colonist_count = status.get("colonistCount", 0)
@@ -199,10 +199,10 @@ def run_reflex_checks(client: McpClient) -> list[dict[str, Any]]:
                         job = str(colonist.get("job", "")).lower()
                         if "sleep" in job or "rest" in job:
                             alerts.append({"type": "urgent", "category": "sleeping_during_threat", "message": f"{colonist.get('name')} is sleeping during a threat", "timestamp": timestamp})
-        except Exception:
+        except (McpError, OSError, ValueError, TypeError, KeyError, AttributeError):
             pass
 
-    except Exception as e:
+    except (McpError, OSError, ValueError, TypeError, KeyError, AttributeError, json.JSONDecodeError) as e:
         alerts.append({"type": "error", "category": "system", "message": f"Reflex check failed: {e!s}", "timestamp": timestamp})
 
     return alerts
@@ -261,7 +261,8 @@ def normalize_snapshot(snapshot: dict[str, Any]) -> dict[str, Any]:
             "storyteller": status.get("storyteller"),
             "biome": None,
         }
-    except Exception:
+    except (OSError, ValueError, TypeError, KeyError, AttributeError, json.JSONDecodeError) as e:
+        logger.debug("snapshot normalization failed: %s", e)
         snapshot["summary"] = {"error": "normalization failed"}
     # Populate biome from run metadata when available, so biome-scoped lessons can match.
     try:
@@ -281,8 +282,8 @@ def normalize_snapshot(snapshot: dict[str, Any]) -> dict[str, Any]:
                             _end = json.load(_f)
                         if isinstance(_end, dict) and _end.get("biome"):
                             snapshot["summary"]["biome"] = _end.get("biome")
-    except Exception:
-        pass
+    except (OSError, ValueError, TypeError, KeyError, json.JSONDecodeError) as e:
+        logger.debug("biome population failed: %s", e)
     return snapshot
 
 
@@ -325,7 +326,8 @@ def write_snapshot(client: McpClient, day_label: str, run_id: str | None = None,
     if _quests is not None:
         try:
             snapshot["quests"] = _quests.update(client, day_label=str(effective_day), path=quest_registry_path)
-        except Exception:
+        except (McpError, OSError, ValueError, TypeError, KeyError, AttributeError, json.JSONDecodeError) as e:
+            logger.debug("quest update failed: %s", e)
             snapshot["quests"] = []
     normalize_snapshot(snapshot)
 
@@ -404,7 +406,7 @@ def _pid_alive(pid):
                 return code.value == STILL_ACTIVE
             finally:
                 ctypes.windll.kernel32.CloseHandle(handle)
-        except Exception:
+        except (OSError, AttributeError, ValueError, TypeError):
             # If we cannot safely query, assume not alive to avoid blocking
             return False
     try:
@@ -501,7 +503,8 @@ def _advice_context(client, status_now, conditions, alerts):
             "resources": client.call_tool("get_resources"),
             "alerts": client.call_tool("get_alerts"),
         }).get("summary") or {}
-    except Exception:
+    except (McpError, OSError, ValueError, TypeError, KeyError, AttributeError, json.JSONDecodeError) as e:
+        logger.debug("advice context snapshot failed: %s", e)
         snap_summary = {}
     if _situation is not None:
         try:
@@ -510,7 +513,7 @@ def _advice_context(client, status_now, conditions, alerts):
             retrieved = _situation.retrieve(situation, lessons_list, limit=5)
             linked = [lesson.get("id") for lesson in retrieved]
             actions, _ = _situation.rank_actions(alerts, situation, retrieved, limit=5)
-        except Exception as e:
+        except (OSError, ValueError, TypeError, KeyError, AttributeError, json.JSONDecodeError) as e:
             logger.error(f"situation/lessons error: {e}")
     return snap_summary, situation, actions, linked
 
@@ -535,7 +538,7 @@ def _say_daily_message(client: McpClient, conditions: dict[str, Any], slot: str 
         else:
             logger.warning(f"Daily say ({slot}): not shown: {result}")
             return False
-    except Exception as e:
+    except (McpError, OSError, ValueError, TypeError, KeyError, AttributeError, json.JSONDecodeError, RuntimeError) as e:
         logger.error(f"Daily say error: {e}")
         return False
 
@@ -563,8 +566,8 @@ def _log_urgent(client, status_now, conditions, alerts, urgent, day_label):
     try:
         if advice_log.find_open_duplicate(RUN_ID, situation):
             return None
-    except Exception:
-        pass
+    except (OSError, json.JSONDecodeError, ValueError, TypeError, KeyError) as e:
+        logger.debug("find_open_duplicate failed: %s", e)
     _, _, actions, linked = _advice_context(client, status_now, conditions, alerts)
     advice_log.log_advice(
         run_id=RUN_ID,
@@ -640,7 +643,7 @@ def poll_once(client: McpClient, state: PollResult) -> PollResult:
                     _say_daily_message(client, conditions, slot=slot)
                     state.last_say_day = current_day
                     state.last_say_hour = current_hour
-        except Exception as e:
+        except (McpError, OSError, ValueError, TypeError, KeyError, AttributeError, json.JSONDecodeError, RuntimeError) as e:
             logger.error(f"Daily say check error: {e}")
 
         if current_day is not None and (state.last_day is None or current_day != state.last_day) and state.snapshotted_day != current_day:
@@ -654,7 +657,7 @@ def poll_once(client: McpClient, state: PollResult) -> PollResult:
                     with open(path, encoding="utf-8") as fh:
                         closed = json.load(fh)
                     outcomes.close_outcomes(closed.get("summary") or {}, run_id=RUN_ID)
-                except Exception as e:
+                except (OSError, json.JSONDecodeError, ValueError, TypeError, KeyError) as e:
                     logger.error(f"outcome close error: {e}")
         if current_day is not None:
             state.last_day = current_day
@@ -668,7 +671,7 @@ def poll_once(client: McpClient, state: PollResult) -> PollResult:
         if day_rolled and adviser_acts(OBSERVE_ONLY):
             try:
                 _log_scheduled(client, status_now, conditions, alerts, current_day)
-            except Exception as e:
+            except (McpError, OSError, ValueError, TypeError, KeyError, AttributeError, json.JSONDecodeError, RuntimeError) as e:
                 logger.error(f"scheduled advice error: {e}")
 
         urgent = [a for a in alerts if a.get("type") == "urgent"]
@@ -687,29 +690,29 @@ def poll_once(client: McpClient, state: PollResult) -> PollResult:
                             _, _, actions, _ = _advice_context(client, status_now, conditions, alerts)
                             if actions:
                                 msg += " | Advice: " + "; ".join(ac.get("action", "") for ac in actions)
-                        except Exception:
+                        except (OSError, ValueError, TypeError, KeyError, AttributeError, json.JSONDecodeError):
                             pass
                     client.call_tool("say", {"text": msg})
-                except Exception as e:
+                except (McpError, OSError, ValueError, TypeError, KeyError, AttributeError, json.JSONDecodeError, RuntimeError) as e:
                     logger.error(f"say urgent error: {e}")
                 if adviser_acts(OBSERVE_ONLY):
                     logged = True
                     try:
                         logged = _log_urgent(client, status_now, conditions, alerts, urgent, current_day) is not None
-                    except Exception as e:
+                    except (McpError, OSError, ValueError, TypeError, KeyError, AttributeError, json.JSONDecodeError, RuntimeError) as e:
                         logger.error(f"advice log error: {e}")
                     try:
                         client.call_tool("set_speed", {"action": "pause"})
                         if logged:
                             state.auto_pauses += 1
-                    except Exception:
-                        pass
+                    except McpError as e:
+                        logger.debug("set_speed pause failed: %s", e)
                 try:
                     rpath = write_reflex_snapshot(client)
                     if rpath:
                         state.reflex_snapshots += 1
                         logger.info(f"Reflex snapshot: {rpath}")
-                except Exception as e:
+                except (McpError, OSError, ValueError, TypeError, KeyError, AttributeError, json.JSONDecodeError) as e:
                     logger.error(f"reflex snapshot error: {e}")
                 if any(a.get("category") == "colony_death" for a in alerts) and not state.run_ended:
                     marker = write_run_end(
@@ -724,7 +727,7 @@ def poll_once(client: McpClient, state: PollResult) -> PollResult:
             else:
                 logger.debug("No alerts.")
 
-    except Exception as e:
+    except (McpError, OSError, ValueError, TypeError, KeyError, AttributeError, json.JSONDecodeError, RuntimeError, ImportError) as e:
         state.consecutive_errors += 1
         logger.error(f"Error: {e}")
         if state.consecutive_errors >= 5:

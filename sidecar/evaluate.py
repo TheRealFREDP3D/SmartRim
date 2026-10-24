@@ -18,7 +18,7 @@ from datetime import date
 
 try:
     from config import BASE_DIR
-except Exception:
+except ImportError:
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 SUMMARY_KEYS = [
@@ -93,14 +93,14 @@ def resolve_snapshots_dir(run_id, marker=None, snapshots_root=None):
 def _snapshot_sort_key(path):
     try:
         data = _load_json(path)
-    except Exception:
+    except (json.JSONDecodeError, OSError):
         return (9999, path)
     status = data.get("status") or {}
     dp = status.get("daysPassed")
     if dp is not None:
         try:
             return (int(dp), path)
-        except Exception:
+        except (ValueError, TypeError):
             pass
     summary = data.get("summary") or {}
     day_label = summary.get("day") or data.get("day") or ""
@@ -108,7 +108,7 @@ def _snapshot_sort_key(path):
     if m:
         try:
             return (int(m.group(1)), path)
-        except Exception:
+        except (ValueError, TypeError):
             pass
     return (9999, path)
 

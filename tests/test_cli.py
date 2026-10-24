@@ -2,6 +2,8 @@ import os
 import sys
 from unittest.mock import MagicMock, patch
 
+import requests
+
 # Ensure sidecar is on sys.path
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SIDECAR_DIR = os.path.join(BASE_DIR, "sidecar")
@@ -28,7 +30,7 @@ def test_mcp_client_ping_success():
 
 def test_mcp_client_ping_failure():
     client = McpClient("http://localhost:8787/")
-    with patch("requests.post", side_effect=Exception("Connection refused")):
+    with patch("requests.post", side_effect=requests.exceptions.ConnectionError("Connection refused")):
         ok, err = client.ping(timeout=1.0)
         assert ok is False
         assert "Connection refused" in err

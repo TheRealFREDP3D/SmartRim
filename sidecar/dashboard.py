@@ -18,6 +18,11 @@ from config import (
     SNAPSHOTS_DIR,
 )
 
+try:
+    from mcp_client import McpError
+except ImportError:
+    McpError = Exception
+
 # Page configuration
 st.set_page_config(
     page_title="SmartRim Dashboard",
@@ -143,7 +148,7 @@ def get_live_game_state():
         status = client.call_tool("get_status")
         if status and not status.get("error"):
             return status
-    except Exception as e:
+    except (McpError, ValueError, KeyError, TypeError, OSError, AttributeError) as e:
         st.error(f"Failed to connect to MCP server: {e}")
     return None
 
@@ -220,7 +225,7 @@ def live_monitor_tab():
                 available_cols = [col for col in display_cols if col in colonist_df.columns]
                 if available_cols:
                     st.dataframe(colonist_df[available_cols], use_container_width=True)
-        except Exception as e:
+        except (McpError, ValueError, KeyError, TypeError, OSError, AttributeError) as e:
             st.warning(f"Could not load colonist data: {e}")
         
         # Get resources
@@ -237,7 +242,7 @@ def live_monitor_tab():
                 filtered = res_df[res_df['label'].str.contains('|'.join(important), case=False, na=False)]
                 if not filtered.empty:
                     st.dataframe(filtered, use_container_width=True)
-        except Exception as e:
+        except (McpError, ValueError, KeyError, TypeError, OSError, AttributeError) as e:
             st.warning(f"Could not load resource data: {e}")
     else:
         game_connected.error("❌ Game Not Connected")

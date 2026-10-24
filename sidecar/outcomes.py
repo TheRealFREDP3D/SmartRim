@@ -6,7 +6,7 @@ from datetime import datetime
 
 try:
     from config import BASE_DIR
-except Exception:
+except ImportError:
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ADVICE_FILE = os.path.join(BASE_DIR, "memory", "advice", "advice.jsonl")
 LESSONS_FILE = os.path.join(BASE_DIR, "memory", "lessons.jsonl")

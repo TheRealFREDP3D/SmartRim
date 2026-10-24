@@ -2,11 +2,12 @@
 
 import json
 
+import requests
 from mcp_client import McpClient, McpError
 
 try:
     from config import MCP_DELAY, MCP_URL
-except Exception:
+except ImportError:
     MCP_URL = "http://localhost:8787/"
     MCP_DELAY = 0.15
 _client = McpClient(MCP_URL, delay=MCP_DELAY)
@@ -372,7 +373,7 @@ def scan_area(x1, z1, x2, z2):
 def _safe(fn, *a, **kw):
     try:
         return fn(*a, **kw)
-    except Exception as e:
+    except (McpError, requests.RequestException, ValueError, KeyError, TypeError, OSError, AttributeError) as e:
         return {"error": str(e)}
 
 

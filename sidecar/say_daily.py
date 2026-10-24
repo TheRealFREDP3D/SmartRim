@@ -12,6 +12,7 @@ import argparse
 import json
 import os
 import sys
+import urllib.error
 
 # Allow running from repo root or sidecar dir
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -54,7 +55,7 @@ def build_llm_advice(status, alerts, research, resources, conditions):
         prompt = f"Colony state: {json.dumps(ctx)}\nGive 2-3 specific actionable advice items for this colony right now."
         system = "You are a RimWorld colony advisor. Be concise (max 3 sentences). Focus on immediate threats and opportunities."
         return generate(prompt, provider="ollama", model="gemma4-e2b-rimworld", system=system, temperature=0.4, num_ctx=4096)
-    except Exception:
+    except (urllib.error.URLError, json.JSONDecodeError, OSError, ValueError, RuntimeError):
         return None
 
 

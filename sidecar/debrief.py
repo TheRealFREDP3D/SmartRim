@@ -7,18 +7,18 @@ from datetime import datetime
 
 try:
     import requests as _requests
-except Exception:
+except ImportError:
     _requests = None
 
 try:
     from advice_log import read_advice
-except Exception:
+except ImportError:
     def read_advice(run_id=None, status=None):
         return []
 
 try:
     from config import CANDIDATES_DIR, DEBRIEFS_DIR, SNAPSHOTS_DIR
-except Exception:
+except ImportError:
     CANDIDATES_DIR = None
     DEBRIEFS_DIR = None
     SNAPSHOTS_DIR = None

@@ -13,6 +13,7 @@ import advice_log
 import monitor
 import quests
 from debrief_bundle import build_bundle
+from mcp_client import McpError
 
 
 class FakeClient:
@@ -96,7 +97,7 @@ class TestQuestRegistry(unittest.TestCase):
     def test_a_broken_game_call_does_not_raise(self):
         class Broken:
             def call_tool(self, name, arguments=None):
-                raise RuntimeError("mcp down")
+                raise McpError("mcp down")
 
         self.assertEqual(quests.list_quests(Broken()), [])
         self.assertEqual(quests.update(Broken(), path=self.reg), [])
