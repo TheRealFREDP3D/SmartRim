@@ -53,7 +53,7 @@ def generate_debrief(snapshots_dir, debriefs_dir, run_name=None):
     snapshots = []
     for f in files:
         try:
-            with open(f) as fh:
+            with open(f, encoding="utf-8") as fh:
                 snapshots.append(json.load(fh))
         except (json.JSONDecodeError, OSError) as e:
             print(f"Skipping {f}: {e}")
@@ -133,7 +133,7 @@ def generate_debrief(snapshots_dir, debriefs_dir, run_name=None):
 
     os.makedirs(debriefs_dir, exist_ok=True)
     path = os.path.join(debriefs_dir, f"{run_name}.md")
-    with open(path, "w") as f:
+    with open(path, "w", encoding="utf-8") as f:
         f.write("\n".join(lines))
 
     # Candidate lessons file (human-reviewed before merging)
@@ -161,7 +161,7 @@ def generate_debrief(snapshots_dir, debriefs_dir, run_name=None):
             "(Fill in from the debrief above.)",
             "",
         ]
-        with open(cand_path, "w") as f:
+        with open(cand_path, "w", encoding="utf-8") as f:
             f.write("\n".join(cand_lines))
         print(f"Candidate lessons template written: {cand_path}")
 

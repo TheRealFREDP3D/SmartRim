@@ -69,11 +69,12 @@ def find_bundle(run_id):
     """Find the debrief bundle file for a run."""
     if os.path.exists(run_id):
         return run_id
-    # Search in debriefs dir
+    # Search in debriefs dir (bundle files are named <run_id>.bundle.md)
     if DEBRIEFS_DIR:
-        path = os.path.join(DEBRIEFS_DIR, f"{run_id}.md")
-        if os.path.exists(path):
-            return path
+        for name in (f"{run_id}.bundle.md", f"{run_id}.md"):
+            path = os.path.join(DEBRIEFS_DIR, name)
+            if os.path.exists(path):
+                return path
     # Search in candidates
     if CANDIDATES_DIR:
         for f in glob.glob(os.path.join(CANDIDATES_DIR, f"*{run_id}*")):

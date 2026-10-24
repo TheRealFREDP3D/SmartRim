@@ -78,8 +78,13 @@ def run_reflex_checks(client):
         if status.get("loaded") is False or status.get("programState") in ("Entry", "Menu"):
             return []
 
+        _bundled = status.get("bundled")
+        if not isinstance(_bundled, dict):
+            _bundled = {}
         colonists = (
-            status.get("bundled", {}).get("list_colonists", {}).get("colonists", [])
+            (_bundled.get("list_colonists") or {}).get("colonists", [])
+            if isinstance(_bundled.get("list_colonists"), dict)
+            else []
         )
         if not colonists:
             cr = client.call_tool("list_colonists")
@@ -107,7 +112,8 @@ def run_reflex_checks(client):
             if health is not None and health < HEALTH_THRESHOLD:
                 alerts.append({"type": "urgent", "category": "health", "message": f"{name} health at {health}%", "timestamp": timestamp})
 
-        bundled_alerts = status.get("bundled", {}).get("get_alerts", {})
+        _bundled_alerts = (_bundled.get("get_alerts") if isinstance(_bundled, dict) else None)
+        bundled_alerts = _bundled_alerts if isinstance(_bundled_alerts, dict) else {}
         if not bundled_alerts:
             bundled_alerts = client.call_tool("get_alerts") or {}
 
@@ -203,10 +209,13 @@ def normalize_snapshot(snapshot):
             if isinstance(r, dict):
                 res_map[r.get("defName") or r.get("label")] = r.get("count", 0)
 
+        # Count ready-to-eat meals only. Raw ingredients (rice, corn, potatoes,
+        # berries, meat, ...) are measured in harvest units, not meals, and must
+        # not be mixed into the meal count (see run-005 starvation-with-full-pantry).
         food_items = 0
         for k, v in res_map.items():
             kl = str(k).lower()
-            if "meal" in kl or "rice" in kl or "corn" in kl or "potato" in kl or "berry" in kl or "meat" in kl or "bread" in kl or "kibble" in kl:
+            if ("meal" in kl) or ("pemmican" in kl) or ("kibble" in kl) or ("survival" in kl and "pack" in kl) or ("paste" in kl and "nutrient" in kl):
                 food_items += v
         colonist_count = status.get("colonistCount") or len(colonists)
         if colonist_count and colonist_count > 0:
@@ -403,11 +412,13 @@ def run_length_reached(days_passed, run_days=None):
 
 def write_run_end(client, run_id, days_passed, observe_only=False, urgent_alerts=0,
                   auto_pauses=0, stop_reason="run_length", reflex_snapshots=0):
-    # Protocol stop, not an adviser pause. Both arms pause here so the window closes.
-    try:
-        client.call_tool("set_speed", {"action": "pause"})
-    except Exception:
-        pass
+    # Protocol stop. Adviser-on runs pause so the window closes; observe-only runs
+    # never pause (observe only, no intervention), even at the end of the run.
+    if not observe_only:
+        try:
+            client.call_tool("set_speed", {"action": "pause"})
+        except Exception:
+            pass
     final_day = f"end-day-{days_passed}"
     path = write_snapshot(client, final_day, run_id=run_id)
     status = {}

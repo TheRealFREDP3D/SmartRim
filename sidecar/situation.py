@@ -404,14 +404,21 @@ def main(argv=None):
     elif cmd == "retrieve":
         path = argv[2] if len(argv) > 2 else None
         if path:
-            sit = json.load(open(path))
+            with open(path, encoding="utf-8") as fh:
+                sit = json.load(fh)
         else:
             sit = json.load(sys.stdin)
         for l in retrieve(sit):
             print(l.get("id"), l.get("title"), f"(conf {l.get('confidence')})")
     elif cmd == "build-situation":
-        snap = json.load(open(argv[2])) if len(argv) > 2 else {}
-        alerts = json.load(open(argv[3])) if len(argv) > 3 else []
+        snap = {}
+        if len(argv) > 2:
+            with open(argv[2], encoding="utf-8") as fh:
+                snap = json.load(fh)
+        alerts = []
+        if len(argv) > 3:
+            with open(argv[3], encoding="utf-8") as fh:
+                alerts = json.load(fh)
         sit = build_situation(snap.get("summary", snap), alerts)
         print(json.dumps(sit, indent=2))
     else:

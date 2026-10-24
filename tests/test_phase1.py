@@ -76,6 +76,21 @@ class TestNormalizeSnapshot(unittest.TestCase):
         self.assertIn("summary", out)
         self.assertIsInstance(out["summary"], dict)
 
+    def test_food_days_counts_meals_not_raw_units(self):
+        snapshot = {
+            "status": {"colonistCount": 2, "daysPassed": 1},
+            "conditions": {},
+            "colonists": {"colonists": []},
+            "resources": {"resources": [
+                {"defName": "RawRice", "label": "rice", "count": 100},
+                {"defName": "MealSimple", "label": "simple meal", "count": 4},
+            ]},
+            "alerts": {},
+        }
+        out = normalize_snapshot(snapshot)
+        # 4 meals / (2 colonists * 2 meals per day) = 1.0 day
+        self.assertEqual(out["summary"]["food_days"], 1.0)
+
 
 class TestDebrief(unittest.TestCase):
     def test_generate_debrief_with_fixture(self):

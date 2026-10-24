@@ -418,10 +418,10 @@ def daily_summary():
     """Generate and display a daily summary in-game."""
     gs = game_state()
     colonists_str = ", ".join(
-        f"{c['name']} (HP:{c['health']}% Mood:{c['mood']}%)" for c in gs["colonists"]
+        f"{c.get('name', '?')} (HP:{c.get('health', '?')}% Mood:{c.get('mood', '?')}%)" for c in gs["colonists"]
     )
-    alerts_str = ", ".join(a["label"] for a in gs["alerts"]) or "None"
-    res_str = ", ".join(f"{r['label']}:{r['count']}" for r in gs["resources"])
+    alerts_str = ", ".join(a.get("label", str(a)) for a in gs["alerts"]) or "None"
+    res_str = ", ".join(f"{r.get('label', '?')}:{r.get('count', '?')}" for r in gs["resources"])
 
     message = (
         f"=== DAY {gs['day']} (Hour {gs['hour']}) ===\n"

@@ -154,7 +154,8 @@ class TestObserveOnly(unittest.TestCase):
             self.assertEqual(data["urgent_alerts"], 2)
             self.assertTrue(os.path.exists(data["final_snapshot"]))
             self.assertIn("off-run", data["snapshots_dir"])
-            self.assertEqual(client.calls[0], ("set_speed", {"action": "pause"}))
+            # observe-only runs never pause, even at run end
+            self.assertFalse(any(c[0] == "set_speed" for c in client.calls))
         finally:
             monitor.ALERTS_DIR = orig_alerts
             monitor.SNAPSHOTS_DIR = orig_snaps

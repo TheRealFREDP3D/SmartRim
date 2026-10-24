@@ -15,6 +15,7 @@ READ_ONLY_TOOLS = {
     "get_research",
     "get_alerts",
     "list_things",
+    "get_map",
     "get_map_info",
     "get_quest",
 }
@@ -72,7 +73,10 @@ class McpClient:
                 if "error" in result:
                     return {"error": result["error"]}
                 if "result" in result and "content" in result["result"]:
-                    text = result["result"]["content"][0]["text"]
+                    content = result["result"].get("content") or []
+                    if not content or not isinstance(content[0], dict) or "text" not in content[0]:
+                        return result
+                    text = content[0]["text"]
                     try:
                         return json.loads(text)
                     except (json.JSONDecodeError, TypeError):
