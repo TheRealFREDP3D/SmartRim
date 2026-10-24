@@ -14,7 +14,7 @@ import argparse
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from counselor import game_state, say, status, colonists, alerts, resources, research
+from counselor import game_state, say
 from llm import generate
 
 

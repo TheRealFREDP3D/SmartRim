@@ -6,9 +6,8 @@ import unittest
 SIDEcar = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "sidecar")
 sys.path.insert(0, SIDEcar)
 
-from monitor import run_reflex_checks, normalize_snapshot, write_snapshot
+from monitor import run_reflex_checks, normalize_snapshot
 from debrief import generate_debrief
-from config import SNAPSHOTS_DIR, DEBRIEFS_DIR, CANDIDATES_DIR
 
 
 class FakeClient:

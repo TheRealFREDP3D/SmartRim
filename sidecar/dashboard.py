@@ -2,7 +2,6 @@ import os
 import json
 import glob
 from datetime import datetime
-from pathlib import Path
 import sys
 
 # Add parent directory to path for imports
@@ -11,7 +10,6 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import plotly.graph_objects as go
 from config import *
 
 # Page configuration

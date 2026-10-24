@@ -1,8 +1,6 @@
 """SmartRim - Reusable tool library for game interaction via MCP."""
 
 import json
-import os
-import sys
 
 from mcp_client import McpClient, McpError
 
