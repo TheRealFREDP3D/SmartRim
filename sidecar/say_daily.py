@@ -24,30 +24,14 @@ except ImportError:
 
 URL = os.getenv("MCP_URL", MCP_URL)
 
-# Reuse the shared MCP client instead of reimplementing JSON-RPC transport.
-try:
-    from mcp_client import McpClient
-    _client = McpClient(URL, delay=MCP_DELAY)
-except Exception:  # pragma: no cover - requests missing
-    _client = None
+# Reuse the shared MCP client (requests is a hard dependency).
+from mcp_client import McpClient
+
+_client = McpClient(URL, delay=MCP_DELAY)
 
 
 def call(name, args=None):
-    if _client is not None:
-        return _client.call_tool(name, args)
-    # Fallback for environments without the shared client/requests.
-    import urllib.request
-    payload = {"jsonrpc": "2.0", "id": 1, "method": "tools/call",
-               "params": {"name": name, "arguments": args or {}}}
-    req = urllib.request.Request(URL, data=json.dumps(payload).encode(),
-                                headers={"Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=5) as resp:
-        data = json.loads(resp.read())
-    text = data["result"]["content"][0]["text"]
-    try:
-        return json.loads(text)
-    except (json.JSONDecodeError, TypeError):
-        return {"text": text}
+    return _client.call_tool(name, args)
 
 
 def build_llm_advice(status, alerts, research, resources, conditions):
