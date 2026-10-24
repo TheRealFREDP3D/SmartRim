@@ -630,14 +630,14 @@ def poll_once(client: McpClient, state: PollResult) -> PollResult:
         current_hour = conditions.get("hour", 0) if isinstance(conditions, dict) else 0
         day_rolled = False
 
-        # Daily say: display status + advice at configured hours (default 6am and 6pm)
+        # Daily say: display status + advice at configured hours (default 6am and 6pm).
+        # Display is observational (not an intervention), so it runs in every mode.
         try:
             if isinstance(current_hour, int) and current_hour in SAY_DAILY_HOURS:
                 say_key = (current_day, current_hour)
                 if say_key != (state.last_say_day, state.last_say_hour):
-                    if adviser_acts(OBSERVE_ONLY):
-                        slot = "morning" if current_hour < 12 else "evening"
-                        _say_daily_message(client, conditions, slot=slot)
+                    slot = "morning" if current_hour < 12 else "evening"
+                    _say_daily_message(client, conditions, slot=slot)
                     state.last_say_day = current_day
                     state.last_say_hour = current_hour
         except Exception as e:
@@ -679,6 +679,19 @@ def poll_once(client: McpClient, state: PollResult) -> PollResult:
             if urgent:
                 state.urgent_alerts += 1
                 logger.warning(f"{len(alerts)} alert(s) ({len(urgent)} urgent)")
+                # Display the urgent situation in-game via say (all modes).
+                try:
+                    msg = "URGENT: " + "; ".join(a.get("message", "") for a in urgent)
+                    if adviser_acts(OBSERVE_ONLY):
+                        try:
+                            _, _, actions, _ = _advice_context(client, status_now, conditions, alerts)
+                            if actions:
+                                msg += " | Advice: " + "; ".join(ac.get("action", "") for ac in actions)
+                        except Exception:
+                            pass
+                    client.call_tool("say", {"text": msg})
+                except Exception as e:
+                    logger.error(f"say urgent error: {e}")
                 if adviser_acts(OBSERVE_ONLY):
                     logged = True
                     try:
