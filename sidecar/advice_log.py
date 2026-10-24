@@ -5,7 +5,10 @@ import json
 import uuid
 from datetime import datetime
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+try:
+    from config import BASE_DIR
+except Exception:
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ADVICE_DIR = os.path.join(BASE_DIR, "memory", "advice")
 ADVICE_FILE = os.path.join(ADVICE_DIR, "advice.jsonl")
 

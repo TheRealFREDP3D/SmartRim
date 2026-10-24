@@ -7,7 +7,10 @@ import json
 import os
 import re
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+try:
+    from config import BASE_DIR
+except Exception:
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LESSONS_FILE = os.path.join(BASE_DIR, "memory", "lessons.jsonl")
 
 ALERT_TO_THREAT = {

@@ -15,7 +15,10 @@ import os
 import re
 from datetime import datetime
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+try:
+    from config import BASE_DIR
+except Exception:
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEFAULT_REGISTRY = os.path.join(BASE_DIR, "memory", "quests", "registry.json")
 
 TAG_RE = re.compile(r"<[^>]+>")

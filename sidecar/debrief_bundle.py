@@ -12,7 +12,10 @@ import glob
 import re
 from datetime import datetime
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+try:
+    from config import BASE_DIR
+except Exception:
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # Verified wiki facts (memory/wiki-audit-20261018.md, section D). Keep this list short and cited.
 WIKI_FACTS = [

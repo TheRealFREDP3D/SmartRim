@@ -94,5 +94,32 @@ class TestOutcomes(unittest.TestCase):
         self.assertLessEqual(lessons[0]["confidence"], 0.35)
 
 
+class TestCloseAdvice(unittest.TestCase):
+    def test_food_helped(self):
+        advice = {"situation": "Food stock low", "trigger": "reflex"}
+        snap = {"food_days": 6, "medicine_count": 5, "min_mood": 50, "alerts": []}
+        status, note = outcomes._close_advice(advice, snap)
+        self.assertEqual(status, "helped")
+        self.assertIn("food days", note)
+
+    def test_food_failed(self):
+        advice = {"situation": "Food stock low", "trigger": "reflex"}
+        snap = {"food_days": 1, "medicine_count": 5, "min_mood": 50, "alerts": []}
+        status, note = outcomes._close_advice(advice, snap)
+        self.assertEqual(status, "failed")
+
+    def test_mood_helped(self):
+        advice = {"situation": "Mood major break risk", "trigger": "reflex"}
+        snap = {"food_days": 5, "medicine_count": 5, "min_mood": 40, "alerts": []}
+        status, note = outcomes._close_advice(advice, snap)
+        self.assertEqual(status, "helped")
+
+    def test_expired_when_risk_cleared(self):
+        advice = {"situation": "Unknown risk", "trigger": "reflex"}
+        snap = {"food_days": 6, "medicine_count": 5, "min_mood": 50, "alerts": []}
+        status, note = outcomes._close_advice(advice, snap)
+        self.assertEqual(status, "expired")
+
+
 if __name__ == "__main__":
     unittest.main()

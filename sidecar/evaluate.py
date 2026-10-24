@@ -16,7 +16,10 @@ import argparse
 import statistics
 from datetime import date
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+try:
+    from config import BASE_DIR
+except Exception:
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 SUMMARY_KEYS = [
     "run_id",
