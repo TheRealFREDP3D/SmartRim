@@ -31,12 +31,17 @@ URGENT_KEYWORDS = ["fire", "predator", "raid", "attack", "downed", "berserk", "p
 # Optional LLM provider for debrief generation (Phase 1 optional)
 # Providers: openai | anthropic | ollama
 LLM_API_KEY = os.getenv("LLM_API_KEY") or os.getenv("OPENAI_API_KEY") or os.getenv("ANTHROPIC_API_KEY")
-LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openai")  # openai | anthropic | ollama
-LLM_MODEL = os.getenv("LLM_MODEL", "gpt-4o-mini")
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "ollama")  # openai | anthropic | ollama
+LLM_MODEL = os.getenv("LLM_MODEL", "gemma4-e2b-rimworld")
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 
 # Run identity for advice logging
 RUN_ID = os.getenv("RUN_ID", "current-run")
+
+# Daily in-game status message (say command) — comma-separated hours (0-23)
+SAY_DAILY_HOURS = [int(h.strip()) for h in os.getenv("SAY_DAILY_HOURS", "6,18").split(",") if h.strip().isdigit()]
+# Use local LLM (Ollama) for daily advice instead of rule-based heuristics
+SAY_DAILY_USE_LLM = os.getenv("SAY_DAILY_USE_LLM", "0") == "1"
 
 # Fixed run length for comparable runs (see RUN-PROTOCOL.md).
 # Definition: the 1st day is Day 1, then 10 full days must complete after it.

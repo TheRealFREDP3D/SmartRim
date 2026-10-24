@@ -7,6 +7,19 @@ class McpError(Exception):
     pass
 
 
+READ_ONLY_TOOLS = {
+    "get_status",
+    "get_conditions",
+    "list_colonists",
+    "get_resources",
+    "get_research",
+    "get_alerts",
+    "list_things",
+    "get_map_info",
+    "get_quest",
+}
+
+
 class McpClient:
     def __init__(self, url, delay=0.15, max_retries=3):
         self.url = url
@@ -49,7 +62,8 @@ class McpClient:
             "params": {"name": name, "arguments": arguments or {}},
         }
         last_err = None
-        for attempt in range(self.max_retries):
+        max_attempts = self.max_retries if name in READ_ONLY_TOOLS else 1
+        for attempt in range(max_attempts):
             self._throttle()
             try:
                 resp = requests.post(self.url, json=payload, timeout=30)
@@ -66,5 +80,8 @@ class McpClient:
                 return result
             except (requests.exceptions.RequestException, ValueError) as e:
                 last_err = e
-                time.sleep(0.5 * (attempt + 1))
+                if attempt < max_attempts - 1:
+                    time.sleep(0.5 * (attempt + 1))
+        if max_attempts == 1:
+            raise McpError(f"transport/parse error calling {name}: {last_err}")
         raise McpError(f"transport/parse error calling {name}: {last_err}")

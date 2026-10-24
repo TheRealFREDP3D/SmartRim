@@ -19,6 +19,11 @@ try:
 except Exception:
     _quests = None
 
+try:
+    import say_daily as _say_daily
+except Exception:
+    _say_daily = None
+
 # A reflex snapshot is taken when a new urgent alert appears, so incidents that start and
 # end between two daily snapshots (a raid, a fire) still leave evidence for the debrief.
 REFLEX_SNAPSHOT_LIMIT = 40
@@ -58,16 +63,9 @@ def _is_urgent_label(label):
     return any(kw in low for kw in URGENT_KEYWORDS)
 
 
-def _predator_kinds():
-    return {
-        "cougar", "panther", "lynx", "cobra", "grizzly bear", "polar bear",
-        "arctic fox", "arctic wolf", "fennec fox", "red fox", "timber wolf",
-        "warg", "alligator", "greatwolf", "scimitar cat", "tiger",
-        "wolverine",
-    }
 
 
-def run_reflex_checks(client, deep=False):
+def run_reflex_checks(client):
     alerts = []
     timestamp = datetime.now().isoformat()
 
@@ -88,7 +86,6 @@ def run_reflex_checks(client, deep=False):
             if isinstance(cr, dict):
                 colonists = cr.get("colonists", [])
 
-        colonist_positions = []
         for colonist in colonists:
             name = colonist.get("name", "Unknown")
             mood = colonist.get("mood")
@@ -109,14 +106,6 @@ def run_reflex_checks(client, deep=False):
 
             if health is not None and health < HEALTH_THRESHOLD:
                 alerts.append({"type": "urgent", "category": "health", "message": f"{name} health at {health}%", "timestamp": timestamp})
-
-            if cid:
-                try:
-                    p = client.call_tool("get_pawn", {"id": cid})
-                    if isinstance(p, dict) and p.get("x") is not None:
-                        colonist_positions.append((name, p.get("x"), p.get("z")))
-                except Exception:
-                    pass
 
         bundled_alerts = status.get("bundled", {}).get("get_alerts", {})
         if not bundled_alerts:
@@ -143,38 +132,9 @@ def run_reflex_checks(client, deep=False):
             alert_type = "urgent" if _is_urgent_label(label) else "warning"
             alerts.append({"type": alert_type, "category": "game_alert", "message": label, "timestamp": timestamp})
 
-        if deep:
-            try:
-                pawns_resp = client.call_tool("list_things", {"category": "pawn"})
-                things = pawns_resp.get("things", []) if isinstance(pawns_resp, dict) else []
-                for t in things:
-                    hostile = t.get("hostile") or t.get("isHostile") or (str(t.get("faction", "")).lower() in ("hostile", "enemy", "raider"))
-                    if hostile:
-                        hx, hz = t.get("x"), t.get("z")
-                        near = False
-                        if hx is not None and hz is not None:
-                            for (_, cx, cz) in colonist_positions:
-                                if cx is not None and cz is not None and abs(hx - cx) + abs(hz - cz) <= 15:
-                                    near = True
-                        alerts.append({"type": "urgent" if near else "warning", "category": "hostile", "message": f"Hostile pawn nearby: {t.get('label') or t.get('name') or t.get('def')} at ({hx},{hz}){' (near colonist)' if near else ''}", "timestamp": timestamp})
-            except Exception:
-                pass
-
-            try:
-                wl = client.call_tool("list_wildlife")
-                animals = wl.get("animals", []) if isinstance(wl, dict) else []
-                predators = _predator_kinds()
-                for a in animals:
-                    kind = str(a.get("kind", "")).lower()
-                    if any(p in kind for p in predators):
-                        ax, az = a.get("x"), a.get("z")
-                        if ax is not None and az is not None:
-                            for (_, cx, cz) in colonist_positions:
-                                if cx is not None and cz is not None and abs(ax - cx) + abs(az - cz) <= 15:
-                                    alerts.append({"type": "urgent", "category": "predator_near", "message": f"Predator ({a.get('kind')}) near colonist at ({ax},{az})", "timestamp": timestamp})
-                                    break
-            except Exception:
-                pass
+        # Predator proximity and hostile-near-colonist checks removed: these duplicate
+        # in-game alerts (the game already warns about nearby hostiles and predators).
+        # The game's own alert system (get_alerts) covers these cases.
 
         try:
             res = client.call_tool("get_resources")
@@ -256,6 +216,7 @@ def normalize_snapshot(snapshot):
 
         snapshot["summary"] = {
             "day": conditions.get("date") or snapshot.get("day"),
+            "days_passed": status.get("daysPassed") if isinstance(status, dict) else None,
             "hour": conditions.get("hour"),
             "season": conditions.get("seasonLabel"),
             "temp": (conditions.get("temperature", {}) or {}).get("outdoorC") if isinstance(conditions.get("temperature"), dict) else None,
@@ -288,26 +249,39 @@ def snapshot_dir_for(run_id, root=None):
 def write_snapshot(client, day_label, run_id=None, prefix="day", quest_registry_path=None,
                    filename_stem=None):
     run_id = RUN_ID if run_id is None else run_id
+    status = client.call_tool("get_status")
+    conditions = client.call_tool("get_conditions")
+    colonists = client.call_tool("list_colonists")
+    resources = client.call_tool("get_resources")
+    research = client.call_tool("get_research")
+    alerts = client.call_tool("get_alerts")
+
+    effective_day = day_label
+    if prefix == "day" and not filename_stem and isinstance(conditions, dict):
+        cond_date = conditions.get("date")
+        if cond_date:
+            effective_day = cond_date
+
     snapshot = {
         "run_id": run_id,
-        "day": day_label,
+        "day": effective_day,
         "timestamp": datetime.now().isoformat(),
-        "status": client.call_tool("get_status"),
-        "conditions": client.call_tool("get_conditions"),
-        "colonists": client.call_tool("list_colonists"),
-        "resources": client.call_tool("get_resources"),
-        "research": client.call_tool("get_research"),
-        "alerts": client.call_tool("get_alerts"),
+        "status": status,
+        "conditions": conditions,
+        "colonists": colonists,
+        "resources": resources,
+        "research": research,
+        "alerts": alerts,
     }
     # Quest context. Optional: an older game build without get_quest must not break snapshots.
     if _quests is not None:
         try:
-            snapshot["quests"] = _quests.update(client, day_label=str(day_label), path=quest_registry_path)
+            snapshot["quests"] = _quests.update(client, day_label=str(effective_day), path=quest_registry_path)
         except Exception:
             snapshot["quests"] = []
     normalize_snapshot(snapshot)
 
-    safe = str(day_label).replace("/", "-").replace("\\", "-")
+    safe = str(effective_day).replace("/", "-").replace("\\", "-")
     dest = snapshot_dir_for(run_id)
     os.makedirs(dest, exist_ok=True)
     stem = filename_stem or f"{prefix}-{safe}"
@@ -359,19 +333,53 @@ def configure_observe_only(argv=None):
 PID_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "memory", "monitor.pid")
 
 
+def _pid_alive(pid):
+    """Check if a process with the given PID is alive. Windows-safe."""
+    try:
+        pid = int(pid)
+    except (TypeError, ValueError):
+        return False
+    if pid <= 0:
+        return False
+    if os.name == "nt":
+        try:
+            import ctypes
+            PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+            STILL_ACTIVE = 259
+            handle = ctypes.windll.kernel32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, pid)
+            if not handle:
+                return False
+            try:
+                code = ctypes.c_ulong()
+                if not ctypes.windll.kernel32.GetExitCodeProcess(handle, ctypes.byref(code)):
+                    return False
+                return code.value == STILL_ACTIVE
+            finally:
+                ctypes.windll.kernel32.CloseHandle(handle)
+        except Exception:
+            # If we cannot safely query, assume not alive to avoid blocking
+            return False
+    try:
+        os.kill(pid, 0)
+        return True
+    except OSError:
+        return False
+
+
 def _acquire_lock():
     if os.path.exists(PID_FILE):
         try:
             with open(PID_FILE) as f:
                 old_pid = int(f.read().strip())
-            try:
-                os.kill(old_pid, 0)
+            if _pid_alive(old_pid):
                 print(f"Monitor already running (PID {old_pid}). Exiting.")
                 return False
-            except OSError:
-                pass
         except (ValueError, OSError):
             pass
+    try:
+        os.makedirs(os.path.dirname(PID_FILE), exist_ok=True)
+    except Exception:
+        pass
     with open(PID_FILE, "w") as f:
         f.write(str(os.getpid()))
     return True
@@ -462,6 +470,28 @@ def _advice_context(client, status_now, conditions, alerts):
 OBSERVE_ONLY = os.getenv("OBSERVE_ONLY", "0") == "1"
 
 
+def _say_daily_message(client, conditions, slot=None):
+    """Display a daily status + advice message via the in-game say command."""
+    if _say_daily is None:
+        return False
+    try:
+        hour = conditions.get("hour", 0) if isinstance(conditions, dict) else 0
+        if slot is None:
+            slot = "morning" if (isinstance(hour, int) and hour < 12) else "evening"
+        use_llm = globals().get("SAY_DAILY_USE_LLM", False)
+        message, _ = _say_daily.build_message(slot, use_llm=use_llm)
+        result = client.call_tool("say", {"text": message})
+        if isinstance(result, dict) and result.get("shown"):
+            print(f"Daily say ({slot}, hour {hour}): displayed {result.get('chars', 0)} chars")
+            return True
+        else:
+            print(f"Daily say ({slot}): not shown: {result}")
+            return False
+    except Exception as e:
+        print(f"Daily say error: {e}")
+        return False
+
+
 def _log_scheduled(client, status_now, conditions, alerts, day_label):
     import advice_log
     _, _, actions, linked = _advice_context(client, status_now, conditions, alerts)
@@ -516,6 +546,8 @@ def main():
     client = McpClient(MCP_URL, delay=MCP_DELAY)
     last_day = None
     snapshotted_day = None
+    last_say_day = None
+    last_say_hour = None
     consecutive_errors = 0
     run_ended = False
     poll_count = 0
@@ -556,27 +588,56 @@ def main():
                     break
 
                 current_day = conditions.get("date")
+                current_hour = conditions.get("hour", 0) if isinstance(conditions, dict) else 0
                 day_rolled = False
 
-                if current_day is not None and current_day != last_day:
-                    if last_day is not None and snapshotted_day != last_day:
-                        path = write_snapshot(client, last_day)
-                        print(f"Snapshot written: {path}")
-                        snapshotted_day = last_day
-                        day_rolled = True
-                        if adviser_acts(OBSERVE_ONLY):
-                            try:
-                                import outcomes
-                                with open(path, encoding="utf-8") as fh:
-                                    closed = json.load(fh)
-                                outcomes.close_outcomes(closed.get("summary") or {}, run_id=RUN_ID)
-                            except Exception as e:
-                                print(f"outcome close error: {e}")
-                    last_day = current_day
+                # Daily say: display status + advice at configured hours (default 6am and 6pm)
+                try:
+                    if isinstance(current_hour, int) and current_hour in SAY_DAILY_HOURS:
+                        say_key = (current_day, current_hour)
+                        if say_key != (last_say_day, last_say_hour):
+                            if adviser_acts(OBSERVE_ONLY):
+                                slot = "morning" if current_hour < 12 else "evening"
+                                _say_daily_message(client, conditions, slot=slot)
+                            last_say_day = current_day
+                            last_say_hour = current_hour
+                except Exception as e:
+                    print(f"Daily say check error: {e}")
+
+                if current_day is not None:
+                    if last_day is None:
+                        if snapshotted_day != current_day:
+                            path = write_snapshot(client, current_day)
+                            print(f"Snapshot written: {path}")
+                            snapshotted_day = current_day
+                            day_rolled = True
+                            if adviser_acts(OBSERVE_ONLY):
+                                try:
+                                    import outcomes
+                                    with open(path, encoding="utf-8") as fh:
+                                        closed = json.load(fh)
+                                    outcomes.close_outcomes(closed.get("summary") or {}, run_id=RUN_ID)
+                                except Exception as e:
+                                    print(f"outcome close error: {e}")
+                        last_day = current_day
+                    elif current_day != last_day:
+                        if snapshotted_day != current_day:
+                            path = write_snapshot(client, current_day)
+                            print(f"Snapshot written: {path}")
+                            snapshotted_day = current_day
+                            day_rolled = True
+                            if adviser_acts(OBSERVE_ONLY):
+                                try:
+                                    import outcomes
+                                    with open(path, encoding="utf-8") as fh:
+                                        closed = json.load(fh)
+                                    outcomes.close_outcomes(closed.get("summary") or {}, run_id=RUN_ID)
+                                except Exception as e:
+                                    print(f"outcome close error: {e}")
+                        last_day = current_day
 
                 poll_count += 1
-                deep = (poll_count % 3 == 0)
-                alerts = run_reflex_checks(client, deep=deep)
+                alerts = run_reflex_checks(client)
                 alert_path = os.path.join(ALERTS_DIR, "current.json")
                 with open(alert_path, "w") as f:
                     json.dump(alerts, f, indent=2)

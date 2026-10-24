@@ -19,8 +19,17 @@ sessions/*-transcript.md
 Session1-2.zip
 
 # workspace/tooling (not part of the repo)
+
+# Ideas, Tasklists, Archives
 /.DEV
+
 /.kilo
 /.kilocode
 /.codeviz
 /.pytest_cache
+
+REVIEW-TASKS-GROK.md
+
+# Audio/Video Files Generated with NotebookLM
+/.notebooklm/How_AI_Learns_to_Survive_RimWorld.m4a
+/.notebooklm/SmartRim_Survival_Guide.mp4

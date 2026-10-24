@@ -38,7 +38,9 @@ GAME_ALERT_KEYWORDS = {
 
 
 def classify_phase(snapshot_summary, alerts):
-    day = snapshot_summary.get("day") or snapshot_summary.get("colonist_count") or 0
+    day = snapshot_summary.get("days_passed")
+    if day is None:
+        day = snapshot_summary.get("day") or snapshot_summary.get("colonist_count") or 0
     if isinstance(day, str):
         m = re.search(r"(\d+)", day)
         day = int(m.group(1)) if m else 0
@@ -235,6 +237,26 @@ def load_lessons(path=None):
     return lessons
 
 
+def _normalize_list(val):
+    if val is None:
+        return []
+    if isinstance(val, str):
+        v = val.strip().lower()
+        if v == "any" or v == "":
+            return []
+        return [val]
+    if isinstance(val, (list, set, tuple)):
+        out = []
+        for item in val:
+            if item is None:
+                continue
+            if isinstance(item, str) and item.strip().lower() == "any":
+                continue
+            out.append(item)
+        return out
+    return [val]
+
+
 def retrieve(situation, lessons=None, limit=5):
     if lessons is None:
         lessons = load_lessons()
@@ -251,12 +273,12 @@ def retrieve(situation, lessons=None, limit=5):
         if lesson.get("status") != "active":
             continue
         trigger = lesson.get("trigger") or {}
-        phases = trigger.get("phases") or []
-        l_threats = set(trigger.get("threats") or [])
-        l_resources = set(trigger.get("resources") or [])
-        l_diff = trigger.get("difficulty") or []
-        l_st = trigger.get("storyteller") or []
-        l_biome = trigger.get("biome") or []
+        phases = _normalize_list(trigger.get("phases"))
+        l_threats = set(_normalize_list(trigger.get("threats")))
+        l_resources = set(_normalize_list(trigger.get("resources")))
+        l_diff = _normalize_list(trigger.get("difficulty"))
+        l_st = _normalize_list(trigger.get("storyteller"))
+        l_biome = _normalize_list(trigger.get("biome"))
 
         if phases and phase not in phases:
             continue

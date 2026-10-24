@@ -25,7 +25,7 @@ except Exception:
 
 
 MONTH_ORDER = {
-    "Jugust": 0, "Septober": 1, "Decembary": 2, "Aprimay": 3,
+    "Aprimay": 0, "Jugust": 1, "Septober": 2, "Decembary": 3,
     "Jumay": 4,
 }
 

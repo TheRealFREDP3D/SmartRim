@@ -87,11 +87,35 @@ def resolve_snapshots_dir(run_id, marker=None, snapshots_root=None):
     return nested
 
 
+def _snapshot_sort_key(path):
+    try:
+        data = _load_json(path)
+    except Exception:
+        return (9999, path)
+    status = data.get("status") or {}
+    dp = status.get("daysPassed")
+    if dp is not None:
+        try:
+            return (int(dp), path)
+        except Exception:
+            pass
+    summary = data.get("summary") or {}
+    day_label = summary.get("day") or data.get("day") or ""
+    m = __import__("re").search(r"(\d+)", str(day_label))
+    if m:
+        try:
+            return (int(m.group(1)), path)
+        except Exception:
+            pass
+    return (9999, path)
+
+
 def _load_snapshots(snapshots_dir):
     if not snapshots_dir or not os.path.isdir(snapshots_dir):
         return []
     snaps = []
-    for path in sorted(glob.glob(os.path.join(snapshots_dir, "day-*.json"))):
+    paths = glob.glob(os.path.join(snapshots_dir, "day-*.json"))
+    for path in sorted(paths, key=_snapshot_sort_key):
         try:
             snaps.append(_load_json(path))
         except (json.JSONDecodeError, OSError):

@@ -41,9 +41,9 @@ def generate(prompt, provider=None, model=None, system=None, **kwargs):
     provider = (provider or LLM_PROVIDER or "ollama").lower()
     if model is None:
         if provider == "ollama":
-            model = os.getenv("OLLAMA_MODEL", "gemma4-e2b-rimworld")
+            model = os.getenv("OLLAMA_MODEL", "gemma4-e2b-rimworld") or LLM_MODEL or "gemma4-e2b-rimworld"
         else:
-            model = LLM_MODEL
+            model = LLM_MODEL or "qwen3-rimworld"
     if provider == "ollama":
         base = kwargs.pop("base_url", OLLAMA_BASE_URL)
         return _ollama_generate(prompt, model, base, system=system, **kwargs)

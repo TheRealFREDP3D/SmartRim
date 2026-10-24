@@ -18,6 +18,9 @@ memory, and tests.
 4. Run tests: `python -m pytest`
 5. Validate lessons: `python sidecar/lessons.py validate`
 6. Start the reflex monitor: `.\start-monitor.ps1` (adviser on) or `.\start-monitor.ps1 -ObserveOnly`.
+   - The monitor displays a daily status + advice message in-game at configured hours (default: 6am and 6pm).
+   - Configure hours via `SAY_DAILY_HOURS` env var (e.g., `SAY_DAILY_HOURS=6,12,18` for 3 messages/day).
+   - Manual trigger: `python sidecar/say_daily.py` or `python sidecar/say_daily.py --slot evening`.
 
 ## Layout
 

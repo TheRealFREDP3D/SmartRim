@@ -101,7 +101,19 @@ def _colonists(snap):
 
 
 def _is_valid(snap):
-    return bool(_colonists(snap)) or bool((snap.get("status") or {}).get("colonistCount"))
+    colonists = _colonists(snap)
+    if colonists:
+        return True
+    status = snap.get("status") or {}
+    cc = status.get("colonistCount")
+    if cc and cc > 0:
+        return True
+    day_label = str(_day_label(snap) or "").lower()
+    if day_label.startswith("end") or day_label.startswith("reflex") or day_label.startswith("day"):
+        if cc == 0 or cc is None:
+            return False
+        return bool(cc)
+    return bool(cc)
 
 
 def _day_label(snap):
