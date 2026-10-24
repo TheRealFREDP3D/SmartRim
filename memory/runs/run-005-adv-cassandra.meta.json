@@ -1,0 +1,38 @@
+{
+  "run_id": "run-005-adv-cassandra",
+  "biome": "temperate forest (large hills, tile 29631, region 'Lanlalium Cliffs', road nearby, no river)",
+  "scenario": "Crashlanded",
+  "storyteller": "Cassandra Classic",
+  "difficulty": "Adventure story",
+  "reloadAnytime": true,
+  "team": [
+    "Yuudai O'Neal",
+    "Sera 'Kaleun' Steiner",
+    "Alexander 'Alex' Millev"
+  ],
+  "notes": "Adviser run (arm on). 3 founders, 4 colonists by day 9 (wild woman Ishca Jean joined). Run ended at daysPassed 11 with all 4 colonists alive (health 83-100, mood 30-72). 0 urgent alerts at run end, but 11 auto-pauses during the run, all on reflex urgents (raid day 6, ally downed day 8, mood-major day 9, Ishca health/downed day 9-10). Research: 8 completed, solar panels 35% at end. Wealth ~19529. Final alerts: Low food, Starvation, Minor break risk (Jean), Need colonist beds, Need batteries, Unroofed electrical, Combatant unarmed, Shaman role unfilled. Two positive quest outcomes (The Ambushed Praetor, Kaleun's Novice Ceremony); mechanoid signal still unaccepted. One hostile raider ('Swamp', Priest) downed day 6; Alex wounded to 76 HP and healed. Ally 'Eggs' downed day 8 and later confirmed dead. Wild woman Jean joined day 9 at 46% HP and was downed on day 10, then recovered to 83%.",
+  "quests": [
+    {
+      "id": 0,
+      "name": "Mechanoid Signal",
+      "states": ["NotYetAccepted", "Ongoing"],
+      "accepter": null,
+      "description": "Mechanoid ship signal detected; can be falsely responded to to crashland it for grav-tech salvage. Ongoing, not approached."
+    },
+    {
+      "id": 2,
+      "name": "The Ambushed Praetor",
+      "states": ["EndedSuccess"],
+      "accepter": "Kaleun",
+      "description": "Phocas Glabas, praetor of Empire of Eltro, ambushed and followed by a manhunting mink. Kaleun sheltered him at Body's Lagoon; 8 honor granted. EndedSuccess."
+    },
+    {
+      "id": 3,
+      "name": "Kaleun's Novice Ceremony",
+      "states": ["Ongoing", "EndedSuccess"],
+      "accepter": null,
+      "description": "Empire of Eltro bestowing ceremony for Kaleun's Novice title (level 1 psylink). EndedSuccess on day 9."
+    }
+  ],
+  "quests_recorded_after_run": false
+}
