@@ -25,6 +25,30 @@ from smartrim.debrief_llm import analyze_debrief, find_bundle
 
 FENCE_RE = re.compile(r"```json\s*(.*?)```", re.DOTALL | re.IGNORECASE)
 
+
+def _repo_root() -> str:
+    # src/smartrim/eval_models.py -> src/smartrim -> src -> repo root
+    return os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+
+
+def _load_rubric_labels() -> dict[int, str]:
+    """Extract rubric criterion labels from memory/debrief-rubric.md."""
+    rubric_path = os.path.join(_repo_root(), "memory", "debrief-rubric.md")
+    try:
+        with open(rubric_path, encoding="utf-8") as f:
+            text = f.read()
+    except OSError:
+        return {}
+
+    labels: dict[int, str] = {}
+    # Example row: | 1 | Format | Not the two sections ... |
+    for m in re.finditer(r"\|\s*(\d+)\s*\|\s*([^|]+?)\s*\|", text):
+        idx = int(m.group(1))
+        name = m.group(2).strip()
+        if name and name.lower() not in {"criterion"}:
+            labels[idx] = name
+    return labels
+
 REQUIRED_LESSON_KEYS = {
     "title",
     "cause_chain",
@@ -243,6 +267,7 @@ def eval_one(
     model: str,
     *,
     reuse_existing: bool,
+    rubric_labels: dict[int, str],
 ) -> tuple[ScoreRow, str]:
     out_path = os.path.join(DEBRIEFS_DIR, f"{run_id}.{provider}.{_safe_model_suffix(model)}.response.md")
     os.makedirs(DEBRIEFS_DIR, exist_ok=True)
@@ -252,7 +277,7 @@ def eval_one(
             raw_answer = f.read()
         criteria, total = score_debrief_answer(bundle_text, raw_answer)
         weakest_i = min(range(1, 11), key=lambda i: criteria[i])
-        weakest = str(weakest_i)
+        weakest = rubric_labels.get(weakest_i, str(weakest_i))
         return (
             ScoreRow(provider=provider, model=model, total=total, criteria=criteria[1:], weakest=weakest),
             out_path,
@@ -282,7 +307,7 @@ def eval_one(
 
     criteria, total = score_debrief_answer(bundle_text, raw_answer)
     weakest_i = min(range(1, 11), key=lambda i: criteria[i])
-    weakest = str(weakest_i)
+    weakest = rubric_labels.get(weakest_i, str(weakest_i))
     return (
         ScoreRow(provider=provider, model=model, total=total, criteria=criteria[1:], weakest=weakest),
         out_path,
@@ -304,6 +329,8 @@ def main():
 
     reuse_existing = not args.no_reuse
 
+    rubric_labels = _load_rubric_labels()
+
     bundle_path = find_bundle(args.run)
     if not bundle_path or not os.path.exists(bundle_path):
         print(f"Bundle not found: {bundle_path}")
@@ -319,7 +346,14 @@ def main():
         provider, model = pair.split(":", 1)
         provider = provider.strip()
         model = model.strip()
-        row, _path = eval_one(args.run, bundle_text, provider, model, reuse_existing=reuse_existing)
+        row, _path = eval_one(
+            args.run,
+            bundle_text,
+            provider,
+            model,
+            reuse_existing=reuse_existing,
+            rubric_labels=rubric_labels,
+        )
         rows.append(row)
 
     # Print comparison table.
