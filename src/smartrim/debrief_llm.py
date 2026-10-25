@@ -133,21 +133,22 @@ RECOVERY_SUFFIX = '\nIf you cannot produce valid JSON, return {"raw": "<your ana
        retry=retry_if_exception_type((requests.exceptions.Timeout, requests.exceptions.RequestException,
                                      json.JSONDecodeError, urllib.error.URLError, TimeoutError, OSError)),
        before_sleep=before_sleep_log(logger, logging.INFO))
-def _generate_once(bundle_text, model, system, temperature):
+def _generate_once(bundle_text, model, system, temperature, provider=None):
     prompt = f"Analyze this RimWorld colony debrief bundle:\n\n{bundle_text}"
     raw = generate(
         prompt,
         task="debrief",
+        provider=provider,
         model=model,
         system=system,
         temperature=temperature,
         num_ctx=16384,
         cache_system=bool(system and system.startswith(BUNDLE_SYSTEM)),
     )
-    return _extract_first_json_fence(raw)
+    return raw, _extract_first_json_fence(raw)
 
 
-def analyze_debrief(bundle_text, model=None, temperature=0.3, system=None, task="debrief"):
+def analyze_debrief(bundle_text, model=None, temperature=0.3, system=None, task="debrief", provider=None):
     """Send a debrief bundle to the LLM and return the analysis.
 
     Uses fenced ```json blocks for structured extraction, then validates
@@ -164,10 +165,11 @@ def analyze_debrief(bundle_text, model=None, temperature=0.3, system=None, task=
     expect_candidates = ("Section A" in bundle_text) and ("## 8. Task" in bundle_text or "## 8." in bundle_text)
 
     try:
-        data = _generate_once(bundle_text, model, sys1, temperature)
+        raw, data = _generate_once(bundle_text, model, sys1, temperature, provider=provider)
         if not expect_candidates:
-            return data
-        return _validate_lesson_candidates(data)
+            return {"raw": raw, "json": data}
+        lessons = _validate_lesson_candidates(data)
+        return {"raw": raw, "lessons": lessons}
     except SchemaValidationError as ve:
         logger.info(
             "Debrief LLM failed schema validation; retrying once with validation error: %s",
@@ -178,6 +180,7 @@ def analyze_debrief(bundle_text, model=None, temperature=0.3, system=None, task=
         raw2 = generate(
             prompt,
             task=task,
+            provider=provider,
             model=model,
             system=sys2,
             temperature=temperature,
@@ -186,7 +189,8 @@ def analyze_debrief(bundle_text, model=None, temperature=0.3, system=None, task=
         )
         try:
             data2 = _extract_first_json_fence(raw2)
-            return _validate_lesson_candidates(data2)
+            lessons2 = _validate_lesson_candidates(data2)
+            return {"raw": raw2, "lessons": lessons2}
         except (json.JSONDecodeError, SchemaValidationError, ValidationError):
             return {"raw": raw2}
     except (requests.exceptions.Timeout, requests.exceptions.RequestException, json.JSONDecodeError,
@@ -197,6 +201,7 @@ def analyze_debrief(bundle_text, model=None, temperature=0.3, system=None, task=
         raw = generate(
             prompt,
             task=task,
+            provider=provider,
             model=model,
             system=recovery_system,
             temperature=temperature,
@@ -204,7 +209,8 @@ def analyze_debrief(bundle_text, model=None, temperature=0.3, system=None, task=
             cache_system=False,
         )
         try:
-            return _extract_first_json_fence(raw)
+            data = _extract_first_json_fence(raw)
+            return {"raw": raw, "json": data}
         except json.JSONDecodeError:
             return {"raw": raw}
 
@@ -281,8 +287,12 @@ def main():
     is_bundle = ("Section A" in bundle) and ("## 8. Task" in bundle or "## 8." in bundle)
     from smartrim.llm import resolve_model
     _provider, _model = resolve_model(task="debrief", model=args.model)
-    analysis = analyze_debrief(bundle, model=_model,
-                               system=BUNDLE_SYSTEM if is_bundle else None)
+    analysis = analyze_debrief(
+        bundle,
+        model=_model,
+        provider=_provider,
+        system=BUNDLE_SYSTEM if is_bundle else None,
+    )
     print(json.dumps(analysis, indent=2))
 
     if not args.no_write:
