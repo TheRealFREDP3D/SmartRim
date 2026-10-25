@@ -15,4 +15,4 @@ pip install -q streamlit plotly pandas
 
 # Start the dashboard
 Write-Host "Launching dashboard at http://localhost:8501" -ForegroundColor Green
-streamlit run sidecar/dashboard.py
+streamlit run src/smartrim/dashboard.py

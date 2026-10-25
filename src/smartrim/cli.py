@@ -3,7 +3,7 @@
 import json
 import sys
 
-import counselor as c
+from smartrim import counselor as c
 
 
 def run_ping(args=None):

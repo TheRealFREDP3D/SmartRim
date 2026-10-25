@@ -15,4 +15,4 @@ ignore = [
 
 [lint.per-file-ignores]
 "tests/*" = ["RUF059"]  # unused unpacked vars are fine in tests
-"sidecar/lessons.py" = ["F403", "F405"]  # intentional re-export shim
+"src/smartrim/lessons.py" = ["F403", "F405"]  # intentional re-export shim

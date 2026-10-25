@@ -4,8 +4,8 @@ All implementation lives in ``situation.py`` (single source of truth). This
 module re-exports it so existing imports and CLI entry points keep working.
 """
 
-from situation import *
-from situation import main as _main
+from smartrim.situation import *
+from smartrim.situation import main as _main
 
 
 def main(argv=None):

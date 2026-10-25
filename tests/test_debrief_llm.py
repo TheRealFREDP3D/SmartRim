@@ -1,12 +1,10 @@
 import os
-import sys
 import tempfile
 import unittest
 
 SIDECAR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "sidecar")
-sys.path.insert(0, SIDECAR)
 
-import debrief_llm
+from smartrim import debrief_llm
 
 
 class TestFindBundle(unittest.TestCase):

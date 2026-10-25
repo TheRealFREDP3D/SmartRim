@@ -17,7 +17,7 @@ import statistics
 from datetime import date
 
 try:
-    from config import BASE_DIR
+    from smartrim.config import BASE_DIR
 except ImportError:
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 

@@ -11,14 +11,12 @@ Or imported by the monitor for automatic twice-daily display.
 import argparse
 import json
 import os
-import sys
 import urllib.error
 
 # Allow running from repo root or sidecar dir
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 try:
-    from config import MCP_DELAY, MCP_URL
+    from smartrim.config import MCP_DELAY, MCP_URL
 except ImportError:
     MCP_URL = os.getenv("MCP_URL", "http://localhost:8787/")
     MCP_DELAY = 0.15
@@ -26,7 +24,7 @@ except ImportError:
 URL = os.getenv("MCP_URL", MCP_URL)
 
 # Reuse the shared MCP client (requests is a hard dependency).
-from mcp_client import McpClient
+from smartrim.mcp_client import McpClient
 
 _client = McpClient(URL, delay=MCP_DELAY)
 
@@ -41,8 +39,7 @@ def build_llm_advice(status, alerts, research, resources, conditions):
     Returns a string of advice, or None if LLM is unavailable.
     """
     try:
-        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-        from llm import generate
+        from smartrim.llm import generate
         ctx = {
             "colonists": [{"name": c.get("name"), "hp": c.get("health"), "mood": c.get("mood"), "job": c.get("job")} for c in status.get("bundled", {}).get("list_colonists", {}).get("colonists", [])],
             "alerts": [a.get("label") for a in (alerts.get("activeAlerts", []) if isinstance(alerts, dict) else [])],

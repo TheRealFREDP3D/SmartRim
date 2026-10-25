@@ -13,10 +13,8 @@ import json
 import os
 import sys
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
-from config import CANDIDATES_DIR, DEBRIEFS_DIR
-from llm import generate
+from smartrim.config import CANDIDATES_DIR, DEBRIEFS_DIR
+from smartrim.llm import generate
 
 DEBRIEF_SYSTEM = """You are a RimWorld colony analyst. Given a colony run debrief
 bundle (timeline, alerts, resources, advice log), provide a structured analysis:

@@ -8,7 +8,7 @@ param(
 )
 $ErrorActionPreference = "Stop"
 
-$monitorScript = "sidecar\monitor.py"
+# (module launched via -m smartrim.monitor)
 $logFile = "memory\monitor.log"
 
 # Rotate oversized log files to keep them manageable
@@ -72,7 +72,7 @@ try {
 }
 
 # Start monitor in background
-$pyArgs = @("-u", $monitorScript)
+$pyArgs = @("-u", "-m", "smartrim.monitor")
 if ($ObserveOnly) {
     $env:OBSERVE_ONLY = "1"
     $pyArgs += "--observe-only"

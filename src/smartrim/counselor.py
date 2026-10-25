@@ -3,10 +3,11 @@
 import json
 
 import requests
-from mcp_client import McpClient, McpError
+
+from smartrim.mcp_client import McpClient, McpError
 
 try:
-    from config import MCP_DELAY, MCP_URL
+    from smartrim.config import MCP_DELAY, MCP_URL
 except ImportError:
     MCP_URL = "http://localhost:8787/"
     MCP_DELAY = 0.15

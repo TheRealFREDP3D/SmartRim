@@ -1,13 +1,10 @@
 import os
-import sys
 import unittest
 
 SIDECAR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "sidecar")
-sys.path.insert(0, SIDECAR)
 
-import lessons
-import situation
-from situation import (
+from smartrim import lessons, situation
+from smartrim.situation import (
     build_resources,
     build_situation,
     build_threats,

@@ -1,7 +1,7 @@
 """Optional LLM helper for local (Ollama) or cloud providers.
 
 Usage:
-    from llm import generate
+    from smartrim.llm import generate
     text = generate("Summarise this colony run: ...", provider="ollama", model="qwen3-rimworld")
 """
 
@@ -11,7 +11,7 @@ import urllib.error
 import urllib.request
 
 try:
-    from config import LLM_API_KEY, LLM_MODEL, LLM_PROVIDER, OLLAMA_BASE_URL
+    from smartrim.config import LLM_API_KEY, LLM_MODEL, LLM_PROVIDER, OLLAMA_BASE_URL
 except ImportError:
     LLM_PROVIDER = os.getenv("LLM_PROVIDER", "ollama")
     LLM_MODEL = os.getenv("LLM_MODEL", "qwen3-rimworld")

@@ -1,14 +1,11 @@
 import json
 import os
-import sys
 import tempfile
 import unittest
 
 SIDECAR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "sidecar")
-sys.path.insert(0, SIDECAR)
 
-import advice_log
-import outcomes
+from smartrim import advice_log, outcomes
 
 
 class TestOutcomes(unittest.TestCase):

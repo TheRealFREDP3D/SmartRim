@@ -10,7 +10,7 @@ MCP_URL: str = os.getenv("MCP_URL", "http://localhost:8787/")
 POLL_INTERVAL: int = int(os.getenv("POLL_INTERVAL", "30"))
 MCP_DELAY: float = float(os.getenv("MCP_DELAY", "0.15"))
 
-BASE_DIR: str = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+BASE_DIR: str = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 ALERTS_DIR: str = os.path.join(BASE_DIR, "memory", "alerts")
 SNAPSHOTS_DIR: str = os.path.join(BASE_DIR, "memory", "snapshots")
 DEBRIEFS_DIR: str = os.path.join(BASE_DIR, "memory", "debriefs")

@@ -11,13 +11,13 @@ except ImportError:
     _requests = None
 
 try:
-    from advice_log import read_advice
+    from smartrim.advice_log import read_advice
 except ImportError:
     def read_advice(run_id=None, status=None):
         return []
 
 try:
-    from config import CANDIDATES_DIR, DEBRIEFS_DIR, SNAPSHOTS_DIR
+    from smartrim.config import CANDIDATES_DIR, DEBRIEFS_DIR, SNAPSHOTS_DIR
 except ImportError:
     CANDIDATES_DIR = None
     DEBRIEFS_DIR = None
@@ -170,7 +170,7 @@ def generate_debrief(snapshots_dir, debriefs_dir, run_name=None):
 
 
 if __name__ == "__main__":
-    from config import DEBRIEFS_DIR, SNAPSHOTS_DIR
+    from smartrim.config import DEBRIEFS_DIR, SNAPSHOTS_DIR
 
     run_name = sys.argv[1] if len(sys.argv) > 1 else None
     snap_dir = SNAPSHOTS_DIR
@@ -179,7 +179,7 @@ if __name__ == "__main__":
         if glob.glob(os.path.join(nested, "day-*.json")):
             snap_dir = nested
     generate_debrief(snap_dir, DEBRIEFS_DIR, run_name)
-    from advice_log import read_advice
-    from debrief_bundle import build_bundle
+    from smartrim.advice_log import read_advice
+    from smartrim.debrief_bundle import build_bundle
     rid = run_name or "current-run"
     print("bundle:", build_bundle(snap_dir, DEBRIEFS_DIR, rid, read_advice(run_id=rid)))

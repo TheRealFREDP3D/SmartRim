@@ -1,19 +1,15 @@
 import json
 import os
 import shutil
-import sys
 import tempfile
 import unittest
 from datetime import datetime
 
 SIDECAR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "sidecar")
-sys.path.insert(0, SIDECAR)
 
-import advice_log
-import monitor
-import quests
-from debrief_bundle import build_bundle
-from mcp_client import McpError
+from smartrim import advice_log, monitor, quests
+from smartrim.debrief_bundle import build_bundle
+from smartrim.mcp_client import McpError
 
 
 class FakeClient:

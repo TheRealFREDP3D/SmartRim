@@ -16,12 +16,12 @@ import re
 from datetime import datetime
 
 try:
-    from config import BASE_DIR
+    from smartrim.config import BASE_DIR
 except ImportError:
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 try:
-    from mcp_client import McpError
+    from smartrim.mcp_client import McpError
 except ImportError:
     McpError = Exception
 DEFAULT_REGISTRY = os.path.join(BASE_DIR, "memory", "quests", "registry.json")

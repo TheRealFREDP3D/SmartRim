@@ -16,7 +16,7 @@ from datetime import datetime
 logger = logging.getLogger(__name__)
 
 try:
-    from config import BASE_DIR
+    from smartrim.config import BASE_DIR
 except ImportError:
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -187,7 +187,7 @@ def _food_units(snap):
 def _quest_records(snapshots):
     """Quest context embedded in snapshots, merged by id. Missing module is not fatal."""
     try:
-        import quests as quests_mod
+        from smartrim import quests as quests_mod
     except ImportError as e:
         logger.debug("quests module unavailable: %s", e)
         return []
@@ -439,7 +439,7 @@ def build_bundle(snapshots_dir, debriefs_dir, run_id, advice_records=None, meta=
             lines.append(f"({quest_note})")
         lines.append("")
         try:
-            import quests as quests_mod
+            from smartrim import quests as quests_mod
             lines.extend(quests_mod.summary_lines(quest_records))
         except ImportError as e:
             logger.debug("quests module unavailable: %s", e)
@@ -510,8 +510,8 @@ def build_bundle(snapshots_dir, debriefs_dir, run_id, advice_records=None, meta=
 if __name__ == "__main__":
     import sys
 
-    from advice_log import read_advice
-    from config import DEBRIEFS_DIR, SNAPSHOTS_DIR
+    from smartrim.advice_log import read_advice
+    from smartrim.config import DEBRIEFS_DIR, SNAPSHOTS_DIR
 
     run = sys.argv[1] if len(sys.argv) > 1 else "current-run"
     snap_dir = SNAPSHOTS_DIR

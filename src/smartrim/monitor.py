@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
-from config import (
+from smartrim.config import (
     ALERTS_DIR,
     HEALTH_THRESHOLD,
     MCP_DELAY,
@@ -22,25 +22,25 @@ from config import (
     SNAPSHOTS_DIR,
     URGENT_KEYWORDS,
 )
-from logging_config import get_logger
-from mcp_client import McpClient, McpError
+from smartrim.logging_config import get_logger
+from smartrim.mcp_client import McpClient, McpError
 
 logger = get_logger(__name__)
 
 try:
-    import lessons as _lessons
-    import situation as _situation
+    from smartrim import lessons as _lessons
+    from smartrim import situation as _situation
 except ImportError:
     _situation = None
     _lessons = None
 
 try:
-    import quests as _quests
+    from smartrim import quests as _quests
 except ImportError:
     _quests = None
 
 try:
-    import say_daily as _say_daily
+    from smartrim import say_daily as _say_daily
 except ImportError:
     _say_daily = None
 
@@ -380,7 +380,7 @@ def configure_observe_only(argv=None):
     return os.getenv("OBSERVE_ONLY", "0") == "1"
 
 
-PID_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "memory", "monitor.pid")
+PID_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "memory", "monitor.pid")
 
 
 def _pid_alive(pid):
@@ -544,7 +544,7 @@ def _say_daily_message(client: McpClient, conditions: dict[str, Any], slot: str 
 
 
 def _log_scheduled(client, status_now, conditions, alerts, day_label):
-    import advice_log
+    from smartrim import advice_log
     _, _, actions, linked = _advice_context(client, status_now, conditions, alerts)
     advice_log.log_advice(
         run_id=RUN_ID,
@@ -559,7 +559,7 @@ def _log_scheduled(client, status_now, conditions, alerts, day_label):
 
 
 def _log_urgent(client, status_now, conditions, alerts, urgent, day_label):
-    import advice_log
+    from smartrim import advice_log
     situation = "; ".join(a.get("message", "") for a in urgent)
     # Do not re-log an identical urgent situation that is still open for this run
     # (monitor restarts used to duplicate advice records and auto-pause counts).
@@ -653,7 +653,7 @@ def poll_once(client: McpClient, state: PollResult) -> PollResult:
             day_rolled = True
             if adviser_acts(OBSERVE_ONLY):
                 try:
-                    import outcomes
+                    from smartrim import outcomes
                     with open(path, encoding="utf-8") as fh:
                         closed = json.load(fh)
                     outcomes.close_outcomes(closed.get("summary") or {}, run_id=RUN_ID)

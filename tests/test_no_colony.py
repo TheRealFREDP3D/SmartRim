@@ -1,11 +1,9 @@
 import os
-import sys
 import unittest
 
 SIDECAR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "sidecar")
-sys.path.insert(0, SIDECAR)
 
-from monitor import run_reflex_checks
+from smartrim.monitor import run_reflex_checks
 
 
 class NoColonyClient:

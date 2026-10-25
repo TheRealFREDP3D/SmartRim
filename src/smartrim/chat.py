@@ -9,14 +9,10 @@ Commands: quit/exit to leave, status to refresh colony state, say to display las
 """
 import argparse
 import json
-import os
-import sys
 import urllib.error
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
-from counselor import game_state, say
-from llm import generate
+from smartrim.counselor import game_state, say
+from smartrim.llm import generate
 
 SYSTEM = """You are SmartRim, a RimWorld colony advisor. You have access to the
 current colony state (provided below). Answer questions concisely and practically.

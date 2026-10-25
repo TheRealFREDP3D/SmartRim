@@ -1,14 +1,12 @@
 import json
 import os
 import shutil
-import sys
 import tempfile
 import unittest
 
 SIDECAR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "sidecar")
-sys.path.insert(0, SIDECAR)
 
-from debrief_bundle import build_bundle
+from smartrim.debrief_bundle import build_bundle
 
 
 def valid_snapshot(day, mood=30):
@@ -94,7 +92,7 @@ class TestDebriefBundle(unittest.TestCase):
         self.assertLess(apr15, jug1)
 
     def test_outcome_and_biome_come_from_run_meta(self):
-        import debrief_bundle as db
+        import smartrim.debrief_bundle as db
 
         old_base = db.BASE_DIR
         try:

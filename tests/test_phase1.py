@@ -1,13 +1,9 @@
 import json
 import os
-import sys
 import unittest
 
-SIDEcar = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "sidecar")
-sys.path.insert(0, SIDEcar)
-
-from debrief import generate_debrief
-from monitor import PollResult, normalize_snapshot, poll_once, run_reflex_checks
+from smartrim.debrief import generate_debrief
+from smartrim.monitor import PollResult, normalize_snapshot, poll_once, run_reflex_checks
 
 
 class FakeClient:

@@ -1,0 +1,1 @@
+"""SmartRim sidecar package."""

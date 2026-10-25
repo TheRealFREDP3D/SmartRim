@@ -1,15 +1,12 @@
 import json
 import os
 import shutil
-import sys
 import tempfile
 import unittest
 
 SIDECAR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "sidecar")
-sys.path.insert(0, SIDECAR)
 
-import evaluate
-import monitor
+from smartrim import evaluate, monitor
 
 
 def _snap(day, days_passed, colonists, mood, alerts, downed=None):

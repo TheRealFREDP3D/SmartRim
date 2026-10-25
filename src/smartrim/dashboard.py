@@ -1,15 +1,13 @@
 import glob
 import json
 import os
-import sys
 
 # Add parent directory to path for imports
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 import pandas as pd
 import plotly.express as px
 import streamlit as st
-from config import (
+
+from smartrim.config import (
     ALERTS_DIR,
     BASE_DIR,
     MCP_DELAY,
@@ -19,7 +17,7 @@ from config import (
 )
 
 try:
-    from mcp_client import McpError
+    from smartrim.mcp_client import McpError
 except ImportError:
     McpError = Exception
 
@@ -143,7 +141,7 @@ def load_debriefs():
 def get_live_game_state():
     """Get current game state from MCP server."""
     try:
-        from mcp_client import McpClient
+        from smartrim.mcp_client import McpClient
         client = McpClient(MCP_URL, delay=MCP_DELAY)
         status = client.call_tool("get_status")
         if status and not status.get("error"):
@@ -212,7 +210,7 @@ def live_monitor_tab():
         
         # Get colonist details
         try:
-            from mcp_client import McpClient
+            from smartrim.mcp_client import McpClient
             client = McpClient(MCP_URL, delay=MCP_DELAY)
             colonists = client.call_tool("list_colonists")
             
@@ -230,7 +228,7 @@ def live_monitor_tab():
         
         # Get resources
         try:
-            from mcp_client import McpClient
+            from smartrim.mcp_client import McpClient
             client = McpClient(MCP_URL, delay=MCP_DELAY)
             resources = client.call_tool("get_resources")
             

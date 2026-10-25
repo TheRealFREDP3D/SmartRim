@@ -6,14 +6,10 @@ situation is never written twice for the same run.
 """
 
 import json
-import os
-import sys
 
 import pytest
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "sidecar"))
-
-import advice_log
+from smartrim import advice_log
 
 
 @pytest.fixture()

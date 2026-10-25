@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 
 try:
-    from config import BASE_DIR
+    from smartrim.config import BASE_DIR
 except ImportError:
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ADVICE_DIR = os.path.join(BASE_DIR, "memory", "advice")
