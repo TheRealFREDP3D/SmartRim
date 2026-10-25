@@ -153,9 +153,13 @@ def quests_from_snapshots(snapshots):
                 continue
             key = str(rec["id"])
             prev = merged.get(key) or {}
+            # Each snapshot carries the quest's full state history, so merge the
+            # states as an ordered union instead of concatenating (which would
+            # duplicate the history once per snapshot).
             states = list(prev.get("states") or [])
-            for state in rec.get("states") or ([rec.get("state")] if rec.get("state") else []):
-                if state and (not states or states[-1] != state):
+            new_states = rec.get("states") or ([rec.get("state")] if rec.get("state") else [])
+            for state in new_states:
+                if state and state not in states:
                     states.append(state)
             merged[key] = {
                 "id": rec.get("id"),

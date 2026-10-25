@@ -110,6 +110,23 @@ class TestQuestRegistry(unittest.TestCase):
         self.assertEqual(merged[0]["states"], ["Ongoing", "EndedSuccess"])
         self.assertEqual(merged[0]["description"], "d1")
 
+    def test_cumulative_state_history_is_not_duplicated(self):
+        """Each snapshot carries the quest's full history; merging must not re-append it."""
+        snaps = [
+            {"quests": [{"id": 0, "name": "Q", "states": ["NotYetAccepted"]}]},
+            {"quests": [{"id": 0, "name": "Q", "states": ["NotYetAccepted", "Ongoing"]}]},
+            {"quests": [{"id": 0, "name": "Q", "states": ["NotYetAccepted", "Ongoing", "EndedSuccess"]}]},
+        ]
+        merged = quests.quests_from_snapshots(snaps)
+
+        self.assertEqual(len(merged), 1)
+        self.assertEqual(merged[0]["states"], ["NotYetAccepted", "Ongoing", "EndedSuccess"])
+
+    def test_repeated_state_in_one_snapshot_is_deduped(self):
+        snaps = [{"quests": [{"id": 3, "name": "Q", "states": ["Ongoing", "Ongoing", "Ongoing"]}]}]
+        merged = quests.quests_from_snapshots(snaps)
+        self.assertEqual(merged[0]["states"], ["Ongoing"])
+
 
 class TestAdviceCause(unittest.TestCase):
     def setUp(self):

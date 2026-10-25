@@ -172,7 +172,23 @@ def generate_debrief(snapshots_dir, debriefs_dir, run_name=None):
 if __name__ == "__main__":
     from smartrim.config import DEBRIEFS_DIR, SNAPSHOTS_DIR
 
-    run_name = sys.argv[1] if len(sys.argv) > 1 else None
+    _usage = (
+        "Usage: python -m smartrim.debrief [run_id]\n"
+        "\n"
+        "Generates the debrief prompt, candidate-lessons template and v3 bundle for a run.\n"
+        "Omit run_id to use the default snapshot directory (current run)."
+    )
+
+    _args = sys.argv[1:]
+    if _args and _args[0] in ("-h", "--help"):
+        print(_usage)
+        raise SystemExit(0)
+
+    run_name = _args[0] if _args else None
+    if run_name and (run_name.startswith("-") or "/" in run_name or "\\" in run_name):
+        print(f"Invalid run id: {run_name!r}\n\n{_usage}")
+        raise SystemExit(2)
+
     snap_dir = SNAPSHOTS_DIR
     if run_name:
         nested = os.path.join(SNAPSHOTS_DIR, run_name)
