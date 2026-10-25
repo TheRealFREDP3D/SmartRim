@@ -21,7 +21,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from smartrim.config import DEBRIEFS_DIR
-from smartrim.debrief_llm import analyze_debrief, find_bundle
+from smartrim.debrief_llm import BUNDLE_SYSTEM, analyze_debrief, find_bundle
 
 FENCE_RE = re.compile(r"```json\s*(.*?)```", re.DOTALL | re.IGNORECASE)
 
@@ -115,38 +115,54 @@ def score_debrief_answer(bundle_text: str, raw_answer: str) -> tuple[list[int], 
     Returns (criteria[1..10], total[0..20]).
     """
     # Parse JSON candidates.
-    has_section_a = "Section A" in (raw_answer or "")
-    has_section_b = "Section B" in (raw_answer or "")
+    raw_answer = raw_answer or ""
+    has_section_a = "Section A" in raw_answer
+    has_section_b = "Section B" in raw_answer
     criteria = [0] * 11  # 1-indexed
 
-    candidates = None
+    parsed = None
     json_ok = False
+    lesson_list: list[dict[str, Any]] = []
     try:
-        candidates = _extract_fenced_json(raw_answer)
-        json_ok = isinstance(candidates, list)
+        parsed = _extract_fenced_json(raw_answer)
+        if isinstance(parsed, list):
+            lesson_list = parsed
+            json_ok = True
+        elif isinstance(parsed, dict) and isinstance(parsed.get("candidate_lessons"), list):
+            lesson_list = parsed["candidate_lessons"]
+            json_ok = True
     except Exception:
-        candidates = None
+        parsed = None
+        lesson_list = []
+        json_ok = False
 
     # Criterion 1: Format
+    # Rubric expects both sections present; if either is missing, score 0.
     if has_section_a and has_section_b and json_ok:
         # Validate candidate objects minimally.
         ok = True
-        for item in candidates or []:
+        for item in lesson_list:
             if not isinstance(item, dict):
                 ok = False
                 break
             if set(item.keys()) != REQUIRED_LESSON_KEYS:
                 ok = False
                 break
-        criteria[1] = 2 if ok else 1
-    elif has_section_a and json_ok:
-        criteria[1] = 1
+
+        # Section B max 10 bullets (simple heuristic).
+        section_b_text = raw_answer.split("Section B", 1)[1] if "Section B" in raw_answer else ""
+        bullet_lines = [ln for ln in section_b_text.splitlines() if ln.strip().startswith("-")]
+        section_b_ok = len(bullet_lines) <= 10
+
+        criteria[1] = 2 if ok and section_b_ok else 1
+    elif (has_section_a and (not has_section_b)) or ((not has_section_a) and has_section_b):
+        criteria[1] = 0
+    else:
+        criteria[1] = 0
 
     # If we can't parse lessons, score the rest as best-effort.
     if not json_ok:
         return criteria, sum(criteria)
-
-    lesson_list: list[dict[str, Any]] = candidates
     # Criterion 6 needs trigger structure.
     trigger_ok = []
     evidence_counts = []
@@ -268,6 +284,7 @@ def eval_one(
     *,
     reuse_existing: bool,
     rubric_labels: dict[int, str],
+    system: str | None,
 ) -> tuple[ScoreRow, str]:
     out_path = os.path.join(DEBRIEFS_DIR, f"{run_id}.{provider}.{_safe_model_suffix(model)}.response.md")
     os.makedirs(DEBRIEFS_DIR, exist_ok=True)
@@ -285,7 +302,13 @@ def eval_one(
 
     analysis = None
     try:
-        analysis = analyze_debrief(bundle_text, model=model, provider=provider, task="debrief")
+        analysis = analyze_debrief(
+            bundle_text,
+            model=model,
+            provider=provider,
+            task="debrief",
+            system=system,
+        )
     except Exception as e:
         raw_answer = f"(error: {e})"
         with open(out_path, "w", encoding="utf-8") as f:
@@ -339,6 +362,9 @@ def main():
     with open(bundle_path, encoding="utf-8") as f:
         bundle_text = f.read()
 
+    is_bundle = ("Section A" in bundle_text) and ("## 8. Task" in bundle_text or "## 8." in bundle_text)
+    system = BUNDLE_SYSTEM if is_bundle else None
+
     rows: list[ScoreRow] = []
     for pair in args.models:
         if ":" not in pair:
@@ -353,6 +379,7 @@ def main():
             model,
             reuse_existing=reuse_existing,
             rubric_labels=rubric_labels,
+            system=system,
         )
         rows.append(row)
 
