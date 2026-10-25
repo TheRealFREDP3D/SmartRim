@@ -135,8 +135,15 @@ RECOVERY_SUFFIX = '\nIf you cannot produce valid JSON, return {"raw": "<your ana
        before_sleep=before_sleep_log(logger, logging.INFO))
 def _generate_once(bundle_text, model, system, temperature):
     prompt = f"Analyze this RimWorld colony debrief bundle:\n\n{bundle_text}"
-    raw = generate(prompt, task="debrief", model=model, system=system,
-                   temperature=temperature, num_ctx=16384)
+    raw = generate(
+        prompt,
+        task="debrief",
+        model=model,
+        system=system,
+        temperature=temperature,
+        num_ctx=16384,
+        cache_system=bool(system and system.startswith(BUNDLE_SYSTEM)),
+    )
     return _extract_first_json_fence(raw)
 
 
@@ -168,7 +175,15 @@ def analyze_debrief(bundle_text, model=None, temperature=0.3, system=None, task=
         )
         sys2 = sys1 + f"\nYour last response failed schema validation: {ve.message}. Re-emit valid JSON only."
         prompt = f"Analyze this RimWorld colony debrief bundle:\n\n{bundle_text}"
-        raw2 = generate(prompt, task=task, model=model, system=sys2, temperature=temperature, num_ctx=16384)
+        raw2 = generate(
+            prompt,
+            task=task,
+            model=model,
+            system=sys2,
+            temperature=temperature,
+            num_ctx=16384,
+            cache_system=False,
+        )
         try:
             data2 = _extract_first_json_fence(raw2)
             return _validate_lesson_candidates(data2)
@@ -179,8 +194,15 @@ def analyze_debrief(bundle_text, model=None, temperature=0.3, system=None, task=
         logger.info("Debrief LLM failed after retries (%s); retrying with recovery prompt", e)
         recovery_system = sys1 + RECOVERY_SUFFIX
         prompt = f"Analyze this RimWorld colony debrief bundle:\n\n{bundle_text}"
-        raw = generate(prompt, task=task, model=model, system=recovery_system,
-                       temperature=temperature, num_ctx=16384)
+        raw = generate(
+            prompt,
+            task=task,
+            model=model,
+            system=recovery_system,
+            temperature=temperature,
+            num_ctx=16384,
+            cache_system=False,
+        )
         try:
             return _extract_first_json_fence(raw)
         except json.JSONDecodeError:

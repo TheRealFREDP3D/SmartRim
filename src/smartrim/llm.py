@@ -52,8 +52,16 @@ def _ollama_generate(prompt, model, base_url, system=None, temperature=0.2, num_
 
 @runtime_checkable
 class LlmClient(Protocol):
-    def generate(self, prompt: str, *, system: str | None = None, temperature: float = 0.2,
-                 num_ctx: int = 8192, max_tokens: int | None = None) -> str: ...
+    def generate(
+        self,
+        prompt: str,
+        *,
+        system: str | None = None,
+        temperature: float = 0.2,
+        num_ctx: int = 8192,
+        max_tokens: int | None = None,
+        cache_system: bool = False,
+    ) -> str: ...
 
 
 class OllamaClient:
@@ -61,8 +69,16 @@ class OllamaClient:
         self.model = model
         self.base_url = base_url or OLLAMA_BASE_URL
 
-    def generate(self, prompt: str, *, system: str | None = None, temperature: float = 0.2,
-                 num_ctx: int = 8192, max_tokens: int | None = None) -> str:
+    def generate(
+        self,
+        prompt: str,
+        *,
+        system: str | None = None,
+        temperature: float = 0.2,
+        num_ctx: int = 8192,
+        max_tokens: int | None = None,
+        cache_system: bool = False,
+    ) -> str:
         return _ollama_generate(prompt, self.model, self.base_url, system=system,
                                 temperature=temperature, num_ctx=num_ctx)
 
@@ -72,8 +88,16 @@ class OpenAIClient:
         self.model = model
         self.api_key = api_key or os.getenv("OPENAI_API_KEY") or os.getenv("LLM_API_KEY")
 
-    def generate(self, prompt: str, *, system: str | None = None, temperature: float = 0.2,
-                 num_ctx: int = 8192, max_tokens: int | None = None) -> str:
+    def generate(
+        self,
+        prompt: str,
+        *,
+        system: str | None = None,
+        temperature: float = 0.2,
+        num_ctx: int = 8192,
+        max_tokens: int | None = None,
+        cache_system: bool = False,
+    ) -> str:
         try:
             import openai
         except ImportError as e:
@@ -86,6 +110,9 @@ class OpenAIClient:
         kwargs = {"model": self.model, "messages": messages, "temperature": temperature}
         if max_tokens is not None:
             kwargs["max_tokens"] = max_tokens
+        if cache_system and system:
+            # OpenAI prompt caching via cached_prompt header.
+            kwargs["extra_headers"] = {"cached_prompt": "true"}
         resp = client.chat.completions.create(**kwargs)
         choice = resp.choices[0].message.content if resp.choices else None
         return choice or ""
@@ -96,17 +123,33 @@ class AnthropicClient:
         self.model = model
         self.api_key = api_key or os.getenv("ANTHROPIC_API_KEY") or os.getenv("LLM_API_KEY")
 
-    def generate(self, prompt: str, *, system: str | None = None, temperature: float = 0.2,
-                 num_ctx: int = 8192, max_tokens: int | None = None) -> str:
+    def generate(
+        self,
+        prompt: str,
+        *,
+        system: str | None = None,
+        temperature: float = 0.2,
+        num_ctx: int = 8192,
+        max_tokens: int | None = None,
+        cache_system: bool = False,
+    ) -> str:
         try:
             import anthropic
         except ImportError as e:
             raise ImportError("anthropic SDK not installed. pip install anthropic") from e
         client = anthropic.Anthropic(api_key=self.api_key)
-        kwargs = {"model": self.model, "max_tokens": max_tokens or 1024,
-                  "messages": [{"role": "user", "content": prompt}]}
+        kwargs = {
+            "model": self.model,
+            "max_tokens": max_tokens or 1024,
+            "messages": [{"role": "user", "content": prompt}],
+        }
         if system:
-            kwargs["system"] = system
+            if cache_system:
+                kwargs["system"] = [
+                    {"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}
+                ]
+            else:
+                kwargs["system"] = system
         if temperature is not None:
             kwargs["temperature"] = temperature
         resp = client.messages.create(**kwargs)
@@ -158,12 +201,22 @@ def resolve_task_params(task=None, temperature=None, num_ctx=None):
     return temperature, num_ctx
 
 
-def generate(prompt, provider=None, model=None, task=None, system=None, temperature=None, num_ctx=None,
-            max_tokens=None, **kwargs):
+def generate(
+    prompt,
+    provider=None,
+    model=None,
+    task=None,
+    system=None,
+    temperature=None,
+    num_ctx=None,
+    max_tokens=None,
+    cache_system: bool = False,
+    **kwargs,
+):
     temperature, num_ctx = resolve_task_params(task=task, temperature=temperature, num_ctx=num_ctx)
     client = get_client(provider=provider, model=model, task=task)
     return client.generate(prompt, system=system, temperature=temperature, num_ctx=num_ctx,
-                           max_tokens=max_tokens)
+                           max_tokens=max_tokens, cache_system=cache_system)
 
 
 @dataclass
