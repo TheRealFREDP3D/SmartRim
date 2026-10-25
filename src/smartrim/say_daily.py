@@ -51,7 +51,7 @@ def build_llm_advice(status, alerts, research, resources, conditions):
         }
         prompt = f"Colony state: {json.dumps(ctx)}\nGive 2-3 specific actionable advice items for this colony right now."
         system = "You are a RimWorld colony advisor. Be concise (max 3 sentences). Focus on immediate threats and opportunities."
-        return generate(prompt, provider="ollama", model="gemma4-e2b-rimworld", system=system, temperature=0.4, num_ctx=4096)
+        return generate(prompt, task="daily_advice", system=system, temperature=0.4, num_ctx=4096)
     except (urllib.error.URLError, json.JSONDecodeError, OSError, ValueError, RuntimeError):
         return None
 

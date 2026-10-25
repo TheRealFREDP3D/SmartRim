@@ -26,9 +26,11 @@ def get_context():
     return gs
 
 
-def chat_loop(model="gemma4-e2b-rimworld"):
+def chat_loop(model=None):
+    from smartrim.llm import resolve_model
+    _provider, _model = resolve_model(task="chat", model=model)
     print("SmartRim Chat (type 'quit' to exit, 'status' to refresh, 'say' to display last answer in-game)")
-    print("Model:", model)
+    print("Model:", _model)
     print("-" * 60)
 
     last_answer = ""
@@ -55,7 +57,7 @@ def chat_loop(model="gemma4-e2b-rimworld"):
         gs = get_context()
         prompt = f"Colony state:\n{json.dumps(gs, default=str, indent=1)[:3500]}\n\nQuestion: {q}"
         try:
-            answer = generate(prompt, provider="ollama", model=model,
+            answer = generate(prompt, task="chat", model=model,
                              system=SYSTEM, temperature=0.5, num_ctx=8192)
         except (urllib.error.URLError, json.JSONDecodeError, OSError, ValueError) as e:
             answer = f"(LLM error: {e})"
@@ -65,7 +67,7 @@ def chat_loop(model="gemma4-e2b-rimworld"):
 
 def main():
     parser = argparse.ArgumentParser(description="Interactive colony chat via local LLM")
-    parser.add_argument("--model", default="gemma4-e2b-rimworld")
+    parser.add_argument("--model", default=None, help="Override model (default: task-based)")
     parser.add_argument("--say", action="store_true", help="Display answers in-game")
     args = parser.parse_args()
     chat_loop(model=args.model)

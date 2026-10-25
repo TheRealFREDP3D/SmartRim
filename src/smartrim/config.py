@@ -32,8 +32,13 @@ URGENT_KEYWORDS: list[str] = ["fire", "predator", "raid", "attack", "downed", "b
 # Providers: openai | anthropic | ollama
 LLM_API_KEY: str | None = os.getenv("LLM_API_KEY") or os.getenv("OPENAI_API_KEY") or os.getenv("ANTHROPIC_API_KEY")
 LLM_PROVIDER: str = os.getenv("LLM_PROVIDER", "ollama")  # openai | anthropic | ollama
-LLM_MODEL: str = os.getenv("LLM_MODEL", "gemma4-e2b-rimworld")
+LLM_MODEL: str | None = os.getenv("LLM_MODEL")
 OLLAMA_BASE_URL: str = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+
+# Per-task model selection (ModelRegistry). Override via env vars.
+LLM_MODEL_DAILY: str = os.getenv("LLM_MODEL_DAILY", "llama3.2:1b-instruct-q4_K_M")
+LLM_MODEL_DEBRIEF: str = os.getenv("LLM_MODEL_DEBRIEF", "gemma4-e2b-rimworld")
+LLM_MODEL_CHAT: str = os.getenv("LLM_MODEL_CHAT", "qwen3-rimworld")
 
 # Run identity for advice logging
 RUN_ID: str = os.getenv("RUN_ID", "current-run")

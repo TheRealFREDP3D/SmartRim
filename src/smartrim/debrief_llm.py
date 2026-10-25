@@ -40,7 +40,7 @@ BUNDLE_SYSTEM = ("You are a careful analyst. Follow the instructions in the user
 BUNDLE_MAX_CHARS = 48000
 
 
-def analyze_debrief(bundle_text, model="gemma4-e2b-rimworld", temperature=0.3, system=None):
+def analyze_debrief(bundle_text, model=None, temperature=0.3, system=None, task="debrief"):
     """Send a debrief bundle to the LLM and return the analysis.
 
     system overrides DEBRIEF_SYSTEM. Pass BUNDLE_SYSTEM when the input is a full bundle whose
@@ -49,7 +49,7 @@ def analyze_debrief(bundle_text, model="gemma4-e2b-rimworld", temperature=0.3, s
     if len(bundle_text) > BUNDLE_MAX_CHARS:
         bundle_text = bundle_text[:BUNDLE_MAX_CHARS] + "\n\n[... truncated ...]"
     prompt = f"Analyze this RimWorld colony debrief bundle:\n\n{bundle_text}"
-    raw = generate(prompt, provider="ollama", model=model,
+    raw = generate(prompt, task=task, model=model,
                    system=system or DEBRIEF_SYSTEM, temperature=temperature, num_ctx=16384)
     # Try to parse JSON from response
     try:
@@ -110,7 +110,7 @@ def main():
     parser = argparse.ArgumentParser(description="LLM-backed debrief analysis")
     parser.add_argument("bundle_file", nargs="?", help="Path to debrief bundle markdown")
     parser.add_argument("--run", help="Run ID (looks up bundle automatically)")
-    parser.add_argument("--model", default="gemma4-e2b-rimworld")
+    parser.add_argument("--model", default=None, help="Override model (default: task-based)")
     parser.add_argument("--no-write", action="store_true", help="Print to stdout only")
     args = parser.parse_args()
 
@@ -129,13 +129,15 @@ def main():
     # A full v3 bundle defines its own output contract (Section A JSON + Section B summary in
     # its section 8). Use a neutral system prompt so the bundle's contract wins.
     is_bundle = ("Section A" in bundle) and ("## 8. Task" in bundle or "## 8." in bundle)
-    analysis = analyze_debrief(bundle, model=args.model,
+    from smartrim.llm import resolve_model
+    _provider, _model = resolve_model(task="debrief", model=args.model)
+    analysis = analyze_debrief(bundle, model=_model,
                                system=BUNDLE_SYSTEM if is_bundle else None)
     print(json.dumps(analysis, indent=2))
 
     if not args.no_write:
         run_id = args.run or os.path.splitext(os.path.basename(bundle_path))[0]
-        path = write_analysis(run_id, analysis, args.model)
+        path = write_analysis(run_id, analysis, _model)
         if path:
             print(f"\nWritten: {path}")
 
