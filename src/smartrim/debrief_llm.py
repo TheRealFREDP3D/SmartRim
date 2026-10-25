@@ -10,11 +10,24 @@ writes the analysis to memory/debriefs/<run>-llm.md (or prints to stdout).
 import argparse
 import glob
 import json
+import logging
 import os
 import sys
+import urllib.error
+
+import requests
+from tenacity import (
+    before_sleep_log,
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential,
+)
 
 from smartrim.config import CANDIDATES_DIR, DEBRIEFS_DIR
 from smartrim.llm import generate
+
+logger = logging.getLogger(__name__)
 
 DEBRIEF_SYSTEM = """You are a RimWorld colony analyst. Given a colony run debrief
 bundle (timeline, alerts, resources, advice log), provide a structured analysis:
@@ -40,27 +53,52 @@ BUNDLE_SYSTEM = ("You are a careful analyst. Follow the instructions in the user
 BUNDLE_MAX_CHARS = 48000
 
 
+RECOVERY_SUFFIX = '\nIf you cannot produce JSON, return {"raw": "<your analysis>"}.'
+
+
+@retry(stop=stop_after_attempt(3), wait=wait_exponential(min=2, max=30),
+       retry=retry_if_exception_type((requests.exceptions.Timeout, requests.exceptions.RequestException,
+                                     json.JSONDecodeError, urllib.error.URLError, TimeoutError, OSError)),
+       before_sleep=before_sleep_log(logger, logging.INFO))
+def _generate_once(bundle_text, model, system, temperature):
+    prompt = f"Analyze this RimWorld colony debrief bundle:\n\n{bundle_text}"
+    raw = generate(prompt, task="debrief", model=model, system=system,
+                   temperature=temperature, num_ctx=16384)
+    # Try to parse JSON from response
+    start = raw.find("{")
+    end = raw.rfind("}") + 1
+    if start >= 0 and end > start:
+        return json.loads(raw[start:end])
+    raise json.JSONDecodeError("no json object found", raw, 0)
+
+
 def analyze_debrief(bundle_text, model=None, temperature=0.3, system=None, task="debrief"):
     """Send a debrief bundle to the LLM and return the analysis.
 
-    system overrides DEBRIEF_SYSTEM. Pass BUNDLE_SYSTEM when the input is a full bundle whose
-    own section 8 defines the required output.
+    Retries up to 3 times on timeout/transport/JSON-parse failures. On a JSON-parse
+    failure, retries once more with a recovery prompt instructing the model to return
+    {\"raw\": \"...\"}.
     """
     if len(bundle_text) > BUNDLE_MAX_CHARS:
         bundle_text = bundle_text[:BUNDLE_MAX_CHARS] + "\n\n[... truncated ...]"
-    prompt = f"Analyze this RimWorld colony debrief bundle:\n\n{bundle_text}"
-    raw = generate(prompt, task=task, model=model,
-                   system=system or DEBRIEF_SYSTEM, temperature=temperature, num_ctx=16384)
-    # Try to parse JSON from response
+    base_system = system or DEBRIEF_SYSTEM
     try:
-        # Find JSON in response (may have markdown wrapping)
-        start = raw.find("{")
-        end = raw.rfind("}") + 1
-        if start >= 0 and end > start:
-            return json.loads(raw[start:end])
-    except json.JSONDecodeError:
-        pass
-    return {"raw": raw}
+        return _generate_once(bundle_text, model, base_system, temperature)
+    except (requests.exceptions.Timeout, requests.exceptions.RequestException, json.JSONDecodeError,
+            urllib.error.URLError, TimeoutError, OSError) as e:
+        logger.info("Debrief LLM failed after retries (%s); retrying with recovery prompt", e)
+        recovery_system = base_system + RECOVERY_SUFFIX
+        prompt = f"Analyze this RimWorld colony debrief bundle:\n\n{bundle_text}"
+        raw = generate(prompt, task=task, model=model, system=recovery_system,
+                       temperature=temperature, num_ctx=16384)
+        try:
+            start = raw.find("{")
+            end = raw.rfind("}") + 1
+            if start >= 0 and end > start:
+                return json.loads(raw[start:end])
+        except json.JSONDecodeError:
+            pass
+        return {"raw": raw}
 
 
 def find_bundle(run_id):
