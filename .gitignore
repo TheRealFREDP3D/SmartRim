@@ -14,6 +14,9 @@ memory/snapshots/
 memory/snapshots_archive*/
 memory/debriefs/
 memory/candidates/
+# Raw wiki scrapes; the cleaned .md files in memory/wiki/ are the source of truth.
+# Re-scrape into this dir, then re-run the html->md conversion.
+memory/wiki/raw/
 # Derived lesson query index; rebuild with `python -m smartrim.lessons reindex`
 memory/lessons.sqlite
 sessions/*-transcript.md
