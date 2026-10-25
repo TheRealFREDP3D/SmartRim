@@ -9,6 +9,7 @@ import json
 import os
 import urllib.error
 import urllib.request
+from dataclasses import dataclass
 from typing import Protocol, runtime_checkable
 
 try:
@@ -127,14 +128,12 @@ def get_client(provider: str | None = None, model: str | None = None, task: str 
 
 def resolve_model(task=None, model=None, provider=None):
     """Resolve (provider, model) from explicit args, task registry, or config fallback."""
-    if model is not None and provider is not None:
-        return provider, model
     if task is not None and task in MODEL_REGISTRY:
-        reg_provider, reg_model = MODEL_REGISTRY[task]
+        reg = MODEL_REGISTRY[task]
         if provider is None:
-            provider = reg_provider
+            provider = reg.provider
         if model is None:
-            model = reg_model
+            model = reg.model
     if provider is None:
         provider = LLM_PROVIDER or "ollama"
     if model is None:
@@ -144,19 +143,49 @@ def resolve_model(task=None, model=None, provider=None):
     return provider, model
 
 
-def generate(prompt, provider=None, model=None, task=None, system=None, temperature=0.2, num_ctx=8192,
+def resolve_task_params(task=None, temperature=None, num_ctx=None):
+    """Return (temperature, num_ctx) using registry defaults when not explicitly given."""
+    if task is not None and task in MODEL_REGISTRY:
+        reg = MODEL_REGISTRY[task]
+        if temperature is None:
+            temperature = reg.temperature
+        if num_ctx is None:
+            num_ctx = reg.num_ctx
+    if temperature is None:
+        temperature = 0.2
+    if num_ctx is None:
+        num_ctx = 8192
+    return temperature, num_ctx
+
+
+def generate(prompt, provider=None, model=None, task=None, system=None, temperature=None, num_ctx=None,
             max_tokens=None, **kwargs):
+    temperature, num_ctx = resolve_task_params(task=task, temperature=temperature, num_ctx=num_ctx)
     client = get_client(provider=provider, model=model, task=task)
     return client.generate(prompt, system=system, temperature=temperature, num_ctx=num_ctx,
                            max_tokens=max_tokens)
 
 
-# ModelRegistry: task -> (provider, model). Resolved after config import.
-MODEL_REGISTRY = {
-    "daily_advice": ("ollama", LLM_MODEL_DAILY),
-    "debrief": ("ollama", LLM_MODEL_DEBRIEF),
-    "chat": ("ollama", LLM_MODEL_CHAT),
+@dataclass
+class ModelForTask:
+    task: str
+    provider: str
+    model: str
+    num_ctx: int = 8192
+    temperature: float = 0.3
+
+
+# ModelRegistry: task -> ModelForTask. Edit values (or env vars) to swap models.
+MODEL_REGISTRY: dict[str, ModelForTask] = {
+    "daily_advice": ModelForTask("daily_advice", "ollama", "llama3.2:1b-instruct-q4_K_M", 4096, 0.4),
+    "debrief": ModelForTask("debrief", "ollama", "gemma4-e2b-rimworld", 16384, 0.3),
+    "chat": ModelForTask("chat", "ollama", "qwen3-rimworld", 8192, 0.5),
 }
+
+# Allow env overrides for model names.
+MODEL_REGISTRY["daily_advice"].model = os.getenv("LLM_MODEL_DAILY", MODEL_REGISTRY["daily_advice"].model)
+MODEL_REGISTRY["debrief"].model = os.getenv("LLM_MODEL_DEBRIEF", MODEL_REGISTRY["debrief"].model)
+MODEL_REGISTRY["chat"].model = os.getenv("LLM_MODEL_CHAT", MODEL_REGISTRY["chat"].model)
 
 
 if __name__ == "__main__":
