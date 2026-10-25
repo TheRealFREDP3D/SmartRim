@@ -255,6 +255,26 @@ class TestBundleV3(unittest.TestCase):
         text = open(bundle, encoding="utf-8").read()
         self.assertIn("## 8. Task", text)
 
+    def test_run_level_causes_are_rendered_in_the_metadata(self):
+        """Causes that belong to the whole run (not one advice record) must reach the bundle."""
+        bundle, _ = build_bundle(
+            self.snaps, self.debs, "t-v3", advice_records=[],
+            meta={"causes": [{"event": "Starvation", "cause": "plant cutting priority too low"}]},
+        )
+        text = open(bundle, encoding="utf-8").read()
+        metadata = text.split("## 2. Run metadata")[1].split("## 3.")[0]
+        self.assertIn("event causes", metadata)
+        self.assertIn("Starvation", metadata)
+        self.assertIn("plant cutting priority too low", metadata)
+
+    def test_run_level_causes_accept_plain_strings(self):
+        bundle, _ = build_bundle(
+            self.snaps, self.debs, "t-v3", advice_records=[],
+            meta={"causes": ["raid by raiders"]},
+        )
+        text = open(bundle, encoding="utf-8").read()
+        self.assertIn("raid by raiders", text)
+
 
 class TestReflexSnapshots(unittest.TestCase):
     def setUp(self):

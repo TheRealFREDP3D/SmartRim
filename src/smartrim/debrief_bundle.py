@@ -428,6 +428,8 @@ def build_bundle(snapshots_dir, debriefs_dir, run_id, advice_records=None, meta=
         meta["quests"] = marker.get("quests")
         if marker.get("quests_recorded_after_run"):
             meta["quests_recorded_after_run"] = True
+    if not meta.get("causes") and marker.get("causes"):
+        meta["causes"] = marker.get("causes")
     timeline, skipped = _timeline(snapshots)
     now = datetime.now().isoformat(timespec="seconds")
 
@@ -450,6 +452,16 @@ def build_bundle(snapshots_dir, debriefs_dir, run_id, advice_records=None, meta=
     lines.append(f"- storyteller: {meta.get('storyteller', 'Cassandra Classic (baseline)')}")
     lines.append(f"- biome: {meta.get('biome', 'unknown')}")
     lines.append(f"- outcome: {meta.get('outcome', 'not stated by the user')}")
+    run_causes = meta.get("causes") or []
+    if run_causes:
+        lines.append("- event causes (recorded after the run, from the player):")
+        for cause in run_causes:
+            if isinstance(cause, dict):
+                label = cause.get("event") or cause.get("name") or "event"
+                text = cause.get("cause") or ""
+                lines.append(f"  - {label}: {text}" if text else f"  - {label}")
+            else:
+                lines.append(f"  - {cause}")
     lines.append(f"- snapshots used: {len(snapshots) - len(skipped)}")
     if skipped:
         lines.append(f"- snapshots skipped (no colony data): {', '.join(skipped)}")

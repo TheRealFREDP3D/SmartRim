@@ -62,6 +62,7 @@ REQUIRED_LESSON_KEYS = {
 }
 
 ACTION_VERBS = {
+    # physical / in-game actions
     "build",
     "research",
     "plant",
@@ -77,6 +78,34 @@ ACTION_VERBS = {
     "prepare",
     "repair",
     "buy",
+    "harvest",
+    "cook",
+    "mine",
+    "haul",
+    "equip",
+    # management actions the models actually recommend
+    "prioriti",
+    "monitor",
+    "ensure",
+    "check",
+    "set",
+    "keep",
+    "watch",
+    "adjust",
+    "schedule",
+    "queue",
+    "maintain",
+    "start",
+    "place",
+    "stock",
+    "collect",
+    "process",
+    "expand",
+    "improve",
+    "avoid",
+    "limit",
+    "reserve",
+    "designate",
 }
 
 DAY_EVIDENCE_RE = re.compile(r"day\s*\d+|\d+(?:th|st|nd|rd)\s+of\s+\w+\b", re.IGNORECASE)
@@ -105,8 +134,31 @@ def _extract_fenced_json(raw: str) -> Any:
     return _safe_load_json(m.group(1))
 
 
-def _criterion_name(i: int) -> str:
-    return str(i)
+def _detect_sections(raw: str) -> tuple[bool, bool]:
+    """Detect the presence of Section A and Section B in a model answer.
+
+    The bundle asks for Section A (a fenced JSON array) followed by Section B
+    (a markdown summary). Models often emit Section A *implicitly*, as the bare
+    fenced JSON array with no "Section A" heading, and label only Section B.
+    Treat a JSON fence that precedes the Section B marker as Section A.
+    """
+    if not raw:
+        return False, False
+
+    has_b = "Section B" in raw
+    fence = FENCE_RE.search(raw)
+    if not fence:
+        return False, has_b
+
+    # The fence is Section A if it comes before Section B (or Section B is absent).
+    if not has_b:
+        return True, False
+    return fence.start() < raw.index("Section B"), True
+
+
+def _count_bullets(text: str) -> int:
+    """Count markdown bullet lines, accepting both '-' and '*' markers."""
+    return len([ln for ln in text.splitlines() if re.match(r"^\s*[-*]\s+\S", ln)])
 
 
 def score_debrief_answer(bundle_text: str, raw_answer: str) -> tuple[list[int], int]:
@@ -116,8 +168,7 @@ def score_debrief_answer(bundle_text: str, raw_answer: str) -> tuple[list[int], 
     """
     # Parse JSON candidates.
     raw_answer = raw_answer or ""
-    has_section_a = "Section A" in raw_answer
-    has_section_b = "Section B" in raw_answer
+    has_section_a, has_section_b = _detect_sections(raw_answer)
     criteria = [0] * 11  # 1-indexed
 
     parsed = None
@@ -151,8 +202,7 @@ def score_debrief_answer(bundle_text: str, raw_answer: str) -> tuple[list[int], 
 
         # Section B max 10 bullets (simple heuristic).
         section_b_text = raw_answer.split("Section B", 1)[1] if "Section B" in raw_answer else ""
-        bullet_lines = [ln for ln in section_b_text.splitlines() if ln.strip().startswith("-")]
-        section_b_ok = len(bullet_lines) <= 10
+        section_b_ok = _count_bullets(section_b_text) <= 10
 
         criteria[1] = 2 if ok and section_b_ok else 1
     elif (has_section_a and (not has_section_b)) or ((not has_section_a) and has_section_b):
@@ -241,12 +291,30 @@ def score_debrief_answer(bundle_text: str, raw_answer: str) -> tuple[list[int], 
             criteria[7] = 1
 
     # Criterion 5: Invention
-    # Heuristic: if model supplies unverified_claims frequently, treat as restrained.
-    inv_base = sum(1 for f in unverified_flags if f)
-    if inv_base == len(lesson_list) and len(lesson_list) > 0:
-        criteria[5] = 2
-    elif inv_base > 0:
-        criteria[5] = 1
+    # Rubric: 0 = invents mechanics/numbers not in the bundle, 1 = one minor
+    # unsupported detail, 2 = no invented facts.
+    # A lesson that hedges everything in unverified_claims is not inventing, and
+    # a lesson that states hard numbers/mechanics with no hedge is the risk case.
+    hedged = 0
+    risky = 0
+    for lesson in lesson_list:
+        claims = lesson.get("unverified_claims")
+        has_claims = isinstance(claims, list) and len(claims) > 0
+        if has_claims:
+            hedged += 1
+        # A candidate that asserts concrete mechanics/numbers without hedging is
+        # the invention risk. Look for mechanic words or bare numbers in the
+        # recommendation/rationale that are not present in the source.
+        text = f"{lesson.get('recommendation', '')} {lesson.get('rationale', '')}"
+        asserts_mechanics = bool(re.search(r"\b\d+\s*(%|percent|hp|dmg|damage)\b", str(text), re.I))
+        if asserts_mechanics and not has_claims:
+            risky += 1
+    if risky:
+        criteria[5] = 1 if risky == 1 else 0
+    elif lesson_list:
+        # No unsupported mechanics asserted. Full marks when the model also flags
+        # what it could not verify (it is not claiming certainty it lacks).
+        criteria[5] = 2 if hedged == len(lesson_list) else 1
 
     # Criterion 8: Restraint
     n = len(lesson_list)

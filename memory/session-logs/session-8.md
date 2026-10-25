@@ -55,6 +55,18 @@ Protocol gate: all three PASS (none incapable of Violent or Caring).
 | 10 | 1st of Jugust | 1.5 | 69/71/68 | Need batteries, Quest expires in 4 hours -> rice harvest (food 15 -> 205) |
 | 11 | 2nd of Jugust | 2.2 | **17**/58/72 | Need batteries, Archaka role unfilled, Trader, **Starvation**, **Major break risk** |
 
+## Event causes (confirmed by the player)
+
+- **Starvation (days 9-11)**: plant-cutting work was not assigned a high enough priority, so
+  harvested crops were not processed into meals. This is recorded in the run metadata and now
+  renders in bundle section 2 as ground truth.
+- **Raid on 11th of Aprimay (enemy downed, auto-pause)**: hostile raid; one enemy downed,
+  no colonist injuries.
+
+Note: the starvation cause did **not** produce an advice record, so `advice_log cause-match`
+could not attach it (it matches on the advice `situation` field only). A run-level `causes`
+list in the run metadata was added to carry causes that belong to the whole run.
+
 ## Outcome
 
 - **Survived the full run** (11 days, run-limited). 3 colonists alive, all at 100 HP, none downed.

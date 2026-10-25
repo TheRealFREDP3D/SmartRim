@@ -14,6 +14,7 @@ import logging
 import os
 import re
 import sys
+import time
 import urllib.error
 from typing import Literal
 
@@ -54,6 +55,9 @@ BUNDLE_SYSTEM = ("You are a careful analyst. Follow the instructions in the user
 # causes (section 7, ~offset 21K) and the task itself (section 8, ~offset 28K), so the model
 # could never follow the format. Keep the whole bundle for num_ctx=16384.
 BUNDLE_MAX_CHARS = 48000
+
+# How many times to re-ask the model after a schema validation failure.
+SCHEMA_RETRY_ATTEMPTS = 3
 
 
 FENCE_RE = re.compile(r'```json\s*(.*?)```', re.DOTALL | re.IGNORECASE)
@@ -128,6 +132,33 @@ def _system_with_fence_instruction(system_text: str) -> str:
 
 RECOVERY_SUFFIX = '\nIf you cannot produce valid JSON, return {"raw": "<your analysis>"}.'
 
+# The model's most common schema failure is inventing vocabulary for trigger fields.
+# Spell out the allowed values so the retry prompt is actionable.
+TRIGGER_VOCAB = (
+    'Allowed values: '
+    'trigger.phases: early_survival | stabilization | raid_prep | expansion | crisis | any; '
+    'trigger.threats: colonist_downed | mood_break_risk | colonist_injured | danger_high | '
+    'raid_incoming | predator_near_worker | low_food | medical_untreated | idle_colonists | '
+    'threat_response | colony_death | other_game_alert | any; '
+    'trigger.resources: food_under_5_days | food_under_2_days | no_medicine | medicine_under_5 | '
+    'low_wood | low_steel | any; '
+    'trigger.difficulty: Peaceful | Community builder | Adventure story | Strive to survive | '
+    'Blood and dust | Losing is fun | any; '
+    'trigger.storyteller: Cassandra Classic | Phoebe Chillax | Randy Random | any; '
+    'trigger.biome: any or a biome name; '
+    'confidence: a number between 0.3 and 0.7.'
+)
+
+
+def _schema_retry_prompt(error: str) -> str:
+    """Build an actionable retry prompt from a schema validation error."""
+    return (
+        f"\n\nYour last response failed schema validation: {error}\n"
+        f"{TRIGGER_VOCAB}\n"
+        "Use only those values (use 'any' when a field does not apply). "
+        "Re-emit the full JSON array in a single ```json fenced block, and nothing else."
+    )
+
 
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=2, max=30),
        retry=retry_if_exception_type((requests.exceptions.Timeout, requests.exceptions.RequestException,
@@ -172,27 +203,36 @@ def analyze_debrief(bundle_text, model=None, temperature=0.3, system=None, task=
         return {"raw": raw, "lessons": lessons}
     except SchemaValidationError as ve:
         logger.info(
-            "Debrief LLM failed schema validation; retrying once with validation error: %s",
+            "Debrief LLM failed schema validation; retrying with validation error: %s",
             ve.message,
         )
-        sys2 = sys1 + f"\nYour last response failed schema validation: {ve.message}. Re-emit valid JSON only."
         prompt = f"Analyze this RimWorld colony debrief bundle:\n\n{bundle_text}"
-        raw2 = generate(
-            prompt,
-            task=task,
-            provider=provider,
-            model=model,
-            system=sys2,
-            temperature=temperature,
-            num_ctx=16384,
-            cache_system=False,
-        )
-        try:
-            data2 = _extract_first_json_fence(raw2)
-            lessons2 = _validate_lesson_candidates(data2)
-            return {"raw": raw2, "lessons": lessons2}
-        except (json.JSONDecodeError, SchemaValidationError, ValidationError):
-            return {"raw": raw2}
+        # Give the model a few chances: each retry carries the exact schema error
+        # plus the allowed vocabulary, so it can converge on a valid answer.
+        last_error = ve.message
+        raw = ""
+        for attempt in range(1, SCHEMA_RETRY_ATTEMPTS + 1):
+            sys2 = sys1 + _schema_retry_prompt(last_error)
+            raw = generate(
+                prompt,
+                task=task,
+                provider=provider,
+                model=model,
+                system=sys2,
+                temperature=temperature,
+                num_ctx=16384,
+                cache_system=False,
+            )
+            try:
+                data2 = _extract_first_json_fence(raw)
+                lessons2 = _validate_lesson_candidates(data2)
+                return {"raw": raw, "lessons": lessons2}
+            except (json.JSONDecodeError, SchemaValidationError, ValidationError) as e:
+                last_error = str(e)[:800]
+                logger.info("Schema retry %d failed: %s", attempt, last_error[:200])
+                if attempt < SCHEMA_RETRY_ATTEMPTS:
+                    time.sleep(2)
+        return {"raw": raw, "schema_error": last_error}
     except (requests.exceptions.Timeout, requests.exceptions.RequestException, json.JSONDecodeError,
             urllib.error.URLError, TimeoutError, OSError) as e:
         logger.info("Debrief LLM failed after retries (%s); retrying with recovery prompt", e)
