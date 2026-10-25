@@ -1,5 +1,6 @@
 import glob
 import json
+import logging
 import os
 import sys
 import time
@@ -22,13 +23,13 @@ from smartrim.config import (
     SNAPSHOTS_DIR,
     URGENT_KEYWORDS,
 )
-from smartrim.logging_config import get_logger
+from smartrim.logging_config import get_logger, setup_logging
 from smartrim.mcp_client import McpClient, McpError
 
 logger = get_logger(__name__)
 
 try:
-    from smartrim import lessons as _lessons
+    from smartrim import situation as _lessons
     from smartrim import situation as _situation
 except ImportError:
     _situation = None
@@ -740,6 +741,9 @@ def poll_once(client: McpClient, state: PollResult) -> PollResult:
 
 def main() -> None:
     global OBSERVE_ONLY
+    # Configure the root logger before anything else, otherwise every logger.info()
+    # below is discarded (no handlers) and the monitor appears silent.
+    setup_logging(logging.INFO)
     OBSERVE_ONLY = configure_observe_only()
     ensure_dirs()
     if not _acquire_lock():

@@ -1,0 +1,16 @@
+{
+  "run_id": "run-007-adv-cassandra",
+  "biome": "temperate forest (flat, tile 39, 11.8 C at landing, rainfall 1867mm, swampiness 0, pollution 0; 91/91 surrounding tiles temperate forest, 79 flat)",
+  "scenario": "Crashlanded",
+  "storyteller": "Cassandra Classic",
+  "difficulty": "Adventure story",
+  "reloadAnytime": true,
+  "ideology": "Fluid (generated, no edits)",
+  "team": [
+    "Leighton 'Speedy' Blackburn",
+    "Steven Wilcox",
+    "Niklas Fischer"
+  ],
+  "notes": "Adviser run (arm on). Set up by agent via MCP; colony landed on tile 39. Team selected by protocol rule (no incapable of Violent or Caring): Leighton (intellectual 11, medical 9, cooking 7), Steven (shooting 9, melee 8, animals 7), Niklas (shooting 10, cooking 7, construction 6, medical 6). All 3 healthy at 100 HP. Monitor running with adviser on. Game paused at landing pending player validation of colonist selection.",
+  "quests_recorded_after_run": false
+}
