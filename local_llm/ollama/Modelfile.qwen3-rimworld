@@ -1,0 +1,13 @@
+# Optimized RimWorld debrief/analysis model based on qwen3:8b
+FROM qwen3:8b
+
+# Context: enough for a full debrief bundle (~8k tokens). Raise only if VRAM allows.
+PARAMETER num_ctx 8192
+
+# Deterministic-ish for structured JSON output.
+PARAMETER temperature 0.2
+PARAMETER top_p 0.9
+PARAMETER repeat_penalty 1.05
+
+# Keep responses focused.
+PARAMETER num_predict 2048

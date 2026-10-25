@@ -24,11 +24,23 @@ memory, and tests.
 
 ## Layout
 
-- `sidecar/` - Python sidecar (monitor, situation, lessons, outcomes, evaluate, debrief)
+- `src/smartrim/` - Python package (monitor, situation, lessons, outcomes, evaluate, debrief, llm, wiki)
 - `schemas/` - JSON schemas for lessons, advice, snapshots
 - `memory/` - persistent knowledge base (lessons.jsonl, phases, wiki cache, run data)
 - `tests/` - pytest suite
+- `local_llm/ollama/` - Modelfiles for the tuned Ollama models (`gemma4-e2b-rimworld`, `qwen3-rimworld`)
 - `scratchpad/` - one-off scripts (gitignored)
+
+## Wiki cache
+
+The cleaned markdown in `memory/wiki/*.md` is what the LLM reads and is tracked
+in git. Raw HTML scrapes live in `memory/wiki/raw/` (gitignored) and exist only
+to re-scrape or re-convert:
+
+```powershell
+python -m smartrim.wiki fetch     # download raw HTML into memory/wiki/raw/
+python -m smartrim.wiki convert   # regenerate memory/wiki/*.md from the raw cache
+```
 
 ## Runtime data
 
