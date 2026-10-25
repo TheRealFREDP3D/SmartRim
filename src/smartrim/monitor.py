@@ -152,7 +152,7 @@ def run_reflex_checks(client: McpClient) -> list[dict[str, Any]]:
             if "medical treatment" in low:
                 alerts.append({"type": "warning", "category": "medical_treatment_needed", "message": label, "timestamp": timestamp})
                 continue
-            if "low food" in low:
+            if "low food" in low or "starv" in low or "food stock" in low:
                 alerts.append({"type": "warning", "category": "food_low", "message": label, "timestamp": timestamp})
                 continue
             alert_type = "urgent" if _is_urgent_label(label) else "warning"

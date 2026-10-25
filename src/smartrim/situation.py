@@ -7,6 +7,21 @@ import json
 import os
 import re
 
+
+def _ci_contains(allowed, value) -> bool:
+    """Case-insensitive membership test for scoped trigger fields.
+
+    The situation carries values as the game reports them ("adventure story")
+    while lessons store the canonical label ("Adventure story"), so an exact
+    comparison silently rejects every difficulty/storyteller-scoped lesson.
+    """
+    if value is None:
+        return False
+    target = str(value).strip().lower()
+    if not target or target == "any":
+        return True
+    return any(str(a).strip().lower() == target for a in allowed)
+
 try:
     from smartrim.config import BASE_DIR
 except ImportError:
@@ -48,6 +63,19 @@ GAME_ALERT_KEYWORDS = {
     "attack": "raid_incoming",
     "predator": "predator_near_worker",
     "fire": "threat_response",
+    # Food and medicine alerts reach here when they arrive as generic game alerts
+    # instead of the monitor's own food_low / medicine_low categories. Without
+    # these they fall through to other_game_alert and never match the food
+    # lessons (this is what let run-007 starve while the food lesson was active).
+    "starv": "low_food",
+    "food stock": "low_food",
+    "low food": "low_food",
+    "medicine stock": "medical_untreated",
+    "medical treatment": "medical_untreated",
+    "no medicine": "medical_untreated",
+    "break risk": "mood_break_risk",
+    "recreation": "mood_break_risk",
+    "colonist beds": "mood_break_risk",
 }
 
 
@@ -355,11 +383,11 @@ def retrieve(situation, lessons=None, limit=5, store=None, use_semantic_search=T
             resource_match = bool(resources & l_resources)
             if not (threat_match or resource_match):
                 continue
-        if l_diff and difficulty not in l_diff:
+        if l_diff and not _ci_contains(l_diff, difficulty):
             continue
-        if l_st and storyteller not in l_st:
+        if l_st and not _ci_contains(l_st, storyteller):
             continue
-        if l_biome and biome not in l_biome:
+        if l_biome and not _ci_contains(l_biome, biome):
             continue
 
         conf = lesson.get("confidence", 0.0)

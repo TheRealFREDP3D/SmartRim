@@ -139,12 +139,78 @@ class TestRetrieve(unittest.TestCase):
         result = retrieve(sit, self.lessons, limit=3)
         self.assertLessEqual(len(result), 3)
 
+    def test_difficulty_match_is_case_insensitive(self):
+        """The situation carries the game's own casing; lessons store canonical labels.
+
+        An exact comparison silently rejected every difficulty-scoped lesson, so the
+        food/raid lessons never surfaced (run-007 starved with L-0052 active).
+        """
+        scoped = [{"id": "L-9998", "title": "scoped", "status": "active", "confidence": 0.5,
+                   "trigger": {"phases": ["early_survival"], "threats": ["low_food"],
+                               "resources": [], "difficulty": ["Adventure story"],
+                               "storyteller": [], "biome": []},
+                   "times_helped": 0, "times_failed": 0, "times_applied": 0}]
+        sit = {"phase": "early_survival", "difficulty": "adventure story",
+               "storyteller": "Cassandra Classic", "biome": "any",
+               "threats": ["low_food"], "resources": []}
+        result = retrieve(sit, scoped, limit=5)
+        self.assertEqual([x["id"] for x in result], ["L-9998"])
+
+    def test_storyteller_match_is_case_insensitive(self):
+        scoped = [{"id": "L-9997", "title": "scoped", "status": "active", "confidence": 0.5,
+                   "trigger": {"phases": ["early_survival"], "threats": ["low_food"],
+                               "resources": [], "difficulty": [],
+                               "storyteller": ["Cassandra Classic"], "biome": []},
+                   "times_helped": 0, "times_failed": 0, "times_applied": 0}]
+        sit = {"phase": "early_survival", "difficulty": "any",
+               "storyteller": "cassandra classic", "biome": "any",
+               "threats": ["low_food"], "resources": []}
+        result = retrieve(sit, scoped, limit=5)
+        self.assertEqual([x["id"] for x in result], ["L-9997"])
+
     def test_status_filter(self):
         # needs_review lessons should not be retrieved
         sit = {"phase": "early_survival", "difficulty": "Adventure story", "storyteller": "Cassandra Classic", "biome": "any", "threats": ["raid_incoming"], "resources": []}
         result = retrieve(sit, self.lessons, limit=10)
         for lesson in result:
             self.assertEqual(lesson.get("status"), "active")
+
+
+class TestGameAlertKeywords(unittest.TestCase):
+    """Food/medicine/mood alerts arrive as generic game alerts and must still map
+    to a threat tag, otherwise the matching lessons never fire.
+
+    run-007 starved while L-0016 was active because 'Starvation' fell through to
+    other_game_alert.
+    """
+
+    def _threats(self, label):
+        return situation.build_threats([{"category": "game_alert", "label": label}])
+
+    def test_starvation_maps_to_low_food(self):
+        self.assertIn("low_food", self._threats("Starvation"))
+
+    def test_food_stock_low_maps_to_low_food(self):
+        self.assertIn("low_food", self._threats("Food stock low (0 units)"))
+
+    def test_low_food_maps_to_low_food(self):
+        self.assertIn("low_food", self._threats("Low food"))
+
+    def test_medicine_stock_maps_to_medical_untreated(self):
+        self.assertIn("medical_untreated", self._threats("Medicine stock low (0)"))
+
+    def test_break_risk_maps_to_mood_break_risk(self):
+        self.assertIn("mood_break_risk", self._threats("Minor break risk"))
+        self.assertIn("mood_break_risk", self._threats("Major break risk"))
+
+    def test_recreation_maps_to_mood_break_risk(self):
+        self.assertIn("mood_break_risk", self._threats("Need recreation variety"))
+
+    def test_enemy_downed_maps_to_raid(self):
+        self.assertIn("raid_incoming", self._threats("Enemy downed"))
+
+    def test_unrelated_alert_stays_generic(self):
+        self.assertEqual(self._threats("Need batteries"), {"other_game_alert"})
 
 
 class TestLineage(unittest.TestCase):

@@ -23,6 +23,42 @@ DEFAULT_JSONL_PATH = os.path.join(BASE_DIR, "memory", "lessons.jsonl")
 DEFAULT_SQLITE_PATH = os.path.join(BASE_DIR, "memory", "lessons.sqlite")
 
 
+def _normalize_list(val):
+    """Normalize list/singleton to list (shared helper)."""
+    if val is None:
+        return []
+    if isinstance(val, str):
+        v = val.strip().lower()
+        if v == "any" or v == "":
+            return []
+        return [val]
+    if isinstance(val, (list, set, tuple)):
+        out = []
+        for item in val:
+            if item is None:
+                continue
+            if isinstance(item, str) and item.strip().lower() == "any":
+                continue
+            out.append(item)
+        return out
+    return [val]
+
+
+def _ci_contains(allowed, value) -> bool:
+    """Case-insensitive membership test for scoped trigger fields.
+
+    The situation carries values as the game reports them ("adventure story")
+    while lessons store the canonical label ("Adventure story"), so an exact
+    comparison silently rejects every difficulty/storyteller-scoped lesson.
+    """
+    if value is None:
+        return False
+    target = str(value).strip().lower()
+    if not target or target == "any":
+        return True
+    return any(str(a).strip().lower() == target for a in allowed)
+
+
 @dataclass
 class Lesson:
     """Structured lesson object."""
@@ -297,24 +333,8 @@ class SqliteLessonStore(LessonStore):
         )
 
     def _normalize_list(self, val):
-        """Normalize list/singleton to list (copied from situation.py)."""
-        if val is None:
-            return []
-        if isinstance(val, str):
-            v = val.strip().lower()
-            if v == "any" or v == "":
-                return []
-            return [val]
-        if isinstance(val, (list, set, tuple)):
-            out = []
-            for item in val:
-                if item is None:
-                    continue
-                if isinstance(item, str) and item.strip().lower() == "any":
-                    continue
-                out.append(item)
-            return out
-        return [val]
+        """Normalize list/singleton to list (shared helper)."""
+        return _normalize_list(val)
 
     def retrieve(
         self,
@@ -371,14 +391,17 @@ class SqliteLessonStore(LessonStore):
                 resource_match = bool(resources & l_resources)
                 if not (threat_match or resource_match):
                     continue
-            if l_diff and difficulty not in l_diff:
+            if l_diff and not _ci_contains(l_diff, difficulty):
                 continue
-            if l_st and storyteller not in l_st:
+            if l_st and not _ci_contains(l_st, storyteller):
                 continue
-            if l_biome and biome not in l_biome:
+            if l_biome and not _ci_contains(l_biome, biome):
                 continue
 
             candidates.append(lesson)
+
+        if not candidates:
+            return []
 
         # If query_text provided, use FTS5 to rank candidates
         if query_text and candidates:
