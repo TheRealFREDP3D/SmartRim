@@ -12,10 +12,13 @@ import glob
 import json
 import logging
 import os
+import re
 import sys
 import urllib.error
+from typing import Literal
 
 import requests
+from pydantic import BaseModel, ConfigDict, ValidationError, confloat
 from tenacity import (
     before_sleep_log,
     retry,
@@ -53,7 +56,77 @@ BUNDLE_SYSTEM = ("You are a careful analyst. Follow the instructions in the user
 BUNDLE_MAX_CHARS = 48000
 
 
-RECOVERY_SUFFIX = '\nIf you cannot produce JSON, return {"raw": "<your analysis>"}.'
+FENCE_RE = re.compile(r'```json\s*(.*?)```', re.DOTALL | re.IGNORECASE)
+
+# Lesson candidate schema (Section A of v3 bundles)
+PHASES_T = Literal['early_survival', 'stabilization', 'raid_prep', 'expansion', 'crisis', 'any']
+THREATS_T = Literal[
+    'colonist_downed', 'mood_break_risk', 'colonist_injured', 'danger_high',
+    'raid_incoming', 'predator_near_worker', 'low_food', 'medical_untreated',
+    'idle_colonists', 'threat_response', 'colony_death', 'other_game_alert',
+    'any'
+]
+RESOURCES_T = Literal['food_under_5_days', 'food_under_2_days', 'no_medicine', 'medicine_under_5', 'low_wood', 'low_steel', 'any']
+DIFFICULTY_T = Literal['Peaceful', 'Community builder', 'Adventure story', 'Strive to survive', 'Blood and dust', 'Losing is fun']
+STORYTELLER_T = Literal['Cassandra Classic', 'Phoebe Chillax', 'Randy Random']
+
+
+class SchemaValidationError(Exception):
+    def __init__(self, message: str):
+        super().__init__(message)
+        self.message = message
+
+
+class TriggerCandidate(BaseModel):
+    phases: list[PHASES_T]
+    threats: list[THREATS_T]
+    resources: list[RESOURCES_T]
+    difficulty: Literal['any'] | DIFFICULTY_T | list[DIFFICULTY_T] = 'any'
+    storyteller: Literal['any'] | STORYTELLER_T | list[STORYTELLER_T] = 'any'
+    biome: Literal['any'] | str | list[str] = 'any'
+
+
+class LessonCandidate(BaseModel):
+    title: str
+    cause_chain: list[str]
+    trigger: TriggerCandidate
+    recommendation: str
+    rationale: str
+    source: list[str]
+    wiki_pages_used: list[str]
+    unverified_claims: list[str]
+    confidence: confloat(ge=0.3, le=0.7)
+
+    model_config = ConfigDict(extra='forbid')
+
+
+def _extract_first_json_fence(raw: str):
+    match = FENCE_RE.search(raw or '')
+    if not match:
+        raise json.JSONDecodeError('no fenced ```json block found', raw or '', 0)
+    content = match.group(1).strip()
+    return json.loads(content)
+
+
+def _validate_lesson_candidates(data) -> list[dict]:
+    if not isinstance(data, list):
+        raise SchemaValidationError(f'Expected a JSON array at top-level; got {type(data).__name__}')
+    validated: list[LessonCandidate] = []
+    for idx, item in enumerate(data):
+        try:
+            validated.append(LessonCandidate.model_validate(item))
+        except ValidationError as e:
+            raise SchemaValidationError(f'Candidate[{idx}] schema error: {e}') from e
+    return [c.model_dump() for c in validated]
+
+
+def _system_with_fence_instruction(system_text: str) -> str:
+    return (system_text or '') + (
+        "\n\nWhen outputting Section A, wrap the JSON array in a single fenced block: ```json ...```"
+    )
+
+
+RECOVERY_SUFFIX = '\nIf you cannot produce valid JSON, return {"raw": "<your analysis>"}.'
 
 
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=2, max=30),
@@ -64,41 +137,54 @@ def _generate_once(bundle_text, model, system, temperature):
     prompt = f"Analyze this RimWorld colony debrief bundle:\n\n{bundle_text}"
     raw = generate(prompt, task="debrief", model=model, system=system,
                    temperature=temperature, num_ctx=16384)
-    # Try to parse JSON from response
-    start = raw.find("{")
-    end = raw.rfind("}") + 1
-    if start >= 0 and end > start:
-        return json.loads(raw[start:end])
-    raise json.JSONDecodeError("no json object found", raw, 0)
+    return _extract_first_json_fence(raw)
 
 
 def analyze_debrief(bundle_text, model=None, temperature=0.3, system=None, task="debrief"):
     """Send a debrief bundle to the LLM and return the analysis.
 
-    Retries up to 3 times on timeout/transport/JSON-parse failures. On a JSON-parse
-    failure, retries once more with a recovery prompt instructing the model to return
-    {\"raw\": \"...\"}.
+    Uses fenced ```json blocks for structured extraction, then validates
+    Section A candidate lessons with a Pydantic schema.
+
+    If schema validation fails, retries once more with a validation error
+    message embedded in the system prompt.
     """
     if len(bundle_text) > BUNDLE_MAX_CHARS:
         bundle_text = bundle_text[:BUNDLE_MAX_CHARS] + "\n\n[... truncated ...]"
+
     base_system = system or DEBRIEF_SYSTEM
+    sys1 = _system_with_fence_instruction(base_system)
+    expect_candidates = ("Section A" in bundle_text) and ("## 8. Task" in bundle_text or "## 8." in bundle_text)
+
     try:
-        return _generate_once(bundle_text, model, base_system, temperature)
+        data = _generate_once(bundle_text, model, sys1, temperature)
+        if not expect_candidates:
+            return data
+        return _validate_lesson_candidates(data)
+    except SchemaValidationError as ve:
+        logger.info(
+            "Debrief LLM failed schema validation; retrying once with validation error: %s",
+            ve.message,
+        )
+        sys2 = sys1 + f"\nYour last response failed schema validation: {ve.message}. Re-emit valid JSON only."
+        prompt = f"Analyze this RimWorld colony debrief bundle:\n\n{bundle_text}"
+        raw2 = generate(prompt, task=task, model=model, system=sys2, temperature=temperature, num_ctx=16384)
+        try:
+            data2 = _extract_first_json_fence(raw2)
+            return _validate_lesson_candidates(data2)
+        except (json.JSONDecodeError, SchemaValidationError, ValidationError):
+            return {"raw": raw2}
     except (requests.exceptions.Timeout, requests.exceptions.RequestException, json.JSONDecodeError,
             urllib.error.URLError, TimeoutError, OSError) as e:
         logger.info("Debrief LLM failed after retries (%s); retrying with recovery prompt", e)
-        recovery_system = base_system + RECOVERY_SUFFIX
+        recovery_system = sys1 + RECOVERY_SUFFIX
         prompt = f"Analyze this RimWorld colony debrief bundle:\n\n{bundle_text}"
         raw = generate(prompt, task=task, model=model, system=recovery_system,
                        temperature=temperature, num_ctx=16384)
         try:
-            start = raw.find("{")
-            end = raw.rfind("}") + 1
-            if start >= 0 and end > start:
-                return json.loads(raw[start:end])
+            return _extract_first_json_fence(raw)
         except json.JSONDecodeError:
-            pass
-        return {"raw": raw}
+            return {"raw": raw}
 
 
 def find_bundle(run_id):
@@ -128,8 +214,12 @@ def write_analysis(run_id, analysis, model):
         f.write(f"# LLM Debrief Analysis: {run_id}\n\n")
         f.write(f"Model: {model}\n")
         f.write(f"Generated: {__import__('datetime').datetime.now().isoformat()}\n\n")
-        if "raw" in analysis:
+        if isinstance(analysis, dict) and "raw" in analysis:
             f.write(analysis["raw"])
+        elif isinstance(analysis, list):
+            f.write("```json\n")
+            f.write(json.dumps(analysis, indent=2, default=str))
+            f.write("\n```\n")
         else:
             f.write(f"## Primary Cause\n{analysis.get('cause', 'N/A')}\n\n")
             f.write("## What Worked\n")
