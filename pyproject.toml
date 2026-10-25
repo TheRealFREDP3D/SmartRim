@@ -17,6 +17,10 @@ dev = [
     "pytest",
     "ruff",
 ]
+cloud = [
+    "openai",
+    "anthropic",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]

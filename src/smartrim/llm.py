@@ -9,6 +9,7 @@ import json
 import os
 import urllib.error
 import urllib.request
+from typing import Protocol, runtime_checkable
 
 try:
     from smartrim.config import (
@@ -48,6 +49,82 @@ def _ollama_generate(prompt, model, base_url, system=None, temperature=0.2, num_
     return obj.get("response", "")
 
 
+@runtime_checkable
+class LlmClient(Protocol):
+    def generate(self, prompt: str, *, system: str | None = None, temperature: float = 0.2,
+                 num_ctx: int = 8192, max_tokens: int | None = None) -> str: ...
+
+
+class OllamaClient:
+    def __init__(self, model: str, base_url: str | None = None):
+        self.model = model
+        self.base_url = base_url or OLLAMA_BASE_URL
+
+    def generate(self, prompt: str, *, system: str | None = None, temperature: float = 0.2,
+                 num_ctx: int = 8192, max_tokens: int | None = None) -> str:
+        return _ollama_generate(prompt, self.model, self.base_url, system=system,
+                                temperature=temperature, num_ctx=num_ctx)
+
+
+class OpenAIClient:
+    def __init__(self, model: str, api_key: str | None = None):
+        self.model = model
+        self.api_key = api_key or os.getenv("OPENAI_API_KEY") or os.getenv("LLM_API_KEY")
+
+    def generate(self, prompt: str, *, system: str | None = None, temperature: float = 0.2,
+                 num_ctx: int = 8192, max_tokens: int | None = None) -> str:
+        try:
+            import openai
+        except ImportError as e:
+            raise ImportError("openai SDK not installed. pip install openai") from e
+        client = openai.OpenAI(api_key=self.api_key)
+        messages = []
+        if system:
+            messages.append({"role": "system", "content": system})
+        messages.append({"role": "user", "content": prompt})
+        kwargs = {"model": self.model, "messages": messages, "temperature": temperature}
+        if max_tokens is not None:
+            kwargs["max_tokens"] = max_tokens
+        resp = client.chat.completions.create(**kwargs)
+        choice = resp.choices[0].message.content if resp.choices else None
+        return choice or ""
+
+
+class AnthropicClient:
+    def __init__(self, model: str, api_key: str | None = None):
+        self.model = model
+        self.api_key = api_key or os.getenv("ANTHROPIC_API_KEY") or os.getenv("LLM_API_KEY")
+
+    def generate(self, prompt: str, *, system: str | None = None, temperature: float = 0.2,
+                 num_ctx: int = 8192, max_tokens: int | None = None) -> str:
+        try:
+            import anthropic
+        except ImportError as e:
+            raise ImportError("anthropic SDK not installed. pip install anthropic") from e
+        client = anthropic.Anthropic(api_key=self.api_key)
+        kwargs = {"model": self.model, "max_tokens": max_tokens or 1024,
+                  "messages": [{"role": "user", "content": prompt}]}
+        if system:
+            kwargs["system"] = system
+        if temperature is not None:
+            kwargs["temperature"] = temperature
+        resp = client.messages.create(**kwargs)
+        parts = [b.text for b in getattr(resp, "content", []) if getattr(b, "type", None) == "text"]
+        return "".join(parts)
+
+
+def get_client(provider: str | None = None, model: str | None = None, task: str | None = None) -> LlmClient:
+    provider, model = resolve_model(task=task, model=model, provider=provider)
+    provider = (provider or "ollama").lower()
+    if provider == "ollama":
+        return OllamaClient(model=model, base_url=OLLAMA_BASE_URL)
+    if provider == "openai":
+        return OpenAIClient(model=model)
+    if provider == "anthropic":
+        return AnthropicClient(model=model)
+    raise ValueError(f"Unknown provider: {provider}")
+
+
 def resolve_model(task=None, model=None, provider=None):
     """Resolve (provider, model) from explicit args, task registry, or config fallback."""
     if model is not None and provider is not None:
@@ -67,13 +144,11 @@ def resolve_model(task=None, model=None, provider=None):
     return provider, model
 
 
-def generate(prompt, provider=None, model=None, task=None, system=None, **kwargs):
-    provider, model = resolve_model(task=task, model=model, provider=provider)
-    provider = (provider or "ollama").lower()
-    if provider == "ollama":
-        base = kwargs.pop("base_url", OLLAMA_BASE_URL)
-        return _ollama_generate(prompt, model, base, system=system, **kwargs)
-    raise NotImplementedError(f"Provider '{provider}' not implemented in llm.py (use openai/anthropic SDKs directly).")
+def generate(prompt, provider=None, model=None, task=None, system=None, temperature=0.2, num_ctx=8192,
+            max_tokens=None, **kwargs):
+    client = get_client(provider=provider, model=model, task=task)
+    return client.generate(prompt, system=system, temperature=temperature, num_ctx=num_ctx,
+                           max_tokens=max_tokens)
 
 
 # ModelRegistry: task -> (provider, model). Resolved after config import.
