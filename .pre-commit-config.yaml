@@ -3,7 +3,7 @@ repos:
     hooks:
       - id: validate-lessons
         name: Validate lessons.jsonl
-        entry: python sidecar/lessons.py validate
+        entry: python -m smartrim.situation validate
         language: system
         pass_filenames: false
       - id: ruff

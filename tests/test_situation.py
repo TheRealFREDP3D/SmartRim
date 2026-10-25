@@ -5,7 +5,7 @@ from io import StringIO
 
 SIDECAR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "sidecar")
 
-from smartrim import lessons, situation
+from smartrim import situation
 from smartrim.situation import (
     build_resources,
     build_situation,
@@ -100,7 +100,7 @@ class TestBuildSituation(unittest.TestCase):
 class TestRetrieve(unittest.TestCase):
     def setUp(self):
         # Load real lessons
-        self.lessons = lessons.load_lessons()
+        self.lessons = situation.load_lessons()
 
     def test_returns_list(self):
         sit = {"phase": "early_survival", "difficulty": "Adventure story", "storyteller": "Cassandra Classic", "biome": "any", "threats": ["low_food"], "resources": ["food_under_5_days"]}
@@ -204,7 +204,7 @@ class TestLineage(unittest.TestCase):
 
 class TestRankActions(unittest.TestCase):
     def setUp(self):
-        self.lessons = lessons.load_lessons()
+        self.lessons = situation.load_lessons()
 
     def test_rank_actions_returns_tuple(self):
         sit = {"phase": "early_survival", "difficulty": "Adventure story", "storyteller": "Cassandra Classic", "biome": "any", "threats": ["low_food"], "resources": ["food_under_5_days"]}
