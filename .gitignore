@@ -14,7 +14,8 @@ memory/snapshots/
 memory/snapshots_archive*/
 memory/debriefs/
 memory/candidates/
-scratchpad/
+# Derived lesson query index; rebuild with `python -m smartrim.lessons reindex`
+memory/lessons.sqlite
 sessions/*-transcript.md
 Session1-2.zip
 *.zip
@@ -28,9 +29,6 @@ Session1-2.zip
 /.kilocode
 /.codeviz
 /.pytest_cache
+/.ruff_cache
 
 REVIEW-TASKS-GROK.md
-
-# Audio/Video Files Generated with NotebookLM
-/.notebooklm/How_AI_Learns_to_Survive_RimWorld.m4a
-/.notebooklm/SmartRim_Survival_Guide.mp4

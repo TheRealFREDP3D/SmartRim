@@ -46,6 +46,8 @@ class TestOutcomes(unittest.TestCase):
         lessons = outcomes._read_lessons()
         self.assertEqual(lessons[0]["times_helped"], 1)
         self.assertAlmostEqual(lessons[0]["confidence"], 0.6)
+        # Check lineage tracking
+        self.assertIn("r1", lessons[0].get("source_runs", []))
 
     def test_failed_when_food_worsens(self):
         summary = {"food_days": 1, "medicine_count": 10, "min_mood": 50, "resources": {}}
@@ -62,6 +64,12 @@ class TestOutcomes(unittest.TestCase):
         outcomes.close_outcomes(summary, run_id="r1")
         changed2 = outcomes.close_outcomes(summary, run_id="r1")
         self.assertFalse(changed2)
+
+    def test_source_run_is_not_duplicated(self):
+        summary = {"food_days": 7, "medicine_count": 10, "min_mood": 50, "resources": {}}
+        outcomes.close_outcomes(summary, run_id="r1")
+        lessons = outcomes._read_lessons()
+        self.assertEqual(lessons[0]["source_runs"].count("r1"), 1)
 
     def test_expired_when_risk_cleared(self):
         rec = {"advice_id": "adv-2", "run_id": "r1", "status": "open", "trigger": "reflex",

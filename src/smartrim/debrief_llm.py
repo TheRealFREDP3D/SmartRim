@@ -233,7 +233,11 @@ def find_bundle(run_id):
 
 
 def write_analysis(run_id, analysis, model):
-    """Write the LLM analysis to a file."""
+    """Write the LLM analysis to a file.
+
+    Also writes candidate lessons to memory/candidates/<run>-<timestamp>.jsonl
+    if the analysis contains validated lesson candidates.
+    """
     if not DEBRIEFS_DIR:
         return None
     os.makedirs(DEBRIEFS_DIR, exist_ok=True)
@@ -259,7 +263,92 @@ def write_analysis(run_id, analysis, model):
                 f.write(f"  **Rationale**: {lesson.get('rationale', '?')}\n")
                 f.write(f"  **Confidence**: {lesson.get('confidence', 0.3)}\n\n")
             f.write(f"\n## Next Colony\n{analysis.get('next_colony', 'N/A')}\n")
+
+    # Write candidate lessons to JSONL if available
+    if isinstance(analysis, dict) and "lessons" in analysis:
+        candidates_path = _write_candidate_lessons(run_id, analysis["lessons"], candidates_dir=CANDIDATES_DIR)
+        if candidates_path:
+            logger.info(f"Wrote candidate lessons to: {candidates_path}")
+
     return path
+
+
+def _write_candidate_lessons(run_id, lessons, candidates_dir=None):
+    """Write candidate lessons to memory/candidates/<run>-<timestamp>.jsonl.
+
+    Each lesson is converted to the full lesson schema with:
+    - id: auto-generated as "C-<run_id>-<index>" (candidate format, not lesson format)
+    - status: "needs_review"
+    - confidence: 0.3 (floor for single observations)
+    - times_applied/helped/failed: 0
+    - last_updated: current date
+
+    Args:
+        run_id: Run identifier
+        lessons: List of lesson candidate dicts
+        candidates_dir: Override CANDIDATES_DIR (for testing)
+
+    Returns:
+        Path to written file, or None if candidates_dir is None
+    """
+    output_dir = candidates_dir
+    if not output_dir:
+        return None
+
+    os.makedirs(output_dir, exist_ok=True)
+    timestamp = __import__('datetime').datetime.now().strftime("%Y%m%d-%H%M%S")
+    candidates_path = os.path.join(output_dir, f"{run_id}-{timestamp}.jsonl")
+
+    from smartrim.situation import validate_lesson
+
+    with open(candidates_path, "w", encoding="utf-8") as f:
+        for idx, candidate in enumerate(lessons):
+            # Convert candidate to full lesson schema
+            lesson = {
+                "id": f"C-{run_id}-{idx}",  # Candidate ID format (not L-XXXX)
+                "title": candidate.get("title", ""),
+                "trigger": _normalize_trigger(candidate.get("trigger", {})),
+                "recommendation": candidate.get("recommendation", ""),
+                "rationale": candidate.get("rationale", ""),
+                "source": candidate.get("source", []),
+                "confidence": 0.3,  # Floor for single observations
+                "status": "needs_review",
+                "tags": [],  # Tags can be added during review
+                "times_applied": 0,
+                "times_helped": 0,
+                "times_failed": 0,
+                "source_runs": [run_id],
+                "last_updated": __import__('datetime').datetime.now().strftime("%Y-%m-%d"),
+            }
+
+            # Validate before writing (skip ID validation for candidates)
+            # We'll re-validate with proper L-XXXX ID during promotion
+            errors = validate_lesson(lesson)
+            # Filter out ID validation errors since candidates use C- format
+            errors = [e for e in errors if not e.startswith("bad id")]
+
+            if errors:
+                logger.warning(f"Lesson candidate {idx} validation errors: {errors}")
+                # Still write it, but note the errors in a comment
+                f.write(f"# Validation errors: {errors}\n")
+
+            f.write(json.dumps(lesson) + "\n")
+
+    return candidates_path
+
+
+def _normalize_trigger(trigger):
+    """Normalize trigger object to match lesson schema."""
+    # Ensure all required fields exist
+    normalized = {
+        "phases": trigger.get("phases", []),
+        "threats": trigger.get("threats", []),
+        "resources": trigger.get("resources", []),
+        "difficulty": trigger.get("difficulty", "any"),
+        "storyteller": trigger.get("storyteller", "any"),
+        "biome": trigger.get("biome", "any"),
+    }
+    return normalized
 
 
 def main():

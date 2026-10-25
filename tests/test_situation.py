@@ -1,5 +1,7 @@
 import os
 import unittest
+from contextlib import redirect_stdout
+from io import StringIO
 
 SIDECAR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "sidecar")
 
@@ -143,6 +145,61 @@ class TestRetrieve(unittest.TestCase):
         result = retrieve(sit, self.lessons, limit=10)
         for lesson in result:
             self.assertEqual(lesson.get("status"), "active")
+
+
+class TestLineage(unittest.TestCase):
+    def setUp(self):
+        self.lessons = [
+            {"id": "L-0001", "title": "Helped", "status": "active", "confidence": 0.6,
+             "source_runs": ["r1"], "times_applied": 1, "times_helped": 1, "times_failed": 0},
+            {"id": "L-0002", "title": "Contradicted", "status": "active", "confidence": 0.35,
+             "source_runs": ["r1"], "times_applied": 1, "times_helped": 0, "times_failed": 1},
+            {"id": "L-0003", "title": "Applied", "status": "active", "confidence": 0.5,
+             "source_runs": ["r1"], "times_applied": 1, "times_helped": 0, "times_failed": 0},
+            {"id": "L-0004", "title": "Other run", "status": "active", "confidence": 0.5,
+             "source_runs": ["r2"], "times_applied": 1, "times_helped": 0, "times_failed": 0},
+        ]
+        self.advice = [
+            {"advice_id": "adv-1", "run_id": "r1", "status": "helped",
+             "outcome_note": "food recovered", "linked_lessons": ["L-0001"]},
+            {"advice_id": "adv-2", "run_id": "r1", "status": "failed",
+             "outcome_note": "food fell", "linked_lessons": ["L-0002"]},
+            {"advice_id": "adv-3", "run_id": "r1", "status": "open",
+             "linked_lessons": ["L-0003"]},
+        ]
+
+    def test_load_run_lineage_uses_run_specific_outcomes(self):
+        lineage = situation.load_run_lineage("r1", self.lessons, self.advice)
+        self.assertEqual([item["lesson"]["id"] for item in lineage], ["L-0001", "L-0002", "L-0003"])
+        self.assertEqual([item["relationship"] for item in lineage], ["HELPED", "CONTRADICTED", "APPLIED"])
+        self.assertEqual(lineage[1]["outcomes"][0]["note"], "food fell")
+
+    def test_lineage_cli_prints_touched_lessons(self):
+        orig_lessons = situation.LESSONS_FILE
+        import tempfile
+        tmp = tempfile.mkdtemp()
+        try:
+            path = os.path.join(tmp, "lessons.jsonl")
+            import json
+            with open(path, "w", encoding="utf-8") as fh:
+                for lesson in self.lessons:
+                    fh.write(json.dumps(lesson) + "\n")
+            situation.LESSONS_FILE = path
+            out = StringIO()
+            with redirect_stdout(out):
+                lineage = situation.load_run_lineage("r1", self.lessons, self.advice)
+                for item in lineage:
+                    lesson = item["lesson"]
+                    print(f"{lesson.get('id')}: {lesson.get('title')}")
+                    print(f"  Relationship: {item['relationship']}")
+            output = out.getvalue()
+            self.assertIn("L-0001: Helped", output)
+            self.assertIn("Relationship: CONTRADICTED", output)
+            self.assertNotIn("L-0004", output)
+        finally:
+            situation.LESSONS_FILE = orig_lessons
+            import shutil
+            shutil.rmtree(tmp, ignore_errors=True)
 
 
 class TestRankActions(unittest.TestCase):

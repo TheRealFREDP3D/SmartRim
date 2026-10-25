@@ -3,7 +3,7 @@
 Writes one self-contained markdown file per run that can be pasted into any chat model:
   memory/debriefs/<run>.bundle.md          the prompt + data
   memory/debriefs/<run>.response.md        empty template for the model's answer
-The wiki facts block is copied from memory/wiki-audit-20261018.md (verified entries only).
+The wiki facts block is loaded from memory/wiki_facts.yaml (single source of truth).
 """
 
 import glob
@@ -20,32 +20,61 @@ try:
 except ImportError:
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# Verified wiki facts (memory/wiki-audit-20261018.md, section D). Keep this list short and cited.
-WIKI_FACTS = [
-    "Mental break base thresholds for a normal colonist: minor 35%, major 20%, extreme 5% (wiki:Mental_break). Traits shift them (wiki:Mental_break).",
-    "Base mood by difficulty: Peaceful 42, Community builder 42, Adventure story 37, Strive to survive 32, Blood and dust 27, Losing is Fun 22 (wiki:Mood).",
-    "Mood bar moves toward its target at most +12/hour up and -8/hour down (wiki:Mood).",
-    "Raid points cap at 10,000; wealth points use storyteller wealth up to 1,000,000 (wiki:Raid_points, wiki:Wealth).",
-    "Shared barracks: Dull barracks -5 and Awful barracks -7 mood versus a private bedroom (wiki:Thoughts, wiki:Bedroom).",
-    "Raw food: flat 2% food poisoning; cooked meals depend on cook skill and kitchen cleanliness (wiki:Rice, wiki:Blood_loss).",
-    "Freezing point 0 C prevents spoilage; coolers can make freezers (wiki:Cooler).",
-    "Rice matures in about 5.54 days and yields 6 units per plant (wiki:Rice).",
-    "Herbal medicine is extracted from healroot. Industrial medicine needs cloth 3 + herbal 1 + neutroamine 1 and Medicine production research (wiki:Herbal_medicine, wiki:Research).",
-    "Drug production (drug lab) and Medicine production are separate research projects; Medicine production requires Drug production (wiki:Research).",
-    "Predators hunt colonists when hungry and keep attacking downed prey (wiki:Animals). Guinea pigs are herbivores (wiki:Guinea_pig).",
-    "Sandbags: 55% cover, built from Fabric or Leathery material, 5 units (wiki:Sandbags).",
-    "Incapable of Violent: cannot equip weapons or hunt (wiki:Incapable).",
-    "Unburied colonist corpse triggers a 'left unburied' thought after 4 game days (wiki:Thoughts).",
-    "Difficulty: Community builder research speed 120%, threat scale 30%; Adventure story research 100%, threat scale 60% (wiki:Difficulty, wiki:AI_Storytellers).",
-]
+WIKI_FACTS_PATH = os.path.join(BASE_DIR, "memory", "wiki_facts.yaml")
 
-UNVERIFIED = [
-    "First raid day window (e.g. 'Days 8-15'): NOT in the wiki. Session 5 had a raid on Day 5 under Phoebe.",
-    "Corpse -10 mood per corpse: NOT confirmed in the wiki text.",
-    "Community Builder pre-researched projects: NOT in the wiki.",
-    "Healroot 60% potency, packaged meal duration (~8 days for 3 pawns), ate-without-table -3: NOT confirmed.",
-    "Sandbag material 'cloth only' (MCP tool observation): conflicts with the wiki (Fabric or Leathery).",
-]
+
+def _load_wiki_facts():
+    """Load wiki facts from YAML file. Returns (verified_facts, unverified_facts)."""
+    try:
+        import yaml
+    except ImportError:
+        logger.warning("PyYAML not installed; using fallback empty facts")
+        return [], []
+
+    if not os.path.exists(WIKI_FACTS_PATH):
+        logger.warning(f"Wiki facts file not found: {WIKI_FACTS_PATH}")
+        return [], []
+
+    try:
+        with open(WIKI_FACTS_PATH, encoding="utf-8") as f:
+            data = yaml.safe_load(f) or []
+    except (OSError, yaml.YAMLError) as e:
+        logger.error(f"Failed to load wiki facts: {e}")
+        return [], []
+
+    verified = []
+    unverified = []
+
+    for entry in data:
+        if not isinstance(entry, dict):
+            continue
+        text = entry.get("text", "")
+        source_pages = entry.get("source_page")
+        status = entry.get("status", "unverified")
+
+        # Format source pages as wiki:citation
+        if source_pages:
+            if isinstance(source_pages, str):
+                citations = f" (wiki:{source_pages})"
+            elif isinstance(source_pages, list):
+                citations = " (wiki:" + ", wiki:".join(source_pages) + ")"
+            else:
+                citations = ""
+        else:
+            citations = ""
+
+        fact_with_citation = text + citations
+
+        if status == "verified":
+            verified.append(fact_with_citation)
+        else:
+            unverified.append(text)  # Unverified facts don't get citations
+
+    return verified, unverified
+
+
+# Load facts at module init (cached for performance)
+WIKI_FACTS, UNVERIFIED = _load_wiki_facts()
 
 OUTPUT_FIELDS = [
     "title", "cause_chain", "trigger", "recommendation", "rationale",

@@ -128,6 +128,19 @@ def close_outcomes(snapshot_summary, run_id=None):
             rec["outcome_note"] = note
         changed = True
 
+        # A lesson is applied as soon as linked advice is issued, even if its
+        # outcome remains open. Record that touch now so lineage is complete.
+        effective_run_id = run_id or rec.get("run_id")
+        for lid in (rec.get("linked_lessons") or []):
+            lesson = lesson_map.get(lid)
+            if not lesson:
+                continue
+            source_runs = lesson.get("source_runs") or []
+            if effective_run_id and effective_run_id not in source_runs:
+                source_runs.append(effective_run_id)
+                lesson["source_runs"] = source_runs
+                changed = True
+
         # Update linked lessons
         for lid in (rec.get("linked_lessons") or []):
             lesson = lesson_map.get(lid)

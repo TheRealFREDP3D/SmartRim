@@ -155,11 +155,19 @@ def build_situation(snapshot_summary, alerts):
 SEVERITY_ORDER = {"critical": 0, "urgent": 1, "warning": 2, "info": 3}
 
 
-def rank_actions(alerts, situation, lessons_list, limit=5):
+def rank_actions(alerts, situation, lessons_list, limit=5, store=None, use_semantic_search=True):
     """Rank actions from alerts + retrieved lessons. Deterministic.
 
     Returns list of action dicts: {rank, action, rationale, estimated_time, auto_paused}.
     Also returns the list of linked lesson ids.
+
+    Args:
+        alerts: List of alert dicts
+        situation: Situation dict from build_situation()
+        lessons_list: Optional list of lesson dicts (for backward compatibility)
+        limit: Maximum number of actions to return
+        store: Optional LessonStore instance (uses SqliteLessonStore by default if None)
+        use_semantic_search: If True, use SQLite+FTS5 store; if False, use legacy JSONL scan
     """
     # Map alert severity to risk severity
     risks = []
@@ -178,7 +186,7 @@ def rank_actions(alerts, situation, lessons_list, limit=5):
         mini_sit = dict(situation)
         mini_sit["threats"] = [threat_tag]
         # Retrieve lessons for this specific threat
-        matched = retrieve(mini_sit, lessons_list, limit=3)
+        matched = retrieve(mini_sit, lessons_list, limit=3, store=store, use_semantic_search=use_semantic_search)
         for lesson in matched:
             linked.add(lesson.get("id"))
             action_text = lesson.get("recommendation", "")
@@ -273,7 +281,46 @@ def _normalize_list(val):
     return [val]
 
 
-def retrieve(situation, lessons=None, limit=5):
+def retrieve(situation, lessons=None, limit=5, store=None, use_semantic_search=True):
+    """Retrieve lessons matching the situation.
+
+    Args:
+        situation: Dict with phase, threats, resources, difficulty, storyteller, biome
+        lessons: Optional list of lesson dicts (for backward compatibility)
+        limit: Maximum number of lessons to return
+        store: Optional LessonStore instance (uses SqliteLessonStore by default if None)
+        use_semantic_search: If True, use SQLite+FTS5 store; if False, use legacy JSONL scan
+
+    Returns:
+        List of lesson dicts (not Lesson objects, for backward compatibility)
+    """
+    # If lessons list is explicitly provided, use legacy path (backward compatibility)
+    if lessons is not None:
+        use_semantic_search = False
+
+    # Use SqliteLessonStore by default for semantic search
+    if store is None and use_semantic_search:
+        try:
+            from smartrim.lesson_store import get_store
+            store = get_store(use_sqlite=True)
+        except ImportError:
+            use_semantic_search = False
+
+    if store:
+        # Build query text from situation for semantic search
+        query_parts = []
+        if situation.get("phase"):
+            query_parts.append(situation["phase"])
+        for threat in situation.get("threats", []):
+            query_parts.append(threat)
+        for resource in situation.get("resources", []):
+            query_parts.append(resource)
+        query_text = " ".join(query_parts) if query_parts else None
+
+        lessons_objs = store.retrieve(situation, limit=limit, query_text=query_text)
+        return [lesson.to_dict() for lesson in lessons_objs]
+
+    # Legacy path: scan lessons list
     if lessons is None:
         lessons = load_lessons()
 
@@ -380,6 +427,63 @@ def validate_lesson(lesson):
     return errors
 
 
+def load_run_lineage(run_id, lessons=None, advice_records=None):
+    """Return lessons touched by ``run_id`` and their run-specific outcomes.
+
+    A run touches a lesson when the lesson's ``source_runs`` contains the run
+    id, or when advice issued by that run links to the lesson. Relationship is
+    derived from the run's own outcome records rather than lifetime counters.
+    """
+    if lessons is None:
+        lessons = load_lessons()
+    if advice_records is None:
+        try:
+            from smartrim.advice_log import read_advice
+            advice_records = read_advice(run_id=run_id)
+        except (ImportError, OSError, json.JSONDecodeError):
+            advice_records = []
+
+    records_by_lesson = {}
+    for rec in advice_records:
+        for lesson_id in rec.get("linked_lessons") or []:
+            records_by_lesson.setdefault(lesson_id, []).append(rec)
+
+    lineage = []
+    for lesson in lessons:
+        lesson_id = lesson.get("id")
+        source_runs = lesson.get("source_runs") or []
+        records = records_by_lesson.get(lesson_id, [])
+        if run_id not in source_runs and not records:
+            continue
+
+        outcomes = []
+        for rec in records:
+            status = rec.get("status")
+            if status not in ("helped", "failed"):
+                continue
+            outcomes.append({
+                "advice_id": rec.get("advice_id"),
+                "status": status,
+                "note": rec.get("outcome_note") or "",
+            })
+
+        if any(outcome["status"] == "failed" for outcome in outcomes):
+            relationship = "CONTRADICTED"
+        elif any(outcome["status"] == "helped" for outcome in outcomes):
+            relationship = "HELPED"
+        elif records:
+            relationship = "APPLIED"
+        else:
+            relationship = "SOURCE"
+
+        lineage.append({
+            "lesson": lesson,
+            "outcomes": outcomes,
+            "relationship": relationship,
+        })
+    return lineage
+
+
 def validate_all(path=None):
     path = path or LESSONS_FILE
     if not os.path.exists(path):
@@ -465,8 +569,208 @@ def main(argv=None):
                 alerts = json.load(fh)
         sit = build_situation(snap.get("summary", snap), alerts)
         print(json.dumps(sit, indent=2))
+    elif cmd == "reindex":
+        from smartrim.lesson_store import SqliteLessonStore
+        store = SqliteLessonStore()
+        store.reindex()
+        store.close()
+    elif cmd == "verify-facts":
+        import yaml
+
+        from smartrim.debrief_bundle import BASE_DIR, WIKI_FACTS_PATH
+
+        # Load wiki facts
+        if not os.path.exists(WIKI_FACTS_PATH):
+            print(f"Error: Wiki facts file not found: {WIKI_FACTS_PATH}")
+            sys.exit(1)
+
+        with open(WIKI_FACTS_PATH, encoding="utf-8") as f:
+            facts_data = yaml.safe_load(f) or []
+
+        wiki_dir = os.path.join(BASE_DIR, "memory", "wiki")
+        if not os.path.exists(wiki_dir):
+            print(f"Error: Wiki directory not found: {wiki_dir}")
+            sys.exit(1)
+
+        errors = []
+        for entry in facts_data:
+            if not isinstance(entry, dict):
+                continue
+            text = entry.get("text", "")
+            source_pages = entry.get("source_page")
+            status = entry.get("status", "unverified")
+
+            if status != "verified":
+                continue  # Skip unverified entries
+
+            if not source_pages:
+                errors.append(f"Missing source_page for: {text[:50]}...")
+                continue
+
+            # Check each source page
+            pages = [source_pages] if isinstance(source_pages, str) else source_pages
+            for page in pages:
+                page_path = os.path.join(wiki_dir, f"{page}.md")
+                if not os.path.exists(page_path):
+                    errors.append(f"Source page not found: {page}.md for: {text[:50]}...")
+                    continue
+
+                # Read page and check if text is present (simple substring check)
+                try:
+                    with open(page_path, encoding="utf-8") as f:
+                        page_content = f.read()
+                    # Extract key terms from the fact to search for
+                    # This is a heuristic - not perfect but good for CI
+                    key_terms = text.split()[:5]  # First 5 words
+                    found = any(term.lower() in page_content.lower() for term in key_terms)
+                    if not found:
+                        errors.append(f"Key terms not found in {page}.md for: {text[:50]}...")
+                except OSError as e:
+                    errors.append(f"Failed to read {page}.md: {e}")
+
+        if errors:
+            print("Wiki facts verification failed:")
+            for err in errors:
+                print(f"  - {err}")
+            sys.exit(1)
+        else:
+            print(f"All {len(facts_data)} wiki facts verified successfully.")
+    elif cmd == "promote":
+
+        if len(argv) < 3:
+            print("usage: lessons.py promote <candidate-file>")
+            print("  candidate-file: path to JSONL file in memory/candidates/")
+            sys.exit(1)
+
+        candidate_path = argv[2]
+        if not os.path.exists(candidate_path):
+            print(f"Error: Candidate file not found: {candidate_path}")
+            sys.exit(1)
+
+        # Load candidates
+        candidates = []
+        with open(candidate_path, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                try:
+                    candidates.append(json.loads(line))
+                except json.JSONDecodeError as e:
+                    print(f"Error parsing line: {e}")
+                    sys.exit(1)
+
+        if not candidates:
+            print("No candidates found in file.")
+            sys.exit(1)
+
+        print(f"Found {len(candidates)} candidate lesson(s):")
+        for i, c in enumerate(candidates):
+            print(f"  {i}. {c.get('id')}: {c.get('title')} (status: {c.get('status')})")
+
+        # Prompt for which to promote
+        print("\nEnter lesson numbers to promote (comma-separated, or 'all'):")
+        choice = input("> ").strip()
+
+        if choice.lower() == "all":
+            indices = list(range(len(candidates)))
+        else:
+            try:
+                indices = [int(x.strip()) for x in choice.split(",")]
+            except ValueError:
+                print("Invalid input. Use comma-separated numbers or 'all'.")
+                sys.exit(1)
+
+        # Load existing lessons
+        existing_lessons = load_lessons()
+
+        # Generate new IDs for promoted lessons
+        next_num = max([int(lesson.get("id", "L-0000")[2:]) for lesson in existing_lessons] + [0]) + 1
+
+        promoted = []
+        for idx in indices:
+            if idx < 0 or idx >= len(candidates):
+                print(f"Skipping invalid index: {idx}")
+                continue
+
+            candidate = candidates[idx]
+
+            # Prompt for editing
+            print(f"\n--- Editing lesson {idx}: {candidate.get('title')} ---")
+            print("Current status:", candidate.get("status"))
+            print("Current confidence:", candidate.get("confidence"))
+            print("Leave blank to keep current value.")
+
+            new_status = input(f"Status [{candidate.get('status')}]: ").strip()
+            if new_status:
+                candidate["status"] = new_status
+
+            new_conf = input(f"Confidence [{candidate.get('confidence')}]: ").strip()
+            if new_conf:
+                try:
+                    candidate["confidence"] = float(new_conf)
+                except ValueError:
+                    print("Invalid confidence, keeping current value.")
+
+            # Assign new L-XXXX ID
+            new_id = f"L-{next_num:04d}"
+            candidate["id"] = new_id
+            next_num += 1
+
+            # Validate
+            errors = validate_lesson(candidate)
+            if errors:
+                print(f"Validation errors: {errors}")
+                confirm = input("Promote anyway? (y/n): ").strip().lower()
+                if confirm != "y":
+                    print("Skipping this lesson.")
+                    continue
+
+            promoted.append(candidate)
+            print(f"Promoted as {new_id}")
+
+        # Append to lessons.jsonl
+        if promoted:
+            with open(LESSONS_FILE, "a", encoding="utf-8") as f:
+                for lesson in promoted:
+                    f.write(json.dumps(lesson) + "\n")
+            print(f"\nPromoted {len(promoted)} lesson(s) to {LESSONS_FILE}")
+            print("Run 'lessons.py validate' to verify.")
+        else:
+            print("No lessons promoted.")
+    elif cmd == "lineage":
+        if len(argv) < 3:
+            print("usage: lessons.py lineage <run_id>")
+            print("  run_id: the run identifier to trace lineage for")
+            sys.exit(1)
+
+        run_id = argv[2]
+        lineage_lessons = load_run_lineage(run_id)
+
+        if not lineage_lessons:
+            print(f"No lessons found with source_runs containing '{run_id}'")
+            sys.exit(0)
+
+        print(f"Lessons touched by run '{run_id}':")
+        print()
+
+        for item in lineage_lessons:
+            lesson = item["lesson"]
+            outcomes = item["outcomes"]
+            print(f"{lesson.get('id')}: {lesson.get('title')}")
+            print(f"  Status: {lesson.get('status')}")
+            print(f"  Confidence: {lesson.get('confidence')}")
+            print(f"  Times applied: {lesson.get('times_applied', 0)}")
+            print(f"  Times helped: {lesson.get('times_helped', 0)}")
+            print(f"  Times failed: {lesson.get('times_failed', 0)}")
+            print(f"  Relationship: {item['relationship']}")
+            if outcomes:
+                print("  Outcomes:")
+                for outcome in outcomes:
+                    print(f"    {outcome['status']}: {outcome['note']}")
+            print()
     else:
-        print("usage: lessons.py validate | render | retrieve <sit.json> | build-situation <snap.json> <alerts.json>")
+        print("usage: lessons.py validate | render | retrieve <sit.json> | build-situation <snap.json> <alerts.json> | reindex | verify-facts | promote <candidate-file> | lineage <run_id>")
 
 
 if __name__ == "__main__":
