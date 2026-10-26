@@ -26,6 +26,13 @@ Day counting: the run starts on the 1st day (`daysPassed` = 0). Ten full days mu
    .\start-monitor.ps1                     # adviser on: pauses and logs advice
    .\start-monitor.ps1 -ObserveOnly        # adviser off: snapshots only, no pause, no advice
    ```
+   Optional third mode — reflex actor (Layer 2, opt-in): set `REFLEX_KILL=0` in `.env` before starting
+   the monitor. Reflex actions then run after urgent-alert detection, guarded by the strict safety order
+   (REFLEX_KILL → REFLEX_PAUSE one in-game day → REFLEX_LOCK PID file → 60s human-action window →
+   preconditions → dry-run → say intent → execute → `memory/actions.jsonl` audit). Reflex actions do
+   not increment `auto_pauses` and do not write `advice_log` records; they are tracked separately.
+   Reflex runs record `arm: "reflex"` on the run-end marker for evaluation comparison against `on`/`off`.
+   Manage the pause with `python cli.py reflex pause|resume|status`.
 3. Create the colony with the fixed settings above. Record the tile id and team names in `memory/session-logs/<run-id>.md`.
 4. Confirm the monitor log shows `Reflex monitor started` with the run id.
 

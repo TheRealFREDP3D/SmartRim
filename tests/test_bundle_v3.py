@@ -1,18 +1,15 @@
 import json
 import os
 import shutil
-import sys
 import tempfile
 import unittest
 from datetime import datetime
 
 SIDECAR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "sidecar")
-sys.path.insert(0, SIDECAR)
 
-import advice_log
-import monitor
-import quests
-from debrief_bundle import build_bundle
+from smartrim import advice_log, monitor, quests
+from smartrim.debrief_bundle import build_bundle
+from smartrim.mcp_client import McpError
 
 
 class FakeClient:
@@ -96,7 +93,7 @@ class TestQuestRegistry(unittest.TestCase):
     def test_a_broken_game_call_does_not_raise(self):
         class Broken:
             def call_tool(self, name, arguments=None):
-                raise RuntimeError("mcp down")
+                raise McpError("mcp down")
 
         self.assertEqual(quests.list_quests(Broken()), [])
         self.assertEqual(quests.update(Broken(), path=self.reg), [])
@@ -112,6 +109,23 @@ class TestQuestRegistry(unittest.TestCase):
         self.assertEqual(len(merged), 2)
         self.assertEqual(merged[0]["states"], ["Ongoing", "EndedSuccess"])
         self.assertEqual(merged[0]["description"], "d1")
+
+    def test_cumulative_state_history_is_not_duplicated(self):
+        """Each snapshot carries the quest's full history; merging must not re-append it."""
+        snaps = [
+            {"quests": [{"id": 0, "name": "Q", "states": ["NotYetAccepted"]}]},
+            {"quests": [{"id": 0, "name": "Q", "states": ["NotYetAccepted", "Ongoing"]}]},
+            {"quests": [{"id": 0, "name": "Q", "states": ["NotYetAccepted", "Ongoing", "EndedSuccess"]}]},
+        ]
+        merged = quests.quests_from_snapshots(snaps)
+
+        self.assertEqual(len(merged), 1)
+        self.assertEqual(merged[0]["states"], ["NotYetAccepted", "Ongoing", "EndedSuccess"])
+
+    def test_repeated_state_in_one_snapshot_is_deduped(self):
+        snaps = [{"quests": [{"id": 3, "name": "Q", "states": ["Ongoing", "Ongoing", "Ongoing"]}]}]
+        merged = quests.quests_from_snapshots(snaps)
+        self.assertEqual(merged[0]["states"], ["Ongoing"])
 
 
 class TestAdviceCause(unittest.TestCase):
@@ -240,6 +254,26 @@ class TestBundleV3(unittest.TestCase):
         bundle, _ = build_bundle(self.snaps, self.debs, "t-v3", advice_records=[])
         text = open(bundle, encoding="utf-8").read()
         self.assertIn("## 8. Task", text)
+
+    def test_run_level_causes_are_rendered_in_the_metadata(self):
+        """Causes that belong to the whole run (not one advice record) must reach the bundle."""
+        bundle, _ = build_bundle(
+            self.snaps, self.debs, "t-v3", advice_records=[],
+            meta={"causes": [{"event": "Starvation", "cause": "plant cutting priority too low"}]},
+        )
+        text = open(bundle, encoding="utf-8").read()
+        metadata = text.split("## 2. Run metadata")[1].split("## 3.")[0]
+        self.assertIn("event causes", metadata)
+        self.assertIn("Starvation", metadata)
+        self.assertIn("plant cutting priority too low", metadata)
+
+    def test_run_level_causes_accept_plain_strings(self):
+        bundle, _ = build_bundle(
+            self.snaps, self.debs, "t-v3", advice_records=[],
+            meta={"causes": ["raid by raiders"]},
+        )
+        text = open(bundle, encoding="utf-8").read()
+        self.assertIn("raid by raiders", text)
 
 
 class TestReflexSnapshots(unittest.TestCase):

@@ -1,0 +1,16 @@
+{
+  "run_id": "run-004-obs-cassandra",
+  "arm": "off",
+  "observe_only": true,
+  "run_days": 11,
+  "days_passed": 11,
+  "stop_reason": "run_length",
+  "urgent_alerts": 2,
+  "auto_pauses": 0,
+  "reflex_snapshots": 2,
+  "difficulty": "adventure story",
+  "storyteller": "Cassandra Classic",
+  "ended_at": "2026-10-22T00:36:01.138247",
+  "snapshots_dir": "C:\\Users\\fred\\Desktop\\SmartRim\\memory\\snapshots\\run-004-obs-cassandra",
+  "final_snapshot": "C:\\Users\\fred\\Desktop\\SmartRim\\memory\\snapshots\\run-004-obs-cassandra\\day-end-day-11.json"
+}

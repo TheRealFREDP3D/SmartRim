@@ -22,10 +22,12 @@ $env:OLLAMA_NUM_GPU         = "999"    # offload max layers
 $env:OLLAMA_ORIGINS         = "*"
 $env:OLLAMA_DEBUG           = "0"
 
+$healthUrl = "http://127.0.0.1:11434/api/version"
+
 # Check if server already up
 $up = $false
 try {
-    $v = Invoke-RestMethod -Uri "http://localhost:11434/api/version" -TimeoutSec 3
+    $v = Invoke-RestMethod -Uri $healthUrl -TimeoutSec 3
     if ($v.version) { $up = $true }
 } catch { $up = $false }
 
@@ -33,16 +35,27 @@ if ($up) {
     Write-Host "Ollama server already running: $($v.version)" -ForegroundColor Green
 } else {
     Write-Host "Starting Ollama server with tuned env..." -ForegroundColor Cyan
-    Start-Process -FilePath $ollamaExe -ArgumentList "serve" -WindowStyle Hidden
-    # wait for readiness
-    for ($i = 0; $i -lt 20; $i++) {
-        Start-Sleep -Seconds 1
+    $outLog = Join-Path $env:TEMP "ollama-serve.out.log"
+    $errLog = Join-Path $env:TEMP "ollama-serve.err.log"
+    Remove-Item $outLog, $errLog -ErrorAction SilentlyContinue
+    $proc = Start-Process -FilePath $ollamaExe -ArgumentList "serve" -RedirectStandardOutput $outLog -RedirectStandardError $errLog -PassThru -WindowStyle Hidden
+
+    # wait for readiness (GPU discovery can take a few seconds)
+    for ($i = 0; $i -lt 40; $i++) {
+        Start-Sleep -Milliseconds 500
+        if ($proc.HasExited) {
+            $err = if (Test-Path $errLog) { Get-Content $errLog -Raw } else { "" }
+            throw "Ollama process exited before ready. stderr:`n$err"
+        }
         try {
-            $v = Invoke-RestMethod -Uri "http://localhost:11434/api/version" -TimeoutSec 2
+            $v = Invoke-RestMethod -Uri $healthUrl -TimeoutSec 2
             if ($v.version) { $up = $true; break }
         } catch { }
     }
-    if (-not $up) { throw "Ollama server did not become ready" }
+    if (-not $up) {
+        $err = if (Test-Path $errLog) { Get-Content $errLog -Raw } else { "" }
+        throw "Ollama server did not become ready. stderr:`n$err"
+    }
     Write-Host "Ollama server started: $($v.version)" -ForegroundColor Green
 }
 

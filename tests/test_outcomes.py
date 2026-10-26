@@ -1,14 +1,11 @@
 import json
 import os
-import sys
 import tempfile
 import unittest
 
 SIDECAR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "sidecar")
-sys.path.insert(0, SIDECAR)
 
-import outcomes
-import advice_log
+from smartrim import advice_log, outcomes
 
 
 class TestOutcomes(unittest.TestCase):
@@ -49,6 +46,8 @@ class TestOutcomes(unittest.TestCase):
         lessons = outcomes._read_lessons()
         self.assertEqual(lessons[0]["times_helped"], 1)
         self.assertAlmostEqual(lessons[0]["confidence"], 0.6)
+        # Check lineage tracking
+        self.assertIn("r1", lessons[0].get("source_runs", []))
 
     def test_failed_when_food_worsens(self):
         summary = {"food_days": 1, "medicine_count": 10, "min_mood": 50, "resources": {}}
@@ -65,6 +64,12 @@ class TestOutcomes(unittest.TestCase):
         outcomes.close_outcomes(summary, run_id="r1")
         changed2 = outcomes.close_outcomes(summary, run_id="r1")
         self.assertFalse(changed2)
+
+    def test_source_run_is_not_duplicated(self):
+        summary = {"food_days": 7, "medicine_count": 10, "min_mood": 50, "resources": {}}
+        outcomes.close_outcomes(summary, run_id="r1")
+        lessons = outcomes._read_lessons()
+        self.assertEqual(lessons[0]["source_runs"].count("r1"), 1)
 
     def test_expired_when_risk_cleared(self):
         rec = {"advice_id": "adv-2", "run_id": "r1", "status": "open", "trigger": "reflex",
@@ -92,6 +97,33 @@ class TestOutcomes(unittest.TestCase):
         lessons = outcomes._read_lessons()
         # confidence should have dropped 3 times
         self.assertLessEqual(lessons[0]["confidence"], 0.35)
+
+
+class TestCloseAdvice(unittest.TestCase):
+    def test_food_helped(self):
+        advice = {"situation": "Food stock low", "trigger": "reflex"}
+        snap = {"food_days": 6, "medicine_count": 5, "min_mood": 50, "alerts": []}
+        status, note = outcomes._close_advice(advice, snap)
+        self.assertEqual(status, "helped")
+        self.assertIn("food days", note)
+
+    def test_food_failed(self):
+        advice = {"situation": "Food stock low", "trigger": "reflex"}
+        snap = {"food_days": 1, "medicine_count": 5, "min_mood": 50, "alerts": []}
+        status, _note = outcomes._close_advice(advice, snap)
+        self.assertEqual(status, "failed")
+
+    def test_mood_helped(self):
+        advice = {"situation": "Mood major break risk", "trigger": "reflex"}
+        snap = {"food_days": 5, "medicine_count": 5, "min_mood": 40, "alerts": []}
+        status, _note = outcomes._close_advice(advice, snap)
+        self.assertEqual(status, "helped")
+
+    def test_expired_when_risk_cleared(self):
+        advice = {"situation": "Unknown risk", "trigger": "reflex"}
+        snap = {"food_days": 6, "medicine_count": 5, "min_mood": 50, "alerts": []}
+        status, _note = outcomes._close_advice(advice, snap)
+        self.assertEqual(status, "expired")
 
 
 if __name__ == "__main__":

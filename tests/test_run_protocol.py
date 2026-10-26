@@ -1,15 +1,13 @@
 import json
 import os
 import shutil
-import sys
 import tempfile
 import unittest
 
 SIDECAR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "sidecar")
-sys.path.insert(0, SIDECAR)
 
-import monitor
-from monitor import run_length_reached
+from smartrim import monitor
+from smartrim.monitor import run_length_reached
 
 
 class FakeClient:
@@ -41,7 +39,7 @@ class TestRunLength(unittest.TestCase):
         self.assertFalse(run_length_reached(None, 10))
 
     def test_default_is_config_value(self):
-        from config import RUN_DAYS
+        from smartrim.config import RUN_DAYS
         self.assertEqual(RUN_DAYS, 11)
         self.assertFalse(run_length_reached(RUN_DAYS - 1))
         self.assertTrue(run_length_reached(RUN_DAYS))
@@ -72,7 +70,7 @@ class TestRunEndMarker(unittest.TestCase):
         self.assertTrue(os.path.exists(data["final_snapshot"]))
         names = [c[0] for c in client.calls]
         self.assertIn("set_speed", names)
-        pause = [c for c in client.calls if c[0] == "set_speed"][0]
+        pause = next(c for c in client.calls if c[0] == "set_speed")
         self.assertEqual(pause[1], {"action": "pause"})
 
 

@@ -64,3 +64,24 @@ Bundle v3 (2026-10-19) closes these:
 Still open: a run scored with v3 to confirm the ceiling actually moves (expect 2 grounding +
 9 failure analysis to recover, i.e. 18+ achievable without author knowledge).
 
+## run-007-adv-cassandra (11 days, adviser on, 3/3 colonists alive, 1 urgent alert, ended in starvation)
+
+| Model | Provider | Date | Bundle version | Total | Weakest criteria | Notes |
+|---|---|---|---|---|---|---|
+| gemma4-e2b-rimworld | ollama | 2026-10-25 | v3 | 19 / 20 | 10 calibration | **Scored by `smartrim.eval_models`.** First v3 run, and the ceiling moved: 19/20 without author knowledge, versus 16/20 for both run-002 answers on the older bundle. Only calibration lost a point: candidate 0 gave confidence 0.7 although one of its two sources is a player cause-annotation rather than independent evidence. The player confirmed the starvation cause (plant-cutting priority too low) and the bundle carried it as ground truth, so the model built its main lesson on it instead of re-diagnosing. |
+
+### What changed vs the run-002 answers
+- **Grounding recovered (2/2).** Every candidate cites a specific in-game day ("Day 9-11",
+  "11th of Aprimay, 5500", "15th of Aprimay, 5500"). The v3 digest plus run-level causes gave
+  it something concrete to cite.
+- **Failure analysis recovered (2/2).** The cause chains are causal, not descriptive.
+- **Schema compliance needed work.** The first answers used free-text trigger values
+  (`"Starvation"`, `"Raid"`) instead of the fixed vocabulary, which failed Pydantic validation.
+  Fixed by making the schema-retry prompt spell out the allowed values; the next run was
+  schema-valid on the first attempt.
+- **Format: the model never labels "Section A".** It emits the bare fenced JSON array, then
+  `**Section B: Summary**`. The scorer now treats a JSON fence before the Section B marker as
+  an implicit Section A. This is a scorer fix, not a model improvement — the rubric's
+  "exactly Section A" wording is strict but the answer is unambiguous.
+
+

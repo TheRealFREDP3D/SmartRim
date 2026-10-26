@@ -1,0 +1,31 @@
+{
+  "run_id": "run-004-obs-cassandra",
+  "biome": "temperate forest (flat, tile 3234, 13.6 C at landing)",
+  "scenario": "Crashlanded",
+  "storyteller": "Cassandra Classic",
+  "difficulty": "Adventure story",
+  "reloadAnytime": true,
+  "team": [
+    "Tam 'Blue' Jones",
+    "Ollie McCann",
+    "Cole Forbes"
+  ],
+  "notes": "Observer run (adviser off). No agent actions after setup; player managed colony. All 3 colonists survived 10 days (daysPassed 11) with health 100 and mood 70-95. Low food alert at end (1 day). Construction sites unbuilt for 3+ days (walls, hidden conduit, stool). Research: 7 completed, batteries 0%. Wealth 16794.",
+  "quests": [
+    {
+      "id": 0,
+      "name": "Mechanoid Signal",
+      "states": ["NotYetAccepted", "Ongoing"],
+      "accepter": null,
+      "description": "Mechanoid ship signal detected; can be falsely responded to crashland for salvage. Ongoing, not approached."
+    },
+    {
+      "id": 1,
+      "name": "The Ambushed Praetor",
+      "states": ["NotYetAccepted", "EndedOfferExpired"],
+      "accepter": null,
+      "description": "Baslisca Usca, praetor of The Exodus Empire, needed escort; offer expired."
+    }
+  ],
+  "quests_recorded_after_run": true
+}

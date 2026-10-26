@@ -1,0 +1,44 @@
+version: 1
+reflex_actions:
+  - id: draft-and-focus-fire
+    alert_match:
+      label_contains: ["raid", "enemy", "attack"]
+    action_type: draft_and_focus_fire
+    dry_run: false
+    kill_switch_env: REFLEX_KILL
+    preconditions:
+      - has_raid_alert
+      - has_shooter_above_5
+      - none_drafted
+  - id: designate-firefighting
+    alert_match:
+      label_contains: ["fire"]
+    action_type: designate_firefighting
+    dry_run: true
+    kill_switch_env: REFLEX_KILL
+    preconditions:
+      - has_fire_alert
+  - id: assign-beds-to-unassigned
+    alert_match:
+      category: "idle_colonist"
+    action_type: assign_beds
+    dry_run: true
+    kill_switch_env: REFLEX_KILL
+    preconditions:
+      - has_unassigned_colonist
+  - id: rescue-downed
+    alert_match:
+      label_contains: ["downed", "incapacitated"]
+    action_type: rescue_downed
+    dry_run: true
+    kill_switch_env: REFLEX_KILL
+    preconditions:
+      - has_downed_colonist
+  - id: prioritize-treatment
+    alert_match:
+      label_contains: ["wounded", "bleeding"]
+    action_type: prioritize_treatment
+    dry_run: true
+    kill_switch_env: REFLEX_KILL
+    preconditions:
+      - has_wounded_colonist

@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "smartrim"
+version = "0.1.0"
+description = "SmartRim sidecar tooling"
+requires-python = ">=3.11"
+dependencies = [
+    "requests",
+    "mcp",
+    "pyyaml",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "ruff",
+    "tenacity",
+]
+cloud = [
+    "openai",
+    "anthropic",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

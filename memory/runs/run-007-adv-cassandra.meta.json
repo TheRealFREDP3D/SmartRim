@@ -1,0 +1,49 @@
+{
+  "run_id": "run-007-adv-cassandra",
+  "biome": "temperate forest (flat, tile 39, 11.8 C at landing, rainfall 1867mm, swampiness 0, pollution 0; 91/91 surrounding tiles temperate forest, 79 flat)",
+  "scenario": "Crashlanded",
+  "storyteller": "Cassandra Classic",
+  "difficulty": "Adventure story",
+  "reloadAnytime": true,
+  "ideology": "Fluid (generated, no edits)",
+  "team": [
+    "Leighton 'Speedy' Blackburn",
+    "Steven Wilcox",
+    "Niklas Fischer"
+  ],
+  "notes": "Adviser run (arm on), played by the human. Set up by agent via MCP (scenario/storyteller/tile 39/ideology/colonist selection), colony landed, then the player took over. Reached the full 11-day limit with all 3 colonists alive at 100 HP and none downed. Outcome: survived the run, but the colony ended in Starvation (2.2 days of food) with Steven Wilcox's mood at 17% (major break risk). Wealth 24364. 1 urgent alert (enemy downed during a raid on 11th of Aprimay), 1 auto-pause, 1 reflex snapshot. Research: Batteries 44% at end (7 completed / 164 total). Final alerts: Need batteries, Archaka role unfilled, Trader, Starvation, Major break risk. Food trend: 7.2 days (Day 1) -> 3.5 (Day 3) -> 5.3 (Day 6) -> 4.2 (Day 8) -> 2.5 (Day 10) -> 1.5 (Day 10 night) -> 2.2 (end); a rice harvest landed on 1st of Jugust (food 15 -> 205) but the colony still ate through it. 18 wall construction sites sat unbuilt for 3+ days ('Need defenses' alert from 9th of Aprimay). Quests: Beggars Seek Aid (EndedSuccess), Mechanoid Signal (Ongoing), The Fleeing Knight (accepted by Kaleun, EndedOfferExpired). Colony renamed 'Ereston', faction 'Alliance of Doroeron'. A ibex doe gave birth and Steven tamed an ibex ram.",
+  "causes": [
+    {
+      "event": "Starvation (days 9-11)",
+      "cause": "Plant-cutting work was not assigned a high enough priority, so harvested crops were not processed into meals. Food days decayed from 7.2 to 1.5 despite a rice harvest landing on 1st of Jugust (food 15 -> 205) and being consumed within a day. Confirmed by the player."
+    },
+    {
+      "event": "Raid on 11th of Aprimay (enemy downed, auto-pause)",
+      "cause": "Hostile raid; one enemy downed, no colonist injuries."
+    }
+  ],
+  "quests": [
+    {
+      "id": 0,
+      "name": "Beggars Seek Aid",
+      "states": ["NotYetAccepted", "Ongoing", "EndedSuccess"],
+      "accepter": null,
+      "description": "Mechanoid ship signal detected; by falsely responding the ship can be made to crashland nearby for grav-tech salvage."
+    },
+    {
+      "id": 1,
+      "name": "Mechanoid Signal",
+      "states": ["NotYetAccepted", "EndedOfferExpired", "Ongoing"],
+      "accepter": null,
+      "description": "Baslisca Usca, a praetor of The Exodus Empire, needed protection; the offer expired."
+    },
+    {
+      "id": 2,
+      "name": "The Fleeing Knight",
+      "states": ["EndedSuccess", "NotYetAccepted", "Ongoing", "EndedFailed", "EndedOfferExpired"],
+      "accepter": "Kaleun",
+      "description": "Phocas Glabas, praetor of Empire of Eltro, needed protection; accepted by Kaleun. 8 honor granted."
+    }
+  ],
+  "quests_recorded_after_run": false
+}

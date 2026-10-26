@@ -1,0 +1,105 @@
+# Wiki facts: single source of truth for debrief bundles
+# Each entry has: text, source_page, verified_date, status
+# This file replaces the hardcoded WIKI_FACTS list in debrief_bundle.py
+# Source: memory/wiki-audit-20261018.md section D (verified) and section B (unverified)
+
+- text: "Mental break base thresholds for a normal colonist: minor 35%, major 20%, extreme 5%. Traits shift them."
+  source_page: Mental_break
+  verified_date: "2026-10-18"
+  status: verified
+
+- text: "Base mood by difficulty: Peaceful 42, Community builder 42, Adventure story 37, Strive to survive 32, Blood and dust 27, Losing is Fun 22."
+  source_page: Mood
+  verified_date: "2026-10-18"
+  status: verified
+
+- text: "Mood bar moves toward its target at most +12/hour up and -8/hour down."
+  source_page: Mood
+  verified_date: "2026-10-18"
+  status: verified
+
+- text: "Raid points cap at 10,000; wealth points use storyteller wealth up to 1,000,000."
+  source_page: [Raid_points, Wealth]
+  verified_date: "2026-10-18"
+  status: verified
+
+- text: "Shared barracks: Dull barracks -5 and Awful barracks -7 mood versus a private bedroom."
+  source_page: [Thoughts, Bedroom]
+  verified_date: "2026-10-18"
+  status: verified
+
+- text: "Raw food: flat 2% food poisoning; cooked meals depend on cook skill and kitchen cleanliness."
+  source_page: [Rice, Blood_loss]
+  verified_date: "2026-10-18"
+  status: verified
+
+- text: "Freezing point 0 C prevents spoilage; coolers can make freezers."
+  source_page: Cooler
+  verified_date: "2026-10-18"
+  status: verified
+
+- text: "Rice matures in about 5.54 days and yields 6 units per plant."
+  source_page: Rice
+  verified_date: "2026-10-18"
+  status: verified
+
+- text: "Herbal medicine is extracted from healroot. Industrial medicine needs cloth 3 + herbal 1 + neutroamine 1 and Medicine production research."
+  source_page: [Herbal_medicine, Research]
+  verified_date: "2026-10-18"
+  status: verified
+
+- text: "Drug production (drug lab) and Medicine production are separate research projects; Medicine production requires Drug production."
+  source_page: Research
+  verified_date: "2026-10-18"
+  status: verified
+
+- text: "Predators hunt colonists when hungry and keep attacking downed prey. Guinea pigs are herbivores."
+  source_page: [Animals, Guinea_pig]
+  verified_date: "2026-10-18"
+  status: verified
+
+- text: "Sandbags: 55% cover, built from Fabric or Leathery material, 5 units."
+  source_page: Sandbags
+  verified_date: "2026-10-18"
+  status: verified
+
+- text: "Incapable of Violent: cannot equip weapons or hunt."
+  source_page: Incapable
+  verified_date: "2026-10-18"
+  status: verified
+
+- text: "Unburied colonist corpse triggers a 'left unburied' thought after 4 game days."
+  source_page: Thoughts
+  verified_date: "2026-10-18"
+  status: verified
+
+- text: "Difficulty: Community builder research speed 120%, threat scale 30%; Adventure story research 100%, threat scale 60%."
+  source_page: [Difficulty, AI_Storytellers]
+  verified_date: "2026-10-18"
+  status: verified
+
+# Unverified claims (kept for context but marked as unverified)
+- text: "First raid day window (e.g. 'Days 8-15'): NOT in the wiki. Session 5 had a raid on Day 5 under Phoebe."
+  source_page: null
+  verified_date: "2026-10-18"
+  status: unverified
+
+- text: "Corpse -10 mood per corpse: NOT confirmed in the wiki text."
+  source_page: null
+  verified_date: "2026-10-18"
+  status: unverified
+
+- text: "Community Builder pre-researched projects: NOT in the wiki."
+  source_page: null
+  verified_date: "2026-10-18"
+  status: unverified
+
+- text: "Healroot 60% potency, packaged meal duration (~8 days for 3 pawns), ate-without-table -3: NOT confirmed."
+  source_page: null
+  verified_date: "2026-10-18"
+  status: unverified
+
+- text: "Sandbag material 'cloth only' (MCP tool observation): conflicts with the wiki (Fabric or Leathery)."
+  source_page: null
+  verified_date: "2026-10-18"
+  status: unverified

@@ -763,5 +763,35 @@
     "url": "https://rimworldwiki.com/wiki/Pyromaniac",
     "fetched": "2026-10-18",
     "size": 188688
+  },
+  "Quickstart_Guides": {
+    "url": "https://rimworldwiki.com/wiki/Quickstart_Guides",
+    "fetched": "2026-10-24",
+    "size": 13345
+  },
+  "Events": {
+    "url": "https://rimworldwiki.com/wiki/Events",
+    "fetched": "2026-10-24",
+    "size": 9965
+  },
+  "Basics": {
+    "url": "https://rimworldwiki.com/wiki/Basics",
+    "fetched": "2026-10-24",
+    "size": 9966
+  },
+  "Environment": {
+    "url": "https://rimworldwiki.com/wiki/Environment",
+    "fetched": "2026-10-24",
+    "size": 9959
+  },
+  "Schedule": {
+    "url": "https://rimworldwiki.com/wiki/Schedule",
+    "fetched": "2026-10-24",
+    "size": 9965
+  },
+  "Controls": {
+    "url": "https://rimworldwiki.com/wiki/Controls",
+    "fetched": "2026-10-24",
+    "size": 9965
   }
 }

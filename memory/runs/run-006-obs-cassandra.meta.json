@@ -1,0 +1,14 @@
+{
+  "run_id": "run-006-obs-cassandra",
+  "biome": "temperate forest (flat, tile 233, 16.8 C at landing)",
+  "scenario": "Crashlanded",
+  "storyteller": "Cassandra Classic",
+  "difficulty": "Adventure story",
+  "reloadAnytime": true,
+  "team": [
+    "Nico Storch",
+    "Shun Garrett",
+    "Joshua Marjot"
+  ],
+  "notes": "Observer run (adviser off). Set up by agent; colony just landed. Monitor running observe-only."
+}

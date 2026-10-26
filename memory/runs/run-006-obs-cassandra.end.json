@@ -1,0 +1,16 @@
+{
+  "run_id": "run-006-obs-cassandra",
+  "arm": "off",
+  "observe_only": true,
+  "run_days": 11,
+  "days_passed": 11,
+  "stop_reason": "run_length",
+  "urgent_alerts": 3,
+  "auto_pauses": 0,
+  "reflex_snapshots": 3,
+  "difficulty": "adventure story",
+  "storyteller": "Cassandra Classic",
+  "ended_at": "2026-10-24T17:53:35.048166",
+  "snapshots_dir": "C:\\Users\\fred\\Desktop\\SmartRim\\memory\\snapshots\\run-006-obs-cassandra",
+  "final_snapshot": "C:\\Users\\fred\\Desktop\\SmartRim\\memory\\snapshots\\run-006-obs-cassandra\\day-12th of Aprimay, 5500.json"
+}

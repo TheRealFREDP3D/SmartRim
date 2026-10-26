@@ -1,14 +1,12 @@
 import json
 import os
 import shutil
-import sys
 import tempfile
 import unittest
 
 SIDECAR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "sidecar")
-sys.path.insert(0, SIDECAR)
 
-from debrief_bundle import build_bundle
+from smartrim.debrief_bundle import UNVERIFIED, WIKI_FACTS, _load_wiki_facts, build_bundle
 
 
 def valid_snapshot(day, mood=30):
@@ -94,7 +92,7 @@ class TestDebriefBundle(unittest.TestCase):
         self.assertLess(apr15, jug1)
 
     def test_outcome_and_biome_come_from_run_meta(self):
-        import debrief_bundle as db
+        import smartrim.debrief_bundle as db
 
         old_base = db.BASE_DIR
         try:
@@ -129,6 +127,42 @@ class TestDebriefBundle(unittest.TestCase):
         self.assertIn("new alerts: Low food", text)
         self.assertIn("health 100% -> 70%", text)
         self.assertIn("2nd of Aprimay, 5500: Fire!", text)
+
+
+class TestWikiFactsLoading(unittest.TestCase):
+    def test_load_wiki_facts_returns_lists(self):
+        """Test that _load_wiki_facts returns two lists."""
+        verified, unverified = _load_wiki_facts()
+        self.assertIsInstance(verified, list)
+        self.assertIsInstance(unverified, list)
+
+    def test_wiki_facts_are_populated(self):
+        """Test that WIKI_FACTS and UNVERIFIED are populated from YAML."""
+        # If wiki_facts.yaml exists, should have entries
+        import smartrim.debrief_bundle as db
+        if os.path.exists(db.WIKI_FACTS_PATH):
+            self.assertGreater(len(WIKI_FACTS), 0)
+            self.assertGreater(len(UNVERIFIED), 0)
+
+    def test_wiki_facts_format_with_citations(self):
+        """Test that verified facts include wiki:citation format."""
+        verified, _ = _load_wiki_facts()
+        if verified:
+            # At least one fact should have a wiki: citation
+            has_citation = any("(wiki:" in fact for fact in verified)
+            self.assertTrue(has_citation, "Verified facts should include wiki citations")
+
+    def test_wiki_facts_missing_file_returns_empty(self):
+        """Test that missing YAML file returns empty lists (graceful degradation)."""
+        import smartrim.debrief_bundle as db
+        old_path = db.WIKI_FACTS_PATH
+        try:
+            db.WIKI_FACTS_PATH = "/nonexistent/path/wiki_facts.yaml"
+            verified, unverified = db._load_wiki_facts()
+            self.assertEqual(verified, [])
+            self.assertEqual(unverified, [])
+        finally:
+            db.WIKI_FACTS_PATH = old_path
 
 
 if __name__ == "__main__":

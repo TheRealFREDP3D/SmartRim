@@ -1,14 +1,9 @@
 import json
 import os
-import sys
 import unittest
 
-SIDEcar = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "sidecar")
-sys.path.insert(0, SIDEcar)
-
-from monitor import run_reflex_checks, normalize_snapshot, write_snapshot
-from debrief import generate_debrief
-from config import SNAPSHOTS_DIR, DEBRIEFS_DIR, CANDIDATES_DIR
+from smartrim.debrief import generate_debrief
+from smartrim.monitor import PollResult, normalize_snapshot, poll_once, run_reflex_checks
 
 
 class FakeClient:
@@ -76,17 +71,80 @@ class TestNormalizeSnapshot(unittest.TestCase):
         self.assertIn("summary", out)
         self.assertIsInstance(out["summary"], dict)
 
+    def test_food_days_counts_meals_not_raw_units(self):
+        snapshot = {
+            "status": {"colonistCount": 2, "daysPassed": 1},
+            "conditions": {},
+            "colonists": {"colonists": []},
+            "resources": {"resources": [
+                {"defName": "RawRice", "label": "rice", "count": 100},
+                {"defName": "MealSimple", "label": "simple meal", "count": 4},
+            ]},
+            "alerts": {},
+        }
+        out = normalize_snapshot(snapshot)
+        # 4 meals / (2 colonists * 2 meals per day) = 1.0 day
+        self.assertEqual(out["summary"]["food_days"], 1.0)
+
+
+class TestPollOnce(unittest.TestCase):
+    def _client(self, snapshot):
+        return FakeClient(snapshot)
+
+    def test_day_rolled(self):
+        snapshot = {
+            "status": {"colonistCount": 3, "daysPassed": 2, "loaded": True, "programState": "Playing"},
+            "conditions": {"date": "3rd of Aprimay, 5500", "hour": 6},
+            "colonists": {"colonists": [{"name": "A", "mood": 80, "health": 100}]},
+            "resources": {"resources": []},
+            "alerts": {"activeAlerts": []},
+            "research": {},
+        }
+        client = self._client(snapshot)
+        state = PollResult(last_day=None, snapshotted_day=None)
+        new = poll_once(client, state)
+        self.assertEqual(new.snapshotted_day, "3rd of Aprimay, 5500")
+        self.assertEqual(new.last_day, "3rd of Aprimay, 5500")
+        self.assertFalse(new.run_ended)
+
+    def test_run_length_reached(self):
+        snapshot = {
+            "status": {"colonistCount": 3, "daysPassed": 11, "loaded": True, "programState": "Playing"},
+            "conditions": {"date": "12th of Aprimay, 5500", "hour": 6},
+            "colonists": {"colonists": [{"name": "A", "mood": 80, "health": 100}]},
+            "resources": {"resources": []},
+            "alerts": {"activeAlerts": []},
+            "research": {},
+        }
+        client = self._client(snapshot)
+        state = PollResult()
+        new = poll_once(client, state)
+        self.assertTrue(new.run_ended)
+
+    def test_urgent_alert_fired(self):
+        snapshot = {
+            "status": {"colonistCount": 3, "daysPassed": 2, "loaded": True, "programState": "Playing"},
+            "conditions": {"date": "3rd of Aprimay, 5500", "hour": 6},
+            "colonists": {"colonists": [{"name": "A", "mood": 1, "health": 100, "downed": False}]},
+            "resources": {"resources": []},
+            "alerts": {"activeAlerts": [{"label": "Raid: enemies"}]},
+            "research": {},
+        }
+        client = self._client(snapshot)
+        state = PollResult(last_day="3rd of Aprimay, 5500", snapshotted_day="3rd of Aprimay, 5500")
+        new = poll_once(client, state)
+        self.assertGreaterEqual(new.urgent_alerts, 1)
 
 class TestDebrief(unittest.TestCase):
     def test_generate_debrief_with_fixture(self):
-        import tempfile, shutil
+        import shutil
+        import tempfile
         d = tempfile.mkdtemp()
         sdir = os.path.join(d, "snapshots")
         ddir = os.path.join(d, "debriefs")
         os.makedirs(sdir)
         os.makedirs(ddir)
         # copy fixture as a snapshot
-        import shutil
         shutil.copy(
             os.path.join(os.path.dirname(__file__), "fixtures", "snapshot_day13.json"),
             os.path.join(sdir, "day-13th of Septober, 5500.json"),

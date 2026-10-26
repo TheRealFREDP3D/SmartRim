@@ -8,19 +8,41 @@ dist/
 build/
 memory/monitor.log
 memory/monitor.err.log
+memory/monitor.pid
+memory/monitor.watchdog.log
+memory/monitor.watchdog.stop
 memory/quests/registry.json
 memory/alerts/
 memory/snapshots/
 memory/snapshots_archive*/
 memory/debriefs/
 memory/candidates/
-scratchpad/
++memory/actions.jsonl
++memory/reflex.lock
++memory/reflex_pause.json
++memory/last_human_action.json
+# Raw wiki scrapes; the cleaned .md files in memory/wiki/ are the source of truth.
+# Re-scrape into this dir, then re-run the html->md conversion.
+memory/wiki/raw/
+# Derived lesson query index; rebuild with `python -m smartrim.lessons reindex`
+memory/lessons.sqlite
 sessions/*-transcript.md
 Session1-2.zip
+*.zip
 
 # workspace/tooling (not part of the repo)
+
+# Ideas, Tasklists, Archives
 /.DEV
+
 /.kilo
 /.kilocode
 /.codeviz
 /.pytest_cache
+/.ruff_cache
+
+REVIEW-TASKS-GROK.md
+
+# Streamlit agent skills (environment-specific symlinks)
+  .agents\skills/developing-with-streamlit
+  .claude\skills/developing-with-streamlit

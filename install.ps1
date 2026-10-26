@@ -20,7 +20,7 @@ Write-Host "Found: $version"
 
 # Install dependencies
 Write-Host "`nInstalling dependencies..." -ForegroundColor Yellow
-& $pythonExe -m pip install -r sidecar/requirements.txt
+& $pythonExe -m pip install -e ".[dev]"
 if ($LASTEXITCODE -ne 0) {
     Write-Host "ERROR: pip install failed" -ForegroundColor Red
     exit 1

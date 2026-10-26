@@ -1,15 +1,12 @@
 import json
 import os
 import shutil
-import sys
 import tempfile
 import unittest
 
 SIDECAR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "sidecar")
-sys.path.insert(0, SIDECAR)
 
-import evaluate
-import monitor
+from smartrim import evaluate, monitor
 
 
 def _snap(day, days_passed, colonists, mood, alerts, downed=None):
@@ -154,7 +151,8 @@ class TestObserveOnly(unittest.TestCase):
             self.assertEqual(data["urgent_alerts"], 2)
             self.assertTrue(os.path.exists(data["final_snapshot"]))
             self.assertIn("off-run", data["snapshots_dir"])
-            self.assertEqual(client.calls[0], ("set_speed", {"action": "pause"}))
+            # observe-only runs never pause, even at run end
+            self.assertFalse(any(c[0] == "set_speed" for c in client.calls))
         finally:
             monitor.ALERTS_DIR = orig_alerts
             monitor.SNAPSHOTS_DIR = orig_snaps
