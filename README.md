@@ -16,11 +16,11 @@ memory, and tests.
 2. Copy `.env.example` to `.env` and adjust values.
 3. Start RimWorld with the RimMolt mod (MCP server on localhost:8787).
 4. Run tests: `python -m pytest`
-5. Validate lessons: `python sidecar/lessons.py validate`
+5. Validate lessons: `python -m smartrim.situation validate`
 6. Start the reflex monitor: `.\start-monitor.ps1` (adviser on) or `.\start-monitor.ps1 -ObserveOnly`.
    - The monitor displays a daily status + advice message in-game at configured hours (default: 6am and 6pm).
    - Configure hours via `SAY_DAILY_HOURS` env var (e.g., `SAY_DAILY_HOURS=6,12,18` for 3 messages/day).
-   - Manual trigger: `python sidecar/say_daily.py` or `python sidecar/say_daily.py --slot evening`.
+   - Manual trigger: `python -m smartrim.say_daily` or `python -m smartrim.say_daily --slot evening`.
 7. Layer 2 reflex actor (opt-in): set `REFLEX_KILL=0` in `.env` to enable whitelisted actions
    (`draft-and-focus-fire`, `designate-firefighting`, `assign-beds-to-unassigned`). Default is
    `REFLEX_KILL=1` (all reflex actions dry-run only / disabled). Use `python cli.py reflex pause|resume|status`

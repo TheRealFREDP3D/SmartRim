@@ -17,10 +17,10 @@ memory/snapshots/
 memory/snapshots_archive*/
 memory/debriefs/
 memory/candidates/
-+memory/actions.jsonl
-+memory/reflex.lock
-+memory/reflex_pause.json
-+memory/last_human_action.json
+memory/actions.jsonl
+memory/reflex.lock
+memory/reflex_pause.json
+memory/last_human_action.json
 # Raw wiki scrapes; the cleaned .md files in memory/wiki/ are the source of truth.
 # Re-scrape into this dir, then re-run the html->md conversion.
 memory/wiki/raw/
@@ -44,5 +44,5 @@ Session1-2.zip
 REVIEW-TASKS-GROK.md
 
 # Streamlit agent skills (environment-specific symlinks)
-  .agents\skills/developing-with-streamlit
-  .claude\skills/developing-with-streamlit
+.agents/skills/developing-with-streamlit
+.claude/skills/developing-with-streamlit

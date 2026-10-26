@@ -21,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - High-priority lint issues (F405 star-import warnings, F841 unused variables)
 
-## [0.1.0] - 2026-10-18
+## [0.1.0] - 2026-10-26
 
 ### Added
 - Initial SmartRim implementation

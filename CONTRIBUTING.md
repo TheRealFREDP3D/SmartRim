@@ -36,13 +36,16 @@ pytest -q
 
 ```
 SmartRim/
-├── sidecar/           # Main Python sidecar application
+├── src/smartrim/      # Main Python package
 │   ├── config.py      # Configuration and environment variables
 │   ├── monitor.py     # Colony monitoring and alerts
 │   ├── mcp_client.py  # MCP client for rimmolt integration
 │   ├── llm.py         # LLM integration (Ollama/OpenAI/Anthropic)
 │   ├── dashboard.py   # Streamlit dashboard
+│   ├── situation.py   # Situation/lesson validation
+│   ├── reflex_actor.py # Layer 2 reflex actor
 │   └── ...
+├── sidecar/           # Replay harness and one-off scripts
 ├── tests/             # Test suite
 ├── memory/            # Persistent data (snapshots, debriefs, wiki cache)
 ├── schemas/           # JSON schemas for validation
