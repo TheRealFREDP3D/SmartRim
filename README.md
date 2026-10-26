@@ -21,10 +21,23 @@ memory, and tests.
    - The monitor displays a daily status + advice message in-game at configured hours (default: 6am and 6pm).
    - Configure hours via `SAY_DAILY_HOURS` env var (e.g., `SAY_DAILY_HOURS=6,12,18` for 3 messages/day).
    - Manual trigger: `python sidecar/say_daily.py` or `python sidecar/say_daily.py --slot evening`.
+7. Layer 2 reflex actor (opt-in): set `REFLEX_KILL=0` in `.env` to enable whitelisted actions
+   (`draft-and-focus-fire`, `designate-firefighting`, `assign-beds-to-unassigned`). Default is
+   `REFLEX_KILL=1` (all reflex actions dry-run only / disabled). Use `python cli.py reflex pause|resume|status`
+   to manage the one in-game day pause. All reflex actions ship `dry_run: true` by default; set
+   `REFLEX_DRY_RUN=0` to allow actual MCP writes.
+   - `python cli.py reflex status` - show kill/dry-run/pause/lock/human-action state
+   - `python cli.py reflex pause` - suspend reflex actions for one in-game day (cleared on day roll)
+   - `python cli.py reflex resume` - clear the pause early
+   - Human actions (`order_pawn`, `build`, `designate` via CLI) are recorded to
+     `memory/last_human_action.json` and defer reflexes for 60 seconds.
+   - Reflex actions are audited to `memory/actions.jsonl` (gitignored) and never touch
+     `advice_log` or `auto_pauses`.
 
 ## Layout
 
-- `src/smartrim/` - Python package (monitor, situation, lessons, outcomes, evaluate, debrief, llm, wiki)
+- `src/smartrim/` - Python package (monitor, situation, lessons, outcomes, evaluate, debrief, llm, wiki, reflex_actor, reflex_preconditions)
+- `sidecar/` - replay harness (`sidecar/replay.py`) and other one-off scripts
 - `schemas/` - JSON schemas for lessons, advice, snapshots
 - `memory/` - persistent knowledge base (lessons.jsonl, phases, wiki cache, run data)
 - `tests/` - pytest suite
@@ -47,6 +60,10 @@ python -m smartrim.wiki convert   # regenerate memory/wiki/*.md from the raw cac
 `memory/snapshots/`, `memory/debriefs/`, `memory/advice/`, `memory/alerts/`,
 `memory/monitor.log` are gitignored. Archive completed runs by copying their
 snapshot directory before starting a new run.
+
+The following runtime files are also gitignored and written by the reflex actor:
+`memory/actions.jsonl`, `memory/reflex.lock`, `memory/reflex_pause.json`,
+`memory/last_human_action.json`.
 
 ## Tests
 

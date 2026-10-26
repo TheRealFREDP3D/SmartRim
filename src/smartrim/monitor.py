@@ -45,6 +45,21 @@ try:
 except ImportError:
     _say_daily = None
 
+try:
+    from smartrim import counselor as _counselor
+except ImportError:  # pragma: no cover
+    _counselor = None
+
+try:
+    from smartrim.reflex_actor import ReflexActor, close_action_outcomes
+    _REFLEX_ACTOR = ReflexActor(RUN_ID)
+except ImportError:  # pragma: no cover
+    _REFLEX_ACTOR = None
+    close_action_outcomes = None
+
+# Reflex master kill switch: REFLEX_KILL=1 (default) disables all reflex actions.
+REFLEX_ENABLED = os.getenv("REFLEX_KILL", "1") != "1"
+
 # A reflex snapshot is taken when a new urgent alert appears, so incidents that start and
 # end between two daily snapshots (a raid, a fire) still leave evidence for the debrief.
 REFLEX_SNAPSHOT_LIMIT = 40
@@ -417,10 +432,10 @@ def _pid_alive(pid):
         return False
 
 
-def _acquire_lock() -> bool:
-    if os.path.exists(PID_FILE):
+def _acquire_lock(path=PID_FILE) -> bool:
+    if os.path.exists(path):
         try:
-            with open(PID_FILE) as f:
+            with open(path) as f:
                 old_pid = int(f.read().strip())
             if _pid_alive(old_pid):
                 logger.warning(f"Monitor already running (PID {old_pid}). Exiting.")
@@ -429,19 +444,19 @@ def _acquire_lock() -> bool:
             pass
     import contextlib
     with contextlib.suppress(Exception):
-        os.makedirs(os.path.dirname(PID_FILE), exist_ok=True)
-    with open(PID_FILE, "w") as f:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w") as f:
         f.write(str(os.getpid()))
     return True
 
 
-def _release_lock():
+def _release_lock(path=PID_FILE):
     try:
-        if os.path.exists(PID_FILE):
-            with open(PID_FILE) as f:
+        if os.path.exists(path):
+            with open(path) as f:
                 pid = int(f.read().strip())
             if pid == os.getpid():
-                os.remove(PID_FILE)
+                os.remove(path)
     except (ValueError, OSError):
         pass
 
@@ -451,14 +466,17 @@ def run_length_reached(days_passed: int, run_days: int | None = None) -> bool:
     return days_passed is not None and days_passed >= run_days
 
 
-def write_run_end(client: McpClient, run_id: str, days_passed: int, observe_only: bool = False, urgent_alerts: int = 0,
-                  auto_pauses=0, stop_reason="run_length", reflex_snapshots=0):
+def write_run_end(client: McpClient, run_id: str, days_passed: int, observe_only: bool = False,
+                  urgent_alerts: int = 0, auto_pauses=0, stop_reason="run_length",
+                  reflex_snapshots=0, arm=None):
     # Protocol stop. Adviser-on runs pause so the window closes; observe-only runs
     # never pause (observe only, no intervention), even at the end of the run.
     if not observe_only:
         import contextlib
         with contextlib.suppress(Exception):
             client.call_tool("set_speed", {"action": "pause"})
+    if arm is None:
+        arm = "off" if observe_only else "on"
     final_day = f"end-day-{days_passed}"
     path = write_snapshot(client, final_day, run_id=run_id)
     status = {}
@@ -473,7 +491,7 @@ def write_run_end(client: McpClient, run_id: str, days_passed: int, observe_only
     with open(marker, "w", encoding="utf-8") as f:
         json.dump({
             "run_id": run_id,
-            "arm": "off" if observe_only else "on",
+            "arm": arm,
             "observe_only": bool(observe_only),
             "run_days": RUN_DAYS,
             "days_passed": days_passed,
@@ -520,6 +538,13 @@ def _advice_context(client, status_now, conditions, alerts):
 
 
 OBSERVE_ONLY = os.getenv("OBSERVE_ONLY", "0") == "1"
+
+
+def _run_arm():
+    """Arm recorded on the run-end marker: reflex when reflex actions are opted in."""
+    if OBSERVE_ONLY:
+        return "off"
+    return "reflex" if REFLEX_ENABLED else "on"
 
 
 def _say_daily_message(client: McpClient, conditions: dict[str, Any], slot: str | None = None) -> bool:
@@ -625,6 +650,7 @@ def poll_once(client: McpClient, state: PollResult) -> PollResult:
                 client, RUN_ID, days_now, observe_only=OBSERVE_ONLY,
                 urgent_alerts=state.urgent_alerts, auto_pauses=state.auto_pauses,
                 stop_reason="run_length", reflex_snapshots=state.reflex_snapshots,
+                arm=_run_arm(),
             )
             logger.info(f"RUN COMPLETE at {days_now} days (limit {RUN_DAYS}). Marker: {marker}")
             state.run_ended = True
@@ -658,6 +684,11 @@ def poll_once(client: McpClient, state: PollResult) -> PollResult:
                     with open(path, encoding="utf-8") as fh:
                         closed = json.load(fh)
                     outcomes.close_outcomes(closed.get("summary") or {}, run_id=RUN_ID)
+                    if close_action_outcomes is not None:
+                        try:
+                            close_action_outcomes(closed.get("summary") or {}, run_id=RUN_ID)
+                        except (OSError, json.JSONDecodeError, ValueError, TypeError, KeyError) as e:
+                            logger.error(f"reflex outcome close error: {e}")
                 except (OSError, json.JSONDecodeError, ValueError, TypeError, KeyError) as e:
                     logger.error(f"outcome close error: {e}")
         if current_day is not None:
@@ -715,11 +746,22 @@ def poll_once(client: McpClient, state: PollResult) -> PollResult:
                         logger.info(f"Reflex snapshot: {rpath}")
                 except (McpError, OSError, ValueError, TypeError, KeyError, AttributeError, json.JSONDecodeError) as e:
                     logger.error(f"reflex snapshot error: {e}")
+                if _REFLEX_ACTOR is not None and adviser_acts(OBSERVE_ONLY):
+                    try:
+                        _snap_summary, situation, _, _ = _advice_context(
+                            client, status_now, conditions, alerts)
+                        game_state = _counselor.game_state() if _counselor is not None else {}
+                        _REFLEX_ACTOR.evaluate(alerts, situation, game_state,
+                                               current_day=current_day)
+                    except (McpError, OSError, ValueError, TypeError, KeyError,
+                            AttributeError, json.JSONDecodeError) as e:
+                        logger.error(f"reflex actor error: {e}")
                 if any(a.get("category") == "colony_death" for a in alerts) and not state.run_ended:
                     marker = write_run_end(
                         client, RUN_ID, days_now, observe_only=OBSERVE_ONLY,
                         urgent_alerts=state.urgent_alerts, auto_pauses=state.auto_pauses,
                         stop_reason="colony_death", reflex_snapshots=state.reflex_snapshots,
+                        arm=_run_arm(),
                     )
                     logger.critical(f"COLONY DEATH. Marker: {marker}")
                     state.run_ended = True

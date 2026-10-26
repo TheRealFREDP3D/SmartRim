@@ -208,7 +208,7 @@ def _is_break(text):
 def _arm(marker):
     if marker:
         arm = marker.get("arm")
-        if arm in ("on", "off"):
+        if arm in ("on", "off", "reflex"):
             return arm
         if marker.get("observe_only") is True:
             return "off"
@@ -295,7 +295,7 @@ def _median_range(values):
 def arm_summary(rows):
     """Descriptive medians and ranges. No significance test."""
     out = {}
-    for arm in ("on", "off"):
+    for arm in ("on", "off", "reflex"):
         group = [row for row in rows if row.get("arm") == arm]
         out[arm] = {
             "n": len(group),
@@ -337,7 +337,7 @@ def format_arm_summary(summary):
     lines = [
         "Arm comparison (median, min-max). Descriptive only; no significance test.",
     ]
-    for arm in ("on", "off"):
+    for arm in ("on", "off", "reflex"):
         block = summary.get(arm) or {}
         n = block.get("n", 0)
         note = "" if n >= 3 else "  ** fewer than 3 runs — not enough for the planned comparison **"
@@ -358,7 +358,7 @@ def format_arm_summary(summary):
 
 def render_report(rows):
     summary = arm_summary(rows)
-    unknown = [row["run_id"] for row in rows if row.get("arm") not in ("on", "off")]
+    unknown = [row["run_id"] for row in rows if row.get("arm") not in ("on", "off", "reflex")]
     lines = [
         f"# Evaluation {date.today().isoformat()}",
         "",
