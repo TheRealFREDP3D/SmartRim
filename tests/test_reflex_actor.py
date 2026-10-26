@@ -76,16 +76,16 @@ class _Env:
 
 
 class TestReflexWhitelist(unittest.TestCase):
-    def test_loads_three_dry_run_actions(self):
-        actions = load_reflex_actions()
-        self.assertEqual(len(actions), 3)
-        ids = {a.id for a in actions}
-        self.assertEqual(ids, {"draft-and-focus-fire", "designate-firefighting", "assign-beds-to-unassigned"})
-        for a in actions:
-            self.assertTrue(a.dry_run)
-
-    def test_alert_matching(self):
+    def test_loads_five_dry_run_actions(self):
         actions = {a.id: a for a in load_reflex_actions()}
+        self.assertEqual(len(actions), 5)
+        ids = set(actions)
+        self.assertEqual(ids, {"draft-and-focus-fire", "designate-firefighting", "assign-beds-to-unassigned", "rescue-downed", "prioritize-treatment"})
+        for a in actions.values():
+            if a.id == "draft-and-focus-fire":
+                self.assertFalse(a.dry_run)
+            else:
+                self.assertTrue(a.dry_run)
         raid = {"label": "Raid incoming!", "category": "game_alert", "message": "Raid incoming!"}
         fire = {"label": "Fire!", "category": "game_alert", "message": "A fire has broken out"}
         idle = {"label": "1 colonist idle", "category": "idle_colonist", "message": "1 colonist idle"}

@@ -42,3 +42,7 @@ Session1-2.zip
 /.ruff_cache
 
 REVIEW-TASKS-GROK.md
+
+# Streamlit agent skills (environment-specific symlinks)
+  .agents\skills/developing-with-streamlit
+  .claude\skills/developing-with-streamlit

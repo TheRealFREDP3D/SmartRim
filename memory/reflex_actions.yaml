@@ -4,7 +4,7 @@ reflex_actions:
     alert_match:
       label_contains: ["raid", "enemy", "attack"]
     action_type: draft_and_focus_fire
-    dry_run: true
+    dry_run: false
     kill_switch_env: REFLEX_KILL
     preconditions:
       - has_raid_alert
@@ -26,3 +26,19 @@ reflex_actions:
     kill_switch_env: REFLEX_KILL
     preconditions:
       - has_unassigned_colonist
+  - id: rescue-downed
+    alert_match:
+      label_contains: ["downed", "incapacitated"]
+    action_type: rescue_downed
+    dry_run: true
+    kill_switch_env: REFLEX_KILL
+    preconditions:
+      - has_downed_colonist
+  - id: prioritize-treatment
+    alert_match:
+      label_contains: ["wounded", "bleeding"]
+    action_type: prioritize_treatment
+    dry_run: true
+    kill_switch_env: REFLEX_KILL
+    preconditions:
+      - has_wounded_colonist
