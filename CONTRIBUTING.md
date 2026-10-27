@@ -18,7 +18,7 @@ Thank you for your interest in contributing to SmartRim! This document provides 
    ```
 3. Install dependencies:
    ```bash
-   pip install -r requirements-dev.txt
+   pip install -e ".[dev]"
    ```
 4. Copy `.env.example` to `.env` and configure your settings
 

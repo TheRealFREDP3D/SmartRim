@@ -26,6 +26,8 @@ cloud = [
 ]
 dashboard = [
     "streamlit",
+    "pandas",
+    "plotly",
 ]
 
 [tool.setuptools.packages.find]

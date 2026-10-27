@@ -285,16 +285,27 @@ class ReflexActor:
         if not os.path.exists(self.pause_file):
             return False
         try:
-            data = json.load(open(self.pause_file, encoding="utf-8"))
+            with open(self.pause_file, encoding="utf-8") as f:
+                data = json.load(f)
         except (OSError, json.JSONDecodeError):
-            return False
+            # Fail closed: treat malformed file as paused
+            return True
         day = data.get("day")
         if day is None:
             return True  # indefinite pause, cleared by `reflex resume`
         if current_day is not None and str(day) != str(current_day):
-            # Day rolled: one in-game day elapsed, clear the pause.
-            with suppress(OSError):
-                os.remove(self.pause_file)
+            # Day rolled: one in-game day elapsed, clear the pause only if
+            # the file still contains the same data we just read.
+            try:
+                with open(self.pause_file, encoding="utf-8") as f:
+                    current_data = json.load(f)
+                if current_data.get("day") == day:
+                    with suppress(OSError):
+                        os.remove(self.pause_file)
+            except (OSError, json.JSONDecodeError):
+                # If we can't read or verify, leave the file as-is and
+                # fail closed on the next check
+                pass
             return False
         return True
 

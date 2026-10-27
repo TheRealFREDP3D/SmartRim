@@ -1,12 +1,12 @@
 """Replay harness for Layer 2 reflex actions.
 
-Usage: python sidecar/replay.py <run_id> [snapshots_root]
-
 Loads snapshots/<run_id>/day-*.json and reflex-*.json sorted by day. For each
 consecutive pair (N, N+1) it builds the situation from snapshot N and evaluates
 the reflex actor against a mock counselor (no real MCP writes). It then asserts
 that the counselor calls which *would* fire are consistent with the state delta
 observed in snapshot N+1 (e.g. drafted colonists appear drafted).
+
+Usage: python sidecar/replay.py <run_id> [snapshots_root]
 """
 
 import glob
@@ -14,8 +14,6 @@ import json
 import os
 import re
 import sys
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from smartrim import situation
 from smartrim.config import BASE_DIR

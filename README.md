@@ -26,6 +26,7 @@ game state via a local HTTP API. Get it from: [Steam Workshop](https://steamcomm
    - Configure hours via `SAY_DAILY_HOURS` env var (e.g., `SAY_DAILY_HOURS=6,12,18` for 3 messages/day).
    - Manual trigger: `python -m smartrim.say_daily` or `python -m smartrim.say_daily --slot evening`.
 8. (Optional) Start the Streamlit dashboard:
+   - First install dashboard dependencies: `pip install -e ".[dashboard]"`
    - **Windows**: `.\start-dashboard.ps1` or `streamlit run src/smartrim/dashboard.py`
    - **Linux/macOS**: `./start-dashboard.sh` or `streamlit run src/smartrim/dashboard.py`
 9. Layer 2 reflex actor (opt-in): set `REFLEX_KILL=0` in `.env` to enable whitelisted actions

@@ -91,8 +91,11 @@ def run_reflex(args):
         day = conditions.get("date") if isinstance(conditions, dict) else None
         try:
             os.makedirs(os.path.dirname(actor.pause_file), exist_ok=True)
-            with open(actor.pause_file, "w", encoding="utf-8") as f:
+            # Write to temp file first, then atomic replace
+            temp_path = actor.pause_file + ".tmp"
+            with open(temp_path, "w", encoding="utf-8") as f:
                 json.dump({"day": day, "set_at": datetime.now().isoformat()}, f)
+            os.replace(temp_path, actor.pause_file)
         except OSError as e:
             print(f"Error: {e}", file=sys.stderr)
             return
@@ -195,6 +198,10 @@ def main(argv=None):
     try:
         result = COMMANDS[cmd](args)
         if result is not None:
+            # Detect error dictionaries returned by MCP calls
+            if isinstance(result, dict) and result.get("error"):
+                print(f"Error: {result}", file=sys.stderr)
+                sys.exit(1)
             print(result)
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
