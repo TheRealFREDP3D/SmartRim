@@ -5,30 +5,32 @@ RimMolt MCP server, keeps a persistent lesson store, and advises (or pauses) on
 threats. This directory is the git repository and contains the sidecar, schemas,
 memory, and tests.
 
-## Repository boundary
+This project's helper scripts are Windows/PowerShell-based.
 
 - **Repository root**: `SmartRim\` (this directory; git repo)
 - **MCP config for RimWorld**: `SmartRim/.mcp.json` (rimmolt @ localhost:8787)
 
 ## Getting started
 
-1. Install Python 3.13+ and create a venv (optional; global Python works for tests).
-2. Copy `.env.example` to `.env` and adjust values.
-3. Start RimWorld with the RimMolt mod (MCP server on localhost:8787).
-4. Run tests: `python -m pytest`
-5. Validate lessons: `python -m smartrim.situation validate`
-6. Start the reflex monitor: `.\start-monitor.ps1` (adviser on) or `.\start-monitor.ps1 -ObserveOnly`.
+1. Install Python 3.11+ and create a venv (optional; global Python works for tests).
+2. Run `.\install.ps1` to install dependencies and create required directories.
+3. Copy `.env.example` to `.env` and adjust values.
+4. Start RimWorld with the RimMolt mod (MCP server on localhost:8787).
+5. Run tests: `python -m pytest`
+6. Validate lessons: `python -m smartrim.situation validate`
+7. Start the reflex monitor: `.\start-monitor.ps1` (adviser on) or `.\start-monitor.ps1 -ObserveOnly`.
    - The monitor displays a daily status + advice message in-game at configured hours (default: 6am and 6pm).
    - Configure hours via `SAY_DAILY_HOURS` env var (e.g., `SAY_DAILY_HOURS=6,12,18` for 3 messages/day).
    - Manual trigger: `python -m smartrim.say_daily` or `python -m smartrim.say_daily --slot evening`.
-7. Layer 2 reflex actor (opt-in): set `REFLEX_KILL=0` in `.env` to enable whitelisted actions
+8. (Optional) Start the Streamlit dashboard: `.\start-dashboard.ps1` or `streamlit run src/smartrim/dashboard.py`
+9. Layer 2 reflex actor (opt-in): set `REFLEX_KILL=0` in `.env` to enable whitelisted actions
    (`draft-and-focus-fire`, `designate-firefighting`, `assign-beds-to-unassigned`). Default is
-   `REFLEX_KILL=1` (all reflex actions dry-run only / disabled). Use `python cli.py reflex pause|resume|status`
+   `REFLEX_KILL=1` (all reflex actions dry-run only / disabled).    Use `python -m smartrim.cli reflex pause|resume|status`
    to manage the one in-game day pause. All reflex actions ship `dry_run: true` by default; set
    `REFLEX_DRY_RUN=0` to allow actual MCP writes.
-   - `python cli.py reflex status` - show kill/dry-run/pause/lock/human-action state
-   - `python cli.py reflex pause` - suspend reflex actions for one in-game day (cleared on day roll)
-   - `python cli.py reflex resume` - clear the pause early
+   - `python -m smartrim.cli reflex status` - show kill/dry-run/pause/lock/human-action state
+   - `python -m smartrim.cli reflex pause` - suspend reflex actions for one in-game day (cleared on day roll)
+   - `python -m smartrim.cli reflex resume` - clear the pause early
    - Human actions (`order_pawn`, `build`, `designate` via CLI) are recorded to
      `memory/last_human_action.json` and defer reflexes for 60 seconds.
    - Reflex actions are audited to `memory/actions.jsonl` (gitignored) and never touch
@@ -42,7 +44,7 @@ memory, and tests.
 - `memory/` - persistent knowledge base (lessons.jsonl, phases, wiki cache, run data)
 - `tests/` - pytest suite
 - `local_llm/ollama/` - Modelfiles for the tuned Ollama models (`gemma4-e2b-rimworld`, `qwen3-rimworld`)
-- `scratchpad/` - one-off scripts (gitignored)
+- `scratchpad/` - optional one-off scripts (gitignored; create if needed)
 
 ## Wiki cache
 
@@ -71,4 +73,4 @@ The following runtime files are also gitignored and written by the reflex actor:
 python -m pytest
 ```
 
-See `PHASE2-KICKOFF.md` and `RUN-PROTOCOL.md` for evaluation protocol.
+See `memory/phases.md` and `RUN-PROTOCOL.md` for evaluation protocol.

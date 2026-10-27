@@ -8,9 +8,10 @@ version = "0.1.0"
 description = "SmartRim sidecar tooling"
 requires-python = ">=3.11"
 dependencies = [
-    "requests",
+    "requests>=2.31",
     "mcp",
-    "pyyaml",
+    "pyyaml>=6.0",
+    "python-dotenv>=1.0",
 ]
 
 [project.optional-dependencies]
@@ -22,6 +23,9 @@ dev = [
 cloud = [
     "openai",
     "anthropic",
+]
+dashboard = [
+    "streamlit",
 ]
 
 [tool.setuptools.packages.find]

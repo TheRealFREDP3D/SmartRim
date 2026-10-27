@@ -31,4 +31,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Wiki caching system for RimWorld mechanics
 - Streamlit dashboard for colony visualization
 - Persistent snapshots, alerts, and debriefs
-- Test suite with 93 tests
+- Reflex actor (Layer 2) with whitelisted guarded actions
+- Test suite with 186 tests

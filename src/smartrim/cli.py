@@ -176,3 +176,30 @@ COMMANDS = {
     "raid_status": lambda args: c.raid_status(),
     "equip": lambda args: c.equip(args[0], args[1] if len(args) > 1 else None, args[2] if len(args) > 2 else None),
 }
+
+
+def main(argv=None):
+    """CLI entry point for `python -m smartrim.cli`."""
+    import sys
+    argv = argv if argv is not None else sys.argv[1:]
+    if not argv:
+        print("Usage: python -m smartrim.cli <command> [args...]")
+        print(f"Available commands: {', '.join(COMMANDS.keys())}")
+        sys.exit(1)
+    cmd = argv[0]
+    args = argv[1:]
+    if cmd not in COMMANDS:
+        print(f"Unknown command: {cmd}")
+        print(f"Available commands: {', '.join(COMMANDS.keys())}")
+        sys.exit(1)
+    try:
+        result = COMMANDS[cmd](args)
+        if result is not None:
+            print(result)
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
