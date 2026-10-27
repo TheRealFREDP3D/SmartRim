@@ -85,4 +85,4 @@ Start-Process -FilePath $pythonExe -ArgumentList $pyArgs -RedirectStandardOutput
 
 Write-Host "Monitor started. Alerts: memory\alerts\current.json" -ForegroundColor Green
 Write-Host "Log: $logFile"
-Write-Host "Stop with: .\stop-monitor.ps1"
+Write-Host "Stop with: .\stop-monitor.ps1 (Windows) or ./stop-monitor.sh (Linux/macOS)"

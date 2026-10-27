@@ -36,4 +36,4 @@ foreach ($dir in $dirs) {
 }
 
 Write-Host "`n=== Install complete ===" -ForegroundColor Green
-Write-Host "Run .\start-monitor.ps1 to start the reflex monitor"
+Write-Host "Run .\start-monitor.ps1 (Windows) or ./start-monitor.sh (Linux/macOS) to start the reflex monitor"

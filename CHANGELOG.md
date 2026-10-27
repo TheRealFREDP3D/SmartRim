@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - MIT License
 - Gitleaks configuration with allowlist for wiki raw HTML
 - Gitleaks pre-commit hook for secret scanning
+- Cross-platform shell scripts (install.sh, start-monitor.sh, stop-monitor.sh, start-dashboard.sh)
 - CLI entry point (main() function) to smartrim.cli for module invocation
 - Streamlit dashboard optional dependency
 - Structured logging configuration
@@ -22,8 +23,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Updated README with accurate setup instructions including install.ps1 step
-- Updated README to explain RimMolt and where to get it
+- Updated README with cross-platform setup instructions (Windows PowerShell and Linux/macOS bash)
+- Updated README to explain RimMolt and link to Steam Workshop
+- Removed "Windows/PowerShell-based" limitation from README
 - Fixed Python version requirement to 3.11+ (matching pyproject.toml)
 - Replaced star imports with explicit imports in monitor.py and dashboard.py
 - Removed unused variables (cid, situation_risks, date) to fix lint warnings
