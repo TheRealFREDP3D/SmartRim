@@ -82,11 +82,12 @@ def _designate(args):
 def run_reflex(args):
     """reflex pause | resume | status"""
     if not args:
-        print("Usage: smartrim reflex <pause|resume|status>")
-        return
+        print("Usage: smartrim reflex <pause|resume|status>", file=sys.stderr)
+        return 1
     sub = args[0].lower()
     actor = ReflexActor()
     if sub == "pause":
+        # Refresh game day immediately before publishing to avoid race with day rollover
         conditions = c.conditions() or {}
         day = conditions.get("date") if isinstance(conditions, dict) else None
         try:
@@ -141,8 +142,9 @@ def run_reflex(args):
         else:
             print("last human action: none recorded")
     else:
-        print(f"Unknown reflex subcommand: {sub}")
-        print("Usage: smartrim reflex <pause|resume|status>")
+        print(f"Unknown reflex subcommand: {sub}", file=sys.stderr)
+        print("Usage: smartrim reflex <pause|resume|status>", file=sys.stderr)
+        return 1
 
 
 COMMANDS = {
@@ -198,6 +200,9 @@ def main(argv=None):
     try:
         result = COMMANDS[cmd](args)
         if result is not None:
+            # Detect integer return codes (e.g., from run_reflex)
+            if isinstance(result, int):
+                sys.exit(result)
             # Detect error dictionaries returned by MCP calls
             if isinstance(result, dict) and result.get("error"):
                 print(f"Error: {result}", file=sys.stderr)

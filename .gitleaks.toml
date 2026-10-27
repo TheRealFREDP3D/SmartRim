@@ -7,5 +7,5 @@ useDefault = true
 description = "Allowlist for false positives"
 paths = [
   '''memory/wiki/raw/''',
-  '''memory/wiki/.*\.html$''',
+  '''memory/wiki/raw/.*\.html$''',
 ]

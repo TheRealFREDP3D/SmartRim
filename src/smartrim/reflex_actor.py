@@ -290,6 +290,9 @@ class ReflexActor:
         except (OSError, json.JSONDecodeError):
             # Fail closed: treat malformed file as paused
             return True
+        # Ensure data is an object, not a scalar or array
+        if not isinstance(data, dict):
+            return True
         day = data.get("day")
         if day is None:
             return True  # indefinite pause, cleared by `reflex resume`
@@ -299,14 +302,16 @@ class ReflexActor:
             try:
                 with open(self.pause_file, encoding="utf-8") as f:
                     current_data = json.load(f)
-                if current_data.get("day") == day:
+                # Verify the file still contains the exact record we read
+                if isinstance(current_data, dict) and current_data == data:
                     with suppress(OSError):
                         os.remove(self.pause_file)
+                    return False
+                # File was modified after our read - fail closed
+                return True
             except (OSError, json.JSONDecodeError):
-                # If we can't read or verify, leave the file as-is and
-                # fail closed on the next check
-                pass
-            return False
+                # If we can't read or verify, fail closed
+                return True
         return True
 
     def _acquire_lock(self):
@@ -503,6 +508,15 @@ class ReflexActor:
                     self.counselor.say(intent)
                 except Exception as e:  # say must not block execution
                     logger.debug("reflex say failed: %s", e)
+                # Recheck pause under the action lock before executing
+                if self._paused(current_day):
+                    logger.info("REFLEX paused before execute; skipping execution")
+                    self._write_audit({**base, "precondition_result": True, "dry_run": False,
+                                       "executed": False, "outcome_check_at": None,
+                                       "outcome_status": None, "skipped_reason": "paused_before_execute"})
+                    results.append({**base, "precondition_result": True, "dry_run": False,
+                                    "executed": False, "say": intent, "skipped_reason": "paused_before_execute"})
+                    continue
                 executed = self._execute(action, game_state)
                 self._write_audit({**base, "precondition_result": True, "dry_run": False,
                                    "executed": executed, "outcome_check_at": None,

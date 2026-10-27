@@ -24,17 +24,34 @@ if (Test-Path $logFile) {
 $venvPython = Join-Path $PSScriptRoot ".venv\Scripts\python.exe"
 $pythonExe = if (Test-Path $venvPython) { $venvPython } else { "python" }
 
-# Check if already running via PID file
+# Atomic startup lock to prevent concurrent launches
+$startupLock = "memory\monitor.startup.lock"
 $pidFile = "memory\monitor.pid"
+
+# Acquire startup lock using directory creation (atomic operation)
+try {
+    New-Item -ItemType Directory -Path $startupLock -ErrorAction Stop | Out-Null
+} catch {
+    Write-Host "Another startup is in progress (lock file exists)" -ForegroundColor Yellow
+    Write-Host "If this is stale, remove: $startupLock"
+    exit 1
+}
+
+# Check if already running via PID file
 if (Test-Path $pidFile) {
     $oldPid = [int](Get-Content $pidFile -ErrorAction SilentlyContinue)
     $proc = Get-Process -Id $oldPid -ErrorAction SilentlyContinue
     if ($proc) {
-        Write-Host "Monitor is already running (PID $oldPid)" -ForegroundColor Yellow
-        Write-Host "View log: $logFile"
-        exit 0
+        # Verify it's actually a SmartRim monitor
+        $cmdLine = (Get-WmiObject Win32_Process -Filter "ProcessId = $oldPid" -ErrorAction SilentlyContinue).CommandLine
+        if ($cmdLine -and $cmdLine -match "smartrim\.monitor") {
+            Write-Host "Monitor is already running (PID $oldPid)" -ForegroundColor Yellow
+            Write-Host "View log: $logFile"
+            Remove-Item $startupLock -Force -ErrorAction SilentlyContinue
+            exit 0
+        }
     }
-    # stale PID file
+    # stale PID file or wrong process
     Remove-Item $pidFile -Force -ErrorAction SilentlyContinue
 }
 
@@ -81,8 +98,25 @@ if ($ObserveOnly) {
     $env:OBSERVE_ONLY = "0"
     Write-Host "Starting reflex monitor (adviser ON)..." -ForegroundColor Cyan
 }
-Start-Process -FilePath $pythonExe -ArgumentList $pyArgs -RedirectStandardOutput $logFile -RedirectStandardError "memory\monitor.err.log" -NoNewWindow -PassThru | Select-Object Id, StartTime
+$proc = Start-Process -FilePath $pythonExe -ArgumentList $pyArgs -RedirectStandardOutput $logFile -RedirectStandardError "memory\monitor.err.log" -NoNewWindow -PassThru
+$childPid = $proc.Id
+$childPid | Out-File -FilePath $pidFile -Encoding ASCII
 
-Write-Host "Monitor started. Alerts: memory\alerts\current.json" -ForegroundColor Green
+# Give the process a moment to start and acquire its own lock
+Start-Sleep -Milliseconds 500
+
+# Verify the process is still running (may have exited if it detected another monitor)
+$procCheck = Get-Process -Id $childPid -ErrorAction SilentlyContinue
+if (-not $procCheck) {
+    Write-Host "ERROR: Monitor failed to start (exited immediately)" -ForegroundColor Red
+    Remove-Item $pidFile -Force -ErrorAction SilentlyContinue
+    Remove-Item $startupLock -Force -ErrorAction SilentlyContinue
+    exit 1
+}
+
+Write-Host "Monitor started (PID $childPid). Alerts: memory\alerts\current.json" -ForegroundColor Green
 Write-Host "Log: $logFile"
 Write-Host "Stop with: .\stop-monitor.ps1 (Windows) or ./stop-monitor.sh (Linux/macOS)"
+
+# Cleanup startup lock
+Remove-Item $startupLock -Force -ErrorAction SilentlyContinue

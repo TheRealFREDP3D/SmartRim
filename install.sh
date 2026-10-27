@@ -11,11 +11,21 @@ if [ -f ".venv/bin/python" ]; then
 elif [ -f ".venv/Scripts/python.exe" ]; then
     pythonExe=".venv/Scripts/python.exe"
 else
-    pythonExe=$(command -v python3 || command -v python)
-    if [ -z "$pythonExe" ]; then
-        echo "ERROR: Python not found. Install Python 3.11+ from python.org"
+    # Create a venv if none exists
+    echo "No project venv found. Creating one..."
+    python3 -m venv .venv 2>/dev/null || python -m venv .venv 2>/dev/null || {
+        echo "ERROR: Failed to create venv. Install Python 3.11+ from python.org"
+        exit 1
+    }
+    if [ -f ".venv/bin/python" ]; then
+        pythonExe=".venv/bin/python"
+    elif [ -f ".venv/Scripts/python.exe" ]; then
+        pythonExe=".venv/Scripts/python.exe"
+    else
+        echo "ERROR: Failed to locate Python in created venv"
         exit 1
     fi
+    echo "Created virtual environment at .venv"
 fi
 
 version=$($pythonExe --version 2>&1)

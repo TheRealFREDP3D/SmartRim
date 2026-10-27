@@ -11,8 +11,8 @@ game state via a local HTTP API. Get it from: [Steam Workshop](https://steamcomm
 
 ## Getting started
 
-1. Install Python 3.11+ and create a venv (optional; global Python works for tests).
-2. Run the installer:
+1. Install Python 3.11+.
+2. Run the installer (creates a venv automatically if none exists):
    - **Windows**: `.\install.ps1`
    - **Linux/macOS**: `./install.sh`
 3. Copy `.env.example` to `.env` and adjust values.

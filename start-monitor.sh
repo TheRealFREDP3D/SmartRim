@@ -28,18 +28,53 @@ else
     pythonExe=$(command -v python3 || command -v python)
 fi
 
-# Check if already running via PID file
+# Atomic startup lock to prevent concurrent launches
+startupLock="memory/monitor.startup.lock"
 pidFile="memory/monitor.pid"
+
+# Acquire startup lock using mkdir (atomic operation)
+if ! mkdir "$startupLock" 2>/dev/null; then
+    echo "Another startup is in progress (lock file exists)"
+    echo "If this is stale, remove: $startupLock"
+    exit 1
+fi
+
+# Ensure startup lock is cleaned up on exit
+trap 'rm -rf "$startupLock"' EXIT
+
+# Check if already running via PID file
 if [ -f "$pidFile" ]; then
     oldPid=$(cat "$pidFile" 2>/dev/null || echo "")
     if [ -n "$oldPid" ] && kill -0 "$oldPid" 2>/dev/null; then
-        echo "Monitor is already running (PID $oldPid)"
-        echo "View log: $logFile"
-        exit 0
+        # Verify it's actually a SmartRim monitor
+        if ps -p "$oldPid" -o command= 2>/dev/null | grep -q "smartrim.monitor"; then
+            echo "Monitor is already running (PID $oldPid)"
+            echo "View log: $logFile"
+            exit 0
+        fi
     fi
-    # stale PID file
+    # stale PID file or wrong process
     rm -f "$pidFile"
 fi
+
+# Parse all arguments
+force=false
+observe_only=false
+for arg in "$@"; do
+    case "$arg" in
+        --force)
+            force=true
+            ;;
+        --observe-only)
+            observe_only=true
+            ;;
+        *)
+            echo "Unknown argument: $arg"
+            echo "Usage: $0 [--force] [--observe-only]"
+            exit 1
+            ;;
+    esac
+done
 
 # Pre-flight check: MCP server reachable
 mcpUrl="http://localhost:8787/"
@@ -61,7 +96,7 @@ else
     echo "============================================================"
     echo ""
 
-    if [ "$1" != "--force" ]; then
+    if [ "$force" = false ]; then
         read -p "Start monitor anyway (it will retry every 30s)? (y/N) " -n 1 -r
         echo
         if [[ ! $REPLY =~ ^[Yy]$ ]]; then
@@ -76,7 +111,7 @@ fi
 
 # Start monitor in background
 pyArgs=("-u" "-m" "smartrim.monitor")
-if [ "$1" == "--observe-only" ]; then
+if [ "$observe_only" = true ]; then
     export OBSERVE_ONLY="1"
     pyArgs+=("--observe-only")
     echo "Starting reflex monitor (adviser OFF: observe only, no pause, no advice)..."
@@ -86,8 +121,19 @@ else
 fi
 
 nohup $pythonExe "${pyArgs[@]}" > "$logFile" 2> "memory/monitor.err.log" &
-echo $! > "$pidFile"
+child_pid=$!
+echo $child_pid > "$pidFile"
 
-echo "Monitor started. Alerts: memory/alerts/current.json"
+# Give the process a moment to start and acquire its own lock
+sleep 0.5
+
+# Verify the process is still running (may have exited if it detected another monitor)
+if ! kill -0 "$child_pid" 2>/dev/null; then
+    echo "ERROR: Monitor failed to start (exited immediately)"
+    rm -f "$pidFile"
+    exit 1
+fi
+
+echo "Monitor started (PID $child_pid). Alerts: memory/alerts/current.json"
 echo "Log: $logFile"
 echo "Stop with: ./stop-monitor.sh"
