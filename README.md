@@ -2,13 +2,14 @@
 
 SmartRim is an autonomous RimWorld sidecar. It observes colony state over the
 RimMolt MCP server, keeps a persistent lesson store, and advises (or pauses) on
-threats. This directory is the git repository and contains the sidecar, schemas,
-memory, and tests.
+threats.
+
+**RimMolt** is an MCP (Model Context Protocol) server mod for RimWorld that exposes
+game state via a local HTTP API. Get it from: https://github.com/your-org/rimmolt
 
 This project's helper scripts are Windows/PowerShell-based.
 
-- **Repository root**: `SmartRim\` (this directory; git repo)
-- **MCP config for RimWorld**: `SmartRim/.mcp.json` (rimmolt @ localhost:8787)
+- **MCP config for RimWorld**: `.mcp.json` (rimmolt @ localhost:8787)
 
 ## Getting started
 
@@ -52,7 +53,7 @@ The cleaned markdown in `memory/wiki/*.md` is what the LLM reads and is tracked
 in git. Raw HTML scrapes live in `memory/wiki/raw/` (gitignored) and exist only
 to re-scrape or re-convert:
 
-```powershell
+```shell
 python -m smartrim.wiki fetch     # download raw HTML into memory/wiki/raw/
 python -m smartrim.wiki convert   # regenerate memory/wiki/*.md from the raw cache
 ```
@@ -69,8 +70,12 @@ The following runtime files are also gitignored and written by the reflex actor:
 
 ## Tests
 
-```
+```shell
 python -m pytest
 ```
 
 See `memory/phases.md` and `RUN-PROTOCOL.md` for evaluation protocol.
+
+## License
+
+MIT License - see [LICENSE](LICENSE) for details.
