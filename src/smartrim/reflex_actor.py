@@ -285,17 +285,33 @@ class ReflexActor:
         if not os.path.exists(self.pause_file):
             return False
         try:
-            data = json.load(open(self.pause_file, encoding="utf-8"))
+            with open(self.pause_file, encoding="utf-8") as f:
+                data = json.load(f)
         except (OSError, json.JSONDecodeError):
-            return False
+            # Fail closed: treat malformed file as paused
+            return True
+        # Ensure data is an object, not a scalar or array
+        if not isinstance(data, dict):
+            return True
         day = data.get("day")
         if day is None:
             return True  # indefinite pause, cleared by `reflex resume`
         if current_day is not None and str(day) != str(current_day):
-            # Day rolled: one in-game day elapsed, clear the pause.
-            with suppress(OSError):
-                os.remove(self.pause_file)
-            return False
+            # Day rolled: one in-game day elapsed, clear the pause only if
+            # the file still contains the same data we just read.
+            try:
+                with open(self.pause_file, encoding="utf-8") as f:
+                    current_data = json.load(f)
+                # Verify the file still contains the exact record we read
+                if isinstance(current_data, dict) and current_data == data:
+                    with suppress(OSError):
+                        os.remove(self.pause_file)
+                    return False
+                # File was modified after our read - fail closed
+                return True
+            except (OSError, json.JSONDecodeError):
+                # If we can't read or verify, fail closed
+                return True
         return True
 
     def _acquire_lock(self):
@@ -492,6 +508,15 @@ class ReflexActor:
                     self.counselor.say(intent)
                 except Exception as e:  # say must not block execution
                     logger.debug("reflex say failed: %s", e)
+                # Recheck pause under the action lock before executing
+                if self._paused(current_day):
+                    logger.info("REFLEX paused before execute; skipping execution")
+                    self._write_audit({**base, "precondition_result": True, "dry_run": False,
+                                       "executed": False, "outcome_check_at": None,
+                                       "outcome_status": None, "skipped_reason": "paused_before_execute"})
+                    results.append({**base, "precondition_result": True, "dry_run": False,
+                                    "executed": False, "say": intent, "skipped_reason": "paused_before_execute"})
+                    continue
                 executed = self._execute(action, game_state)
                 self._write_audit({**base, "precondition_result": True, "dry_run": False,
                                    "executed": executed, "outcome_check_at": None,

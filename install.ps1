@@ -8,12 +8,25 @@ $venvPython = Join-Path $PSScriptRoot ".venv\Scripts\python.exe"
 if (Test-Path $venvPython) {
     $pythonExe = $venvPython
 } else {
+    # Create a venv if none exists
+    Write-Host "No project venv found. Creating one..." -ForegroundColor Yellow
     $python = Get-Command python -ErrorAction SilentlyContinue
     if (-not $python) {
-        Write-Host "ERROR: Python not found. Install Python 3.10+ from python.org" -ForegroundColor Red
+        Write-Host "ERROR: Python not found. Install Python 3.11+ from python.org" -ForegroundColor Red
         exit 1
     }
-    $pythonExe = "python"
+    & python -m venv .venv
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "ERROR: Failed to create venv" -ForegroundColor Red
+        exit 1
+    }
+    if (Test-Path $venvPython) {
+        $pythonExe = $venvPython
+    } else {
+        Write-Host "ERROR: Failed to locate Python in created venv" -ForegroundColor Red
+        exit 1
+    }
+    Write-Host "Created virtual environment at .venv" -ForegroundColor Green
 }
 $version = & $pythonExe --version 2>&1
 Write-Host "Found: $version"
@@ -36,4 +49,4 @@ foreach ($dir in $dirs) {
 }
 
 Write-Host "`n=== Install complete ===" -ForegroundColor Green
-Write-Host "Run .\start-monitor.ps1 to start the reflex monitor"
+Write-Host "Run .\start-monitor.ps1 (Windows) or ./start-monitor.sh (Linux/macOS) to start the reflex monitor"

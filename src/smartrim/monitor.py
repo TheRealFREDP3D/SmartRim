@@ -437,7 +437,10 @@ def _acquire_lock(path=PID_FILE) -> bool:
         try:
             with open(path) as f:
                 old_pid = int(f.read().strip())
-            if _pid_alive(old_pid):
+            # If the PID is our own, the launcher wrote it before we started
+            if old_pid == os.getpid():
+                logger.info(f"PID file contains our PID ({old_pid}), continuing.")
+            elif _pid_alive(old_pid):
                 logger.warning(f"Monitor already running (PID {old_pid}). Exiting.")
                 return False
         except (ValueError, OSError):

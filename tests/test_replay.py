@@ -3,13 +3,10 @@
 import json
 import os
 import shutil
-import sys
 import tempfile
 import unittest
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "sidecar"))
-
-from replay import run_replay
+from smartrim.replay import run_replay
 
 
 def _snap(day, days_passed, colonists, alerts):

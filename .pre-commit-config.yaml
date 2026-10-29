@@ -1,6 +1,11 @@
 repos:
   - repo: local
     hooks:
+      - id: gitleaks
+        name: Gitleaks secret scan
+        entry: gitleaks detect --source . --config .gitleaks.toml
+        language: system
+        pass_filenames: false
       - id: validate-lessons
         name: Validate lessons.jsonl
         entry: python -m smartrim.situation validate

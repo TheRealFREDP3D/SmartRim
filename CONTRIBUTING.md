@@ -11,16 +11,18 @@ Thank you for your interest in contributing to SmartRim! This document provides 
 
 ### Installation
 1. Clone the repository
-2. Create a virtual environment:
+2. Run the installer (creates a venv automatically if none exists):
+   ```bash
+   ./install.sh  # Linux/macOS
+   .\install.ps1  # Windows
+   ```
+   Or manually:
    ```bash
    python -m venv .venv
    source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+   pip install -e ".[dev]"
    ```
-3. Install dependencies:
-   ```bash
-   pip install -r requirements-dev.txt
-   ```
-4. Copy `.env.example` to `.env` and configure your settings
+3. Copy `.env.example` to `.env` and configure your settings
 
 ### Running Tests
 ```bash
@@ -36,13 +38,16 @@ pytest -q
 
 ```
 SmartRim/
-├── sidecar/           # Main Python sidecar application
+├── src/smartrim/      # Main Python package
 │   ├── config.py      # Configuration and environment variables
 │   ├── monitor.py     # Colony monitoring and alerts
 │   ├── mcp_client.py  # MCP client for rimmolt integration
 │   ├── llm.py         # LLM integration (Ollama/OpenAI/Anthropic)
 │   ├── dashboard.py   # Streamlit dashboard
+│   ├── situation.py   # Situation/lesson validation
+│   ├── reflex_actor.py # Layer 2 reflex actor
 │   └── ...
+├── sidecar/           # Replay harness and one-off scripts
 ├── tests/             # Test suite
 ├── memory/            # Persistent data (snapshots, debriefs, wiki cache)
 ├── schemas/           # JSON schemas for validation

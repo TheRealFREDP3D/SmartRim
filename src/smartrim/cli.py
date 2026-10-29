@@ -82,17 +82,21 @@ def _designate(args):
 def run_reflex(args):
     """reflex pause | resume | status"""
     if not args:
-        print("Usage: smartrim reflex <pause|resume|status>")
-        return
+        print("Usage: smartrim reflex <pause|resume|status>", file=sys.stderr)
+        return 1
     sub = args[0].lower()
     actor = ReflexActor()
     if sub == "pause":
+        # Refresh game day immediately before publishing to avoid race with day rollover
         conditions = c.conditions() or {}
         day = conditions.get("date") if isinstance(conditions, dict) else None
         try:
             os.makedirs(os.path.dirname(actor.pause_file), exist_ok=True)
-            with open(actor.pause_file, "w", encoding="utf-8") as f:
+            # Write to temp file first, then atomic replace
+            temp_path = actor.pause_file + ".tmp"
+            with open(temp_path, "w", encoding="utf-8") as f:
                 json.dump({"day": day, "set_at": datetime.now().isoformat()}, f)
+            os.replace(temp_path, actor.pause_file)
         except OSError as e:
             print(f"Error: {e}", file=sys.stderr)
             return
@@ -138,8 +142,9 @@ def run_reflex(args):
         else:
             print("last human action: none recorded")
     else:
-        print(f"Unknown reflex subcommand: {sub}")
-        print("Usage: smartrim reflex <pause|resume|status>")
+        print(f"Unknown reflex subcommand: {sub}", file=sys.stderr)
+        print("Usage: smartrim reflex <pause|resume|status>", file=sys.stderr)
+        return 1
 
 
 COMMANDS = {
@@ -176,3 +181,37 @@ COMMANDS = {
     "raid_status": lambda args: c.raid_status(),
     "equip": lambda args: c.equip(args[0], args[1] if len(args) > 1 else None, args[2] if len(args) > 2 else None),
 }
+
+
+def main(argv=None):
+    """CLI entry point for `python -m smartrim.cli`."""
+    import sys
+    argv = argv if argv is not None else sys.argv[1:]
+    if not argv:
+        print("Usage: python -m smartrim.cli <command> [args...]")
+        print(f"Available commands: {', '.join(COMMANDS.keys())}")
+        sys.exit(1)
+    cmd = argv[0]
+    args = argv[1:]
+    if cmd not in COMMANDS:
+        print(f"Unknown command: {cmd}")
+        print(f"Available commands: {', '.join(COMMANDS.keys())}")
+        sys.exit(1)
+    try:
+        result = COMMANDS[cmd](args)
+        if result is not None:
+            # Detect integer return codes (e.g., from run_reflex)
+            if isinstance(result, int):
+                sys.exit(result)
+            # Detect error dictionaries returned by MCP calls
+            if isinstance(result, dict) and result.get("error"):
+                print(f"Error: {result}", file=sys.stderr)
+                sys.exit(1)
+            print(result)
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
