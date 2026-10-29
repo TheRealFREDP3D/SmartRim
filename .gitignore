@@ -49,3 +49,9 @@ scratchpad/
 # Streamlit agent skills (environment-specific symlinks)
 .agents/skills/developing-with-streamlit
 .claude/skills/developing-with-streamlit
+/.notebooklm
+
+#Ignore vscode AI rules
+.github\instructions\codacy.instructions.md
+AGENTS.md
+TODO.md

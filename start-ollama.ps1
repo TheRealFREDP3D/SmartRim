@@ -20,7 +20,7 @@ $env:OLLAMA_MAX_LOADED_MODELS = "2"    # chat + embedder
 $env:OLLAMA_KEEP_ALIVE      = "30m"    # keep model hot
 $env:OLLAMA_NUM_GPU         = "999"    # offload max layers
 $env:OLLAMA_ORIGINS         = "*"
-$env:OLLAMA_DEBUG           = "0"
+$env:OLLAMA_DEBUG           = "1"
 
 $healthUrl = "http://127.0.0.1:11434/api/version"
 

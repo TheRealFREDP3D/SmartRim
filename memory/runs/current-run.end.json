@@ -1,6 +1,6 @@
 {
   "run_id": "current-run",
-  "arm": "on",
+  "arm": "reflex",
   "observe_only": false,
   "run_days": 11,
   "days_passed": 11,
@@ -10,7 +10,7 @@
   "reflex_snapshots": 0,
   "difficulty": null,
   "storyteller": null,
-  "ended_at": "2026-10-26T12:39:18.759066",
+  "ended_at": "2026-10-28T17:57:20.146959",
   "snapshots_dir": "C:\\Users\\fred\\Desktop\\SmartRim\\memory\\snapshots\\current-run",
   "final_snapshot": "C:\\Users\\fred\\Desktop\\SmartRim\\memory\\snapshots\\current-run\\day-12th of Aprimay, 5500.json"
 }
