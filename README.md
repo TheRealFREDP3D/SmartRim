@@ -44,13 +44,11 @@ game state via a local HTTP API. Get it from: [Steam Workshop](https://steamcomm
 
 ## Layout
 
-- `src/smartrim/` - Python package (monitor, situation, lessons, outcomes, evaluate, debrief, llm, wiki, reflex_actor, reflex_preconditions)
-- `sidecar/` - replay harness (`sidecar/replay.py`) and other one-off scripts
+- `src/smartrim/` - Python package (monitor, situation, lessons, outcomes, evaluate, debrief, llm, wiki, reflex_actor, reflex_preconditions, cli, counselor, config, mcp_client, say_daily, quests, replay, advice_log, debrief_llm, debrief_bundle, eval_models, logging_config)
 - `schemas/` - JSON schemas for lessons, advice, snapshots
+- `docs/local_llm/ollama/` - Modelfiles for the tuned Ollama models (`gemma4-e2b-rimworld`, `qwen3-rimworld`)
 - `memory/` - persistent knowledge base (lessons.jsonl, phases, wiki cache, run data)
 - `tests/` - pytest suite
-- `local_llm/ollama/` - Modelfiles for the tuned Ollama models (`gemma4-e2b-rimworld`, `qwen3-rimworld`)
-- `scripts/` - Additional helper scripts
 - `*.ps1` / `*.sh` - Cross-platform installer and launcher scripts
 - `scratchpad/` - optional one-off scripts (gitignored; create if needed)
 
@@ -67,7 +65,7 @@ python -m smartrim.wiki convert   # regenerate memory/wiki/*.md from the raw cac
 
 ## Runtime data
 
-`memory/snapshots/`, `memory/debriefs/`, `memory/advice/`, `memory/alerts/`,
+`memory/snapshots/`, `memory/debriefs/`, `memory/alerts/`,
 `memory/monitor.log` are gitignored. Archive completed runs by copying their
 snapshot directory before starting a new run.
 
