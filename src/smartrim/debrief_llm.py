@@ -62,6 +62,39 @@ SCHEMA_RETRY_ATTEMPTS = 3
 
 FENCE_RE = re.compile(r'```json\s*(.*?)```', re.DOTALL | re.IGNORECASE)
 
+
+def _estimate_tokens(text: str) -> int:
+    """Rough token estimate (chars/4 as proxy, works reasonably for English)."""
+    if not text:
+        return 0
+    return max(1, len(text) // 4)
+
+
+def _trim_bundle_to_context(bundle_text: str, system: str, prompt_template: str = "Analyze this RimWorld colony debrief bundle:\n\n{bundle_text}", num_ctx: int = 16384, max_output_tokens: int = 4096) -> str:
+    """Trim bundle so total tokens (system + prompt + bundle) fit in context with room for output."""
+    system_tokens = _estimate_tokens(system)
+    overhead = _estimate_tokens(prompt_template.replace("{bundle_text}", ""))
+    available = num_ctx - system_tokens - overhead - max_output_tokens
+    if available < 0:
+        available = num_ctx // 2  # last resort
+    bundle_tokens = _estimate_tokens(bundle_text)
+    if bundle_tokens <= available:
+        return bundle_text
+    # Trim to fit, keep from beginning (most important info is usually early).
+    # Reserve room for the truncation marker itself.
+    marker = "\n\n[... truncated to fit model context ...]"
+    marker_tokens = _estimate_tokens(marker)
+    usable = available - marker_tokens
+    if usable < 0:
+        usable = available
+    target_chars = int(usable * 4)
+    if target_chars < 1000:
+        target_chars = 1000
+    trimmed = bundle_text[:target_chars]
+    trimmed += marker
+    return trimmed
+
+
 # Lesson candidate schema (Section A of v3 bundles)
 PHASES_T = Literal['early_survival', 'stabilization', 'raid_prep', 'expansion', 'crisis', 'any']
 THREATS_T = Literal[
@@ -173,8 +206,10 @@ def _schema_retry_prompt(error: str) -> str:
        retry=retry_if_exception_type((requests.exceptions.Timeout, requests.exceptions.RequestException,
                                      json.JSONDecodeError, urllib.error.URLError, TimeoutError, OSError)),
        before_sleep=before_sleep_log(logger, logging.INFO))
-def _generate_once(bundle_text, model, system, temperature, provider=None):
-    prompt = f"Analyze this RimWorld colony debrief bundle:\n\n{bundle_text}"
+def _generate_once(bundle_text, model, system, temperature, provider=None, num_ctx=16384, max_output_tokens=4096):
+    prompt_template = "Analyze this RimWorld colony debrief bundle:\n\n{bundle_text}"
+    bundle_text = _trim_bundle_to_context(bundle_text, system or "", prompt_template, num_ctx=num_ctx, max_output_tokens=max_output_tokens)
+    prompt = prompt_template.format(bundle_text=bundle_text)
     raw = generate(
         prompt,
         task="debrief",
@@ -182,13 +217,13 @@ def _generate_once(bundle_text, model, system, temperature, provider=None):
         model=model,
         system=system,
         temperature=temperature,
-        num_ctx=16384,
+        num_ctx=num_ctx,
         cache_system=bool(system and system.startswith(BUNDLE_SYSTEM)),
     )
     return raw, _extract_first_json_fence(raw)
 
 
-def analyze_debrief(bundle_text, model=None, temperature=0.3, system=None, task="debrief", provider=None):
+def analyze_debrief(bundle_text, model=None, temperature=0.3, system=None, task="debrief", provider=None, num_ctx=16384, max_output_tokens=4096):
     """Send a debrief bundle to the LLM and return the analysis.
 
     Uses fenced ```json blocks for structured extraction, then validates
@@ -202,10 +237,14 @@ def analyze_debrief(bundle_text, model=None, temperature=0.3, system=None, task=
 
     base_system = system or DEBRIEF_SYSTEM
     sys1 = _system_with_fence_instruction(base_system)
+    prompt_template = "Analyze this RimWorld colony debrief bundle:\n\n{bundle_text}"
+    # Limit/trim the bundle to the available model context, accounting for the
+    # system prompt, prompt overhead, and reserved output tokens.
+    bundle_text = _trim_bundle_to_context(bundle_text, sys1, prompt_template, num_ctx=num_ctx, max_output_tokens=max_output_tokens)
     expect_candidates = ("Section A" in bundle_text) and ("## 8. Task" in bundle_text or "## 8." in bundle_text)
 
     try:
-        raw, data = _generate_once(bundle_text, model, sys1, temperature, provider=provider)
+        raw, data = _generate_once(bundle_text, model, sys1, temperature, provider=provider, num_ctx=num_ctx, max_output_tokens=max_output_tokens)
         if not expect_candidates:
             return {"raw": raw, "json": data}
         lessons = _validate_lesson_candidates(data)
@@ -215,7 +254,8 @@ def analyze_debrief(bundle_text, model=None, temperature=0.3, system=None, task=
             "Debrief LLM failed schema validation; retrying with validation error: %s",
             ve.message,
         )
-        prompt = f"Analyze this RimWorld colony debrief bundle:\n\n{bundle_text}"
+        trimmed_bundle = _trim_bundle_to_context(bundle_text, sys1 + _schema_retry_prompt(ve.message), prompt_template, num_ctx=num_ctx, max_output_tokens=max_output_tokens)
+        prompt = prompt_template.format(bundle_text=trimmed_bundle)
         # Give the model a few chances: each retry carries the exact schema error
         # plus the allowed vocabulary, so it can converge on a valid answer.
         last_error = ve.message
@@ -229,7 +269,7 @@ def analyze_debrief(bundle_text, model=None, temperature=0.3, system=None, task=
                 model=model,
                 system=sys2,
                 temperature=temperature,
-                num_ctx=16384,
+                num_ctx=num_ctx,
                 cache_system=False,
             )
             try:
@@ -246,7 +286,8 @@ def analyze_debrief(bundle_text, model=None, temperature=0.3, system=None, task=
             urllib.error.URLError, TimeoutError, OSError) as e:
         logger.info("Debrief LLM failed after retries (%s); retrying with recovery prompt", e)
         recovery_system = sys1 + RECOVERY_SUFFIX
-        prompt = f"Analyze this RimWorld colony debrief bundle:\n\n{bundle_text}"
+        trimmed_bundle = _trim_bundle_to_context(bundle_text, recovery_system, prompt_template, num_ctx=num_ctx, max_output_tokens=max_output_tokens)
+        prompt = prompt_template.format(bundle_text=trimmed_bundle)
         raw = generate(
             prompt,
             task=task,
@@ -254,7 +295,7 @@ def analyze_debrief(bundle_text, model=None, temperature=0.3, system=None, task=
             model=model,
             system=recovery_system,
             temperature=temperature,
-            num_ctx=16384,
+            num_ctx=num_ctx,
             cache_system=False,
         )
         try:
