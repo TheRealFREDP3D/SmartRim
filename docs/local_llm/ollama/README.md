@@ -43,7 +43,6 @@ Base models (`qwen3:8b`, `gemma-4-E2B-it-Q4_K_M`) are not affected by removing t
 
 ## Related
 
-- `RimAutonomous/OLLAMA.md` — server config and usage
-- `RimAutonomous/LLM_BENCHMARK.md` — full benchmark results and methodology
-- `RimAutonomous/ollama/` — original Modelfile copies
-- `RimAutonomous/sidecar/llm.py` — Python helper using these models
+- `local_llm/ollama/OLLAMA.md` — server config and usage
+- `local_llm/ollama/LLM_BENCHMARK.md` — full benchmark results and methodology
+- `local_llm/ollama/Modelfile.*-rimworld` — original Modelfile copies

@@ -22,6 +22,7 @@ def _ci_contains(allowed, value) -> bool:
         return True
     return any(str(a).strip().lower() == target for a in allowed)
 
+
 try:
     from smartrim.config import BASE_DIR
 except ImportError:
@@ -30,13 +31,39 @@ LESSONS_FILE = os.path.join(BASE_DIR, "memory", "lessons.jsonl")
 
 # Allowed enum values for lesson trigger fields (must stay in sync with schemas/lesson.schema.json).
 _PHASES_ENUM = {"early_survival", "stabilization", "raid_prep", "expansion", "crisis", "any"}
-_THREATS_ENUM = {"colonist_downed", "mood_break_risk", "colonist_injured", "danger_high",
-                 "raid_incoming", "predator_near_worker", "low_food", "medical_untreated",
-                 "idle_colonists", "threat_response", "colony_death", "other_game_alert", "any"}
-_RESOURCES_ENUM = {"food_under_5_days", "food_under_2_days", "no_medicine", "medicine_under_5",
-                   "low_wood", "low_steel", "any"}
-_DIFFICULTY_ENUM = {"Peaceful", "Community builder", "Adventure story", "Strive to survive",
-                    "Blood and dust", "Losing is fun", "any"}
+_THREATS_ENUM = {
+    "colonist_downed",
+    "mood_break_risk",
+    "colonist_injured",
+    "danger_high",
+    "raid_incoming",
+    "predator_near_worker",
+    "low_food",
+    "medical_untreated",
+    "idle_colonists",
+    "threat_response",
+    "colony_death",
+    "other_game_alert",
+    "any",
+}
+_RESOURCES_ENUM = {
+    "food_under_5_days",
+    "food_under_2_days",
+    "no_medicine",
+    "medicine_under_5",
+    "low_wood",
+    "low_steel",
+    "any",
+}
+_DIFFICULTY_ENUM = {
+    "Peaceful",
+    "Community builder",
+    "Adventure story",
+    "Strive to survive",
+    "Blood and dust",
+    "Losing is fun",
+    "any",
+}
 _STORYTELLER_ENUM = {"Cassandra Classic", "Phoebe Chillax", "Randy Random", "any"}
 
 ALERT_TO_THREAT = {
@@ -97,7 +124,14 @@ def classify_phase(snapshot_summary, alerts):
     for a in alerts:
         cat = a.get("category", "")
         tag = ALERT_TO_THREAT.get(cat, "")
-        if tag in ("colonist_downed", "danger_high", "raid_incoming", "predator_near_worker", "colony_death", "threat_response"):
+        if tag in (
+            "colonist_downed",
+            "danger_high",
+            "raid_incoming",
+            "predator_near_worker",
+            "colony_death",
+            "threat_response",
+        ):
             is_crisis = True
         if cat == "game_alert":
             label = a.get("label", "").lower() if "label" in a else a.get("message", "").lower()
@@ -214,7 +248,9 @@ def rank_actions(alerts, situation, lessons_list, limit=5, store=None, use_seman
         mini_sit = dict(situation)
         mini_sit["threats"] = [threat_tag]
         # Retrieve lessons for this specific threat
-        matched = retrieve(mini_sit, lessons_list, limit=3, store=store, use_semantic_search=use_semantic_search)
+        matched = retrieve(
+            mini_sit, lessons_list, limit=3, store=store, use_semantic_search=use_semantic_search
+        )
         for lesson in matched:
             linked.add(lesson.get("id"))
             action_text = lesson.get("recommendation", "")
@@ -225,26 +261,30 @@ def rank_actions(alerts, situation, lessons_list, limit=5, store=None, use_seman
                 est_time = "immediate"
             elif "early" in str(tags):
                 est_time = "soon"
-            candidates.append({
-                "risk_severity": risk_sev,
-                "confidence": lesson.get("confidence", 0.0),
-                "action": action_text,
-                "rationale": rationale,
-                "estimated_time": est_time,
-                "lesson_id": lesson.get("id"),
-            })
+            candidates.append(
+                {
+                    "risk_severity": risk_sev,
+                    "confidence": lesson.get("confidence", 0.0),
+                    "action": action_text,
+                    "rationale": rationale,
+                    "estimated_time": est_time,
+                    "lesson_id": lesson.get("id"),
+                }
+            )
 
     # If no lessons matched, produce a generic action from the alert itself
     if not candidates:
         for risk_sev, alert in risks:
-            candidates.append({
-                "risk_severity": risk_sev,
-                "confidence": 0.3,
-                "action": f"Address: {alert.get('message', '')}",
-                "rationale": "Reflex alert fired",
-                "estimated_time": "immediate",
-                "lesson_id": None,
-            })
+            candidates.append(
+                {
+                    "risk_severity": risk_sev,
+                    "confidence": 0.3,
+                    "action": f"Address: {alert.get('message', '')}",
+                    "rationale": "Reflex alert fired",
+                    "estimated_time": "immediate",
+                    "lesson_id": None,
+                }
+            )
 
     # Sort: risk severity first, then confidence desc
     candidates.sort(key=lambda c: (SEVERITY_ORDER.get(c["risk_severity"], 9), -c["confidence"]))
@@ -264,13 +304,15 @@ def rank_actions(alerts, situation, lessons_list, limit=5, store=None, use_seman
     # Assign ranks
     actions = []
     for i, c in enumerate(unique, 1):
-        actions.append({
-            "rank": i,
-            "action": c["action"],
-            "rationale": c["rationale"],
-            "estimated_time": c["estimated_time"],
-            "auto_paused": False,
-        })
+        actions.append(
+            {
+                "rank": i,
+                "action": c["action"],
+                "rationale": c["rationale"],
+                "estimated_time": c["estimated_time"],
+                "auto_paused": False,
+            }
+        )
 
     return actions, sorted(linked)
 
@@ -330,6 +372,7 @@ def retrieve(situation, lessons=None, limit=5, store=None, use_semantic_search=T
     if store is None and use_semantic_search:
         try:
             from smartrim.lesson_store import get_store
+
             store = get_store(use_sqlite=True)
         except ImportError:
             use_semantic_search = False
@@ -374,7 +417,14 @@ def retrieve(situation, lessons=None, limit=5, store=None, use_semantic_search=T
         if phases and phase not in phases:
             continue
         # A lesson with no scoping criteria at all is too broad to ever retrieve.
-        if not phases and not l_threats and not l_resources and not l_diff and not l_st and not l_biome:
+        if (
+            not phases
+            and not l_threats
+            and not l_resources
+            and not l_diff
+            and not l_st
+            and not l_biome
+        ):
             continue
         # If the lesson declares threats or resources, at least one must match.
         # Lessons that declare neither (general-practice lessons) match on phase/other scope.
@@ -467,6 +517,7 @@ def load_run_lineage(run_id, lessons=None, advice_records=None):
     if advice_records is None:
         try:
             from smartrim.advice_log import read_advice
+
             advice_records = read_advice(run_id=run_id)
         except (ImportError, OSError, json.JSONDecodeError):
             advice_records = []
@@ -489,11 +540,13 @@ def load_run_lineage(run_id, lessons=None, advice_records=None):
             status = rec.get("status")
             if status not in ("helped", "failed"):
                 continue
-            outcomes.append({
-                "advice_id": rec.get("advice_id"),
-                "status": status,
-                "note": rec.get("outcome_note") or "",
-            })
+            outcomes.append(
+                {
+                    "advice_id": rec.get("advice_id"),
+                    "status": status,
+                    "note": rec.get("outcome_note") or "",
+                }
+            )
 
         if any(outcome["status"] == "failed" for outcome in outcomes):
             relationship = "CONTRADICTED"
@@ -504,11 +557,13 @@ def load_run_lineage(run_id, lessons=None, advice_records=None):
         else:
             relationship = "SOURCE"
 
-        lineage.append({
-            "lesson": lesson,
-            "outcomes": outcomes,
-            "relationship": relationship,
-        })
+        lineage.append(
+            {
+                "lesson": lesson,
+                "outcomes": outcomes,
+                "relationship": relationship,
+            }
+        )
     return lineage
 
 
@@ -527,16 +582,20 @@ def validate_all(path=None):
             except json.JSONDecodeError as e:
                 errors.append(f"line {i}: json error: {e}")
                 continue
-            for e in validate_lesson(lesson):
-                errors.append(f"line {i} ({lesson.get('id', '?')}): {e}")
+            for err in validate_lesson(lesson):
+                errors.append(f"line {i} ({lesson.get('id', '?')}): {err}")
     return errors
 
 
 def render_markdown(path=None):
     lessons = load_lessons(path)
-    lines = ["# Lessons Learned (generated from lessons.jsonl)", "",
-             "Do not edit this file by hand. Edit memory/lessons.jsonl, then run:",
-             "  python sidecar/lessons.py render > memory/lessons-learned.md", ""]
+    lines = [
+        "# Lessons Learned (generated from lessons.jsonl)",
+        "",
+        "Do not edit this file by hand. Edit memory/lessons.jsonl, then run:",
+        "  python -m smartrim.situation render > memory/lessons-learned.md",
+        "",
+    ]
     for status in ("active", "needs_review", "retired"):
         group = [lesson for lesson in lessons if lesson.get("status") == status]
         if not group:
@@ -545,15 +604,19 @@ def render_markdown(path=None):
         lines.append("")
         for lesson in group:
             lines.append(f"### {lesson.get('id')} {lesson.get('title')}")
-            lines.append(f"- Confidence: {lesson.get('confidence')} | applied {lesson.get('times_applied',0)} | helped {lesson.get('times_helped',0)} | failed {lesson.get('times_failed',0)}")
-            lines.append(f"- Trigger: phases={lesson.get('trigger',{}).get('phases')} threats={lesson.get('trigger',{}).get('threats')} resources={lesson.get('trigger',{}).get('resources')}")
+            lines.append(
+                f"- Confidence: {lesson.get('confidence')} | applied {lesson.get('times_applied', 0)} | helped {lesson.get('times_helped', 0)} | failed {lesson.get('times_failed', 0)}"
+            )
+            lines.append(
+                f"- Trigger: phases={lesson.get('trigger', {}).get('phases')} threats={lesson.get('trigger', {}).get('threats')} resources={lesson.get('trigger', {}).get('resources')}"
+            )
             scope = []
-            if lesson.get('trigger',{}).get('difficulty'):
-                scope.append("difficulty=" + ",".join(lesson['trigger']['difficulty']))
-            if lesson.get('trigger',{}).get('storyteller'):
-                scope.append("storyteller=" + ",".join(lesson['trigger']['storyteller']))
-            if lesson.get('trigger',{}).get('biome'):
-                scope.append("biome=" + ",".join(lesson['trigger']['biome']))
+            if lesson.get("trigger", {}).get("difficulty"):
+                scope.append("difficulty=" + ",".join(lesson["trigger"]["difficulty"]))
+            if lesson.get("trigger", {}).get("storyteller"):
+                scope.append("storyteller=" + ",".join(lesson["trigger"]["storyteller"]))
+            if lesson.get("trigger", {}).get("biome"):
+                scope.append("biome=" + ",".join(lesson["trigger"]["biome"]))
             if scope:
                 lines.append("- Scope: " + "; ".join(scope))
             lines.append(f"- Recommendation: {lesson.get('recommendation')}")
@@ -566,6 +629,7 @@ def render_markdown(path=None):
 
 def main(argv=None):
     import sys
+
     argv = argv if argv is not None else sys.argv
     cmd = argv[1] if len(argv) > 1 else "help"
     if cmd == "validate":
@@ -599,6 +663,7 @@ def main(argv=None):
         print(json.dumps(sit, indent=2))
     elif cmd == "reindex":
         from smartrim.lesson_store import SqliteLessonStore
+
         store = SqliteLessonStore()
         store.reindex()
         store.close()
@@ -664,9 +729,8 @@ def main(argv=None):
         else:
             print(f"All {len(facts_data)} wiki facts verified successfully.")
     elif cmd == "promote":
-
         if len(argv) < 3:
-            print("usage: lessons.py promote <candidate-file>")
+            print("usage: python -m smartrim.situation promote <candidate-file>")
             print("  candidate-file: path to JSONL file in memory/candidates/")
             sys.exit(1)
 
@@ -713,7 +777,9 @@ def main(argv=None):
         existing_lessons = load_lessons()
 
         # Generate new IDs for promoted lessons
-        next_num = max([int(lesson.get("id", "L-0000")[2:]) for lesson in existing_lessons] + [0]) + 1
+        next_num = (
+            max([int(lesson.get("id", "L-0000")[2:]) for lesson in existing_lessons] + [0]) + 1
+        )
 
         promoted = []
         for idx in indices:
@@ -757,18 +823,35 @@ def main(argv=None):
             promoted.append(candidate)
             print(f"Promoted as {new_id}")
 
-        # Append to lessons.jsonl
+        # Append to lessons.jsonl (via LessonStore so SQLite stays in sync)
         if promoted:
-            with open(LESSONS_FILE, "a", encoding="utf-8") as f:
-                for lesson in promoted:
-                    f.write(json.dumps(lesson) + "\n")
-            print(f"\nPromoted {len(promoted)} lesson(s) to {LESSONS_FILE}")
-            print("Run 'lessons.py validate' to verify.")
+            try:
+                from smartrim.lesson_store import DEFAULT_SQLITE_PATH, SqliteLessonStore
+
+                db_path = (
+                    os.path.splitext(LESSONS_FILE)[0] + ".sqlite"
+                    if os.path.join(BASE_DIR, "memory", "lessons.jsonl") != LESSONS_FILE
+                    else DEFAULT_SQLITE_PATH
+                )
+                store = SqliteLessonStore(db_path=db_path, jsonl_path=LESSONS_FILE)
+                try:
+                    for lesson in promoted:
+                        store.append(lesson)
+                finally:
+                    store.close()
+                print(f"\nPromoted {len(promoted)} lesson(s) to {LESSONS_FILE}")
+                print("Synchronized SQLite index.")
+            except Exception:
+                with open(LESSONS_FILE, "a", encoding="utf-8") as f:
+                    for lesson in promoted:
+                        f.write(json.dumps(lesson) + "\n")
+                print(f"\nPromoted {len(promoted)} lesson(s) to {LESSONS_FILE}")
+            print("Run 'python -m smartrim.situation validate' to verify.")
         else:
             print("No lessons promoted.")
     elif cmd == "lineage":
         if len(argv) < 3:
-            print("usage: lessons.py lineage <run_id>")
+            print("usage: python -m smartrim.situation lineage <run_id>")
             print("  run_id: the run identifier to trace lineage for")
             sys.exit(1)
 
@@ -798,7 +881,9 @@ def main(argv=None):
                     print(f"    {outcome['status']}: {outcome['note']}")
             print()
     else:
-        print("usage: lessons.py validate | render | retrieve <sit.json> | build-situation <snap.json> <alerts.json> | reindex | verify-facts | promote <candidate-file> | lineage <run_id>")
+        print(
+            "usage: python -m smartrim.situation validate | render | retrieve <sit.json> | build-situation <snap.json> <alerts.json> | reindex | verify-facts | promote <candidate-file> | lineage <run_id>"
+        )
 
 
 if __name__ == "__main__":

@@ -5,12 +5,12 @@
   "run_days": 11,
   "days_passed": 11,
   "stop_reason": "run_length",
-  "urgent_alerts": 0,
-  "auto_pauses": 0,
+  "urgent_alerts": 30,
+  "auto_pauses": 21,
   "reflex_snapshots": 0,
-  "difficulty": null,
-  "storyteller": null,
-  "ended_at": "2026-10-28T20:42:07.394548",
+  "difficulty": "adventure story",
+  "storyteller": "Cassandra Classic",
+  "ended_at": "2026-10-31T12:29:54.102425",
   "snapshots_dir": "C:\\Users\\fred\\Desktop\\SmartRim\\memory\\snapshots\\current-run",
-  "final_snapshot": "C:\\Users\\fred\\Desktop\\SmartRim\\memory\\snapshots\\current-run\\day-12th of Aprimay, 5500.json"
+  "final_snapshot": "C:\\Users\\fred\\Desktop\\SmartRim\\memory\\snapshots\\current-run\\day-7th of Septober, 5500.json"
 }

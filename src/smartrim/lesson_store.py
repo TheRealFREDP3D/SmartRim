@@ -6,7 +6,7 @@ Provides:
 - JsonlLessonStore: backward-compatible JSONL file store (human-editable source of truth)
 
 The JSONL file (memory/lessons.jsonl) remains the human-editable source.
-SQLite (memory/lessons.sqlite) is the query index, rebuilt via `lessons.py reindex`.
+SQLite (memory/lessons.sqlite) is the query index, rebuilt via `python -m smartrim.situation reindex`.
 """
 
 import json
@@ -62,6 +62,7 @@ def _ci_contains(allowed, value) -> bool:
 @dataclass
 class Lesson:
     """Structured lesson object."""
+
     id: str
     title: str
     trigger: dict
@@ -74,7 +75,7 @@ class Lesson:
     times_applied: int = 0
     times_helped: int = 0
     times_failed: int = 0
-    source_runs: list = None
+    source_runs: list[str] | None = None
     last_updated: str = ""
 
     def to_dict(self) -> dict:
@@ -143,8 +144,19 @@ class LessonStore(ABC):
         """
 
     @abstractmethod
-    def reindex(self) -> None:
+    def reindex(self, verbose: bool = True) -> None:
         """Rebuild the search index from source data."""
+
+    @abstractmethod
+    def save_all(self, lessons) -> None:
+        """Persist a collection of lessons to the source store.
+
+        Implementations must keep any derived index (e.g. SQLite) synchronized.
+        """
+
+    @abstractmethod
+    def append(self, lesson) -> None:
+        """Append a single lesson to the source store and sync derived indices."""
 
 
 class JsonlLessonStore(LessonStore):
@@ -204,18 +216,25 @@ class JsonlLessonStore(LessonStore):
 
             if phases and phase not in phases:
                 continue
-            if not phases and not l_threats and not l_resources and not l_diff and not l_st and not l_biome:
+            if (
+                not phases
+                and not l_threats
+                and not l_resources
+                and not l_diff
+                and not l_st
+                and not l_biome
+            ):
                 continue
             if l_threats or l_resources:
                 threat_match = bool(threats & l_threats)
                 resource_match = bool(resources & l_resources)
                 if not (threat_match or resource_match):
                     continue
-            if l_diff and difficulty not in l_diff:
+            if l_diff and not _ci_contains(l_diff, difficulty):
                 continue
-            if l_st and storyteller not in l_st:
+            if l_st and not _ci_contains(l_st, storyteller):
                 continue
-            if l_biome and biome not in l_biome:
+            if l_biome and not _ci_contains(l_biome, biome):
                 continue
 
             conf = lesson.confidence
@@ -228,7 +247,25 @@ class JsonlLessonStore(LessonStore):
         candidates.sort(key=lambda x: x[0])
         return [c[1] for c in candidates[:limit]]
 
-    def reindex(self) -> None:
+    def _lesson_to_dict(self, lesson) -> dict:
+        if isinstance(lesson, Lesson):
+            return lesson.to_dict()
+        return dict(lesson)
+
+    def save_all(self, lessons) -> None:
+        """Write all lessons to the JSONL file (source of truth)."""
+        os.makedirs(os.path.dirname(self.path) or ".", exist_ok=True)
+        with open(self.path, "w", encoding="utf-8") as f:
+            for lesson in lessons:
+                f.write(json.dumps(self._lesson_to_dict(lesson), default=str) + "\n")
+
+    def append(self, lesson) -> None:
+        """Append a single lesson to the JSONL file."""
+        os.makedirs(os.path.dirname(self.path) or ".", exist_ok=True)
+        with open(self.path, "a", encoding="utf-8") as f:
+            f.write(json.dumps(self._lesson_to_dict(lesson), default=str) + "\n")
+
+    def reindex(self, verbose: bool = True) -> None:
         """No-op for JSONL store (no index to rebuild)."""
 
 
@@ -305,8 +342,22 @@ class SqliteLessonStore(LessonStore):
 
         conn.commit()
 
+    def _ensure_fresh(self) -> None:
+        """Rebuild the SQLite index if the JSONL source is newer (or DB missing)."""
+        try:
+            if not os.path.exists(self.db_path):
+                self.reindex(verbose=False)
+                return
+            if not os.path.exists(self.jsonl_path):
+                return
+            if os.path.getmtime(self.jsonl_path) > os.path.getmtime(self.db_path):
+                self.reindex(verbose=False)
+        except Exception:
+            pass
+
     def load_all(self) -> list[Lesson]:
         """Load all lessons from SQLite."""
+        self._ensure_fresh()
         self._init_schema()
         conn = self._get_conn()
         cursor = conn.cursor()
@@ -352,6 +403,7 @@ class SqliteLessonStore(LessonStore):
         Returns:
             List of matching lessons, ranked by relevance.
         """
+        self._ensure_fresh()
         self._init_schema()
         conn = self._get_conn()
         cursor = conn.cursor()
@@ -384,7 +436,14 @@ class SqliteLessonStore(LessonStore):
 
             if phases and phase not in phases:
                 continue
-            if not phases and not l_threats and not l_resources and not l_diff and not l_st and not l_biome:
+            if (
+                not phases
+                and not l_threats
+                and not l_resources
+                and not l_diff
+                and not l_st
+                and not l_biome
+            ):
                 continue
             if l_threats or l_resources:
                 threat_match = bool(threats & l_threats)
@@ -410,13 +469,16 @@ class SqliteLessonStore(LessonStore):
             placeholders = ",".join(["?"] * len(candidate_ids))
 
             # FTS5 search with BM25 ranking
-            cursor.execute(f"""
+            cursor.execute(
+                f"""
                 SELECT lesson_id, rank
                 FROM lesson_fts
                 WHERE lesson_fts MATCH ?
                 AND lesson_id IN ({placeholders})
                 ORDER BY rank
-            """, [query_text, *candidate_ids])
+            """,
+                [query_text, *candidate_ids],
+            )
 
             fts_scores = {row["lesson_id"]: row["rank"] for row in cursor.fetchall()}
 
@@ -435,7 +497,19 @@ class SqliteLessonStore(LessonStore):
 
         return candidates[:limit]
 
-    def reindex(self) -> None:
+    def save_all(self, lessons) -> None:
+        """Persist lessons to JSONL and refresh the SQLite index automatically."""
+        jsonl_store = JsonlLessonStore(self.jsonl_path)
+        jsonl_store.save_all(lessons)
+        self.reindex(verbose=False)
+
+    def append(self, lesson) -> None:
+        """Append a lesson to JSONL and refresh the SQLite index automatically."""
+        jsonl_store = JsonlLessonStore(self.jsonl_path)
+        jsonl_store.append(lesson)
+        self.reindex(verbose=False)
+
+    def reindex(self, verbose: bool = True) -> None:
         """Rebuild SQLite index from JSONL source file."""
         # Load from JSONL
         jsonl_store = JsonlLessonStore(self.jsonl_path)
@@ -453,29 +527,32 @@ class SqliteLessonStore(LessonStore):
 
         # Insert lessons
         for lesson in lessons:
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO lessons (
                     id, title, trigger_json, recommendation, rationale,
                     source_json, confidence, status, tags_json,
                     times_applied, times_helped, times_failed,
                     source_runs_json, last_updated
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                lesson.id,
-                lesson.title,
-                json.dumps(lesson.trigger),
-                lesson.recommendation,
-                lesson.rationale,
-                json.dumps(lesson.source),
-                lesson.confidence,
-                lesson.status,
-                json.dumps(lesson.tags),
-                lesson.times_applied,
-                lesson.times_helped,
-                lesson.times_failed,
-                json.dumps(lesson.source_runs) if lesson.source_runs else None,
-                lesson.last_updated,
-            ))
+            """,
+                (
+                    lesson.id,
+                    lesson.title,
+                    json.dumps(lesson.trigger),
+                    lesson.recommendation,
+                    lesson.rationale,
+                    json.dumps(lesson.source),
+                    lesson.confidence,
+                    lesson.status,
+                    json.dumps(lesson.tags),
+                    lesson.times_applied,
+                    lesson.times_helped,
+                    lesson.times_failed,
+                    json.dumps(lesson.source_runs) if lesson.source_runs else None,
+                    lesson.last_updated,
+                ),
+            )
 
         # Populate FTS table
         cursor.execute("""
@@ -484,7 +561,8 @@ class SqliteLessonStore(LessonStore):
         """)
 
         conn.commit()
-        print(f"Reindexed {len(lessons)} lessons from {self.jsonl_path}")
+        if verbose:
+            print(f"Reindexed {len(lessons)} lessons from {self.jsonl_path}")
 
     def close(self) -> None:
         """Close database connection."""
@@ -505,3 +583,26 @@ def get_store(use_sqlite: bool = True) -> LessonStore:
     if use_sqlite:
         return SqliteLessonStore()
     return JsonlLessonStore()
+
+
+def sync_sqlite(
+    db_path: str = DEFAULT_SQLITE_PATH, jsonl_path: str = DEFAULT_JSONL_PATH, verbose: bool = False
+) -> None:
+    """Synchronize SQLite index with JSONL file."""
+    store = SqliteLessonStore(db_path=db_path, jsonl_path=jsonl_path)
+    try:
+        store.reindex(verbose=verbose)
+    finally:
+        store.close()
+
+
+# Backward/alias-friendly method names for lesson updates.
+for _store_cls in (JsonlLessonStore, SqliteLessonStore):
+    _store_cls.save = _store_cls.save_all
+    _store_cls.save_lessons = _store_cls.save_all
+    _store_cls.write = _store_cls.save_all
+    _store_cls.write_all = _store_cls.save_all
+    _store_cls.write_lessons = _store_cls.save_all
+    _store_cls.append_lesson = _store_cls.append
+    _store_cls.add = _store_cls.append
+    _store_cls.add_lesson = _store_cls.append

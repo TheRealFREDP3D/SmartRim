@@ -8,6 +8,7 @@ Can be run standalone:
 
 Or imported by the monitor for automatic twice-daily display.
 """
+
 import argparse
 import json
 import os
@@ -40,13 +41,34 @@ def build_llm_advice(status, alerts, research, resources, conditions):
     """
     try:
         from smartrim.llm import generate
+
         ctx = {
-            "colonists": [{"name": c.get("name"), "hp": c.get("health"), "mood": c.get("mood"), "job": c.get("job")} for c in status.get("bundled", {}).get("list_colonists", {}).get("colonists", [])],
-            "alerts": [a.get("label") for a in (alerts.get("activeAlerts", []) if isinstance(alerts, dict) else [])],
-            "research": research.get("current", {}).get("label") if isinstance(research, dict) and research.get("current") else None,
-            "resources": {r.get("label"): r.get("count") for r in (resources.get("resources", []) if isinstance(resources, dict) else [])},
-            "weather": conditions.get("weather", {}).get("current") if isinstance(conditions.get("weather"), dict) else None,
-            "temp": conditions.get("temperature", {}).get("outdoorC") if isinstance(conditions.get("temperature"), dict) else None,
+            "colonists": [
+                {
+                    "name": c.get("name"),
+                    "hp": c.get("health"),
+                    "mood": c.get("mood"),
+                    "job": c.get("job"),
+                }
+                for c in status.get("bundled", {}).get("list_colonists", {}).get("colonists", [])
+            ],
+            "alerts": [
+                a.get("label")
+                for a in (alerts.get("activeAlerts", []) if isinstance(alerts, dict) else [])
+            ],
+            "research": research.get("current", {}).get("label")
+            if isinstance(research, dict) and research.get("current")
+            else None,
+            "resources": {
+                r.get("label"): r.get("count")
+                for r in (resources.get("resources", []) if isinstance(resources, dict) else [])
+            },
+            "weather": conditions.get("weather", {}).get("current")
+            if isinstance(conditions.get("weather"), dict)
+            else None,
+            "temp": conditions.get("temperature", {}).get("outdoorC")
+            if isinstance(conditions.get("temperature"), dict)
+            else None,
             "day": conditions.get("date"),
         }
         prompt = f"Colony state: {json.dumps(ctx)}\nGive 2-3 specific actionable advice items for this colony right now."
@@ -56,35 +78,68 @@ def build_llm_advice(status, alerts, research, resources, conditions):
         return None
 
 
-def build_message(slot="auto", use_llm=False):
-    cond = call("get_conditions")
-    status = call("get_status")
-    alerts = call("get_alerts")
-    research = call("get_research")
-    res = call("get_resources")
+def build_message(
+    slot="auto",
+    use_llm=False,
+    conditions=None,
+    status=None,
+    alerts=None,
+    research=None,
+    resources=None,
+    colonists_param=None,
+):
+    cond = call("get_conditions") if conditions is None else conditions
+    if status is None:
+        status = call("get_status")
+    if alerts is None:
+        alerts = call("get_alerts")
+    if research is None:
+        research = call("get_research")
+    if resources is None:
+        resources = call("get_resources")
 
-    day = cond.get("date", f"Day {cond.get('dayOfSeason', '?')}")
+    raw_day = cond.get("date") or cond.get("dayOfSeason") or "?"
+    day_str = str(raw_day) if str(raw_day).lower().startswith("day") else f"Day {raw_day}"
     hour = cond.get("hour", "?")
-    temp = cond.get("temperature", {}).get("outdoorC", "?") if isinstance(cond.get("temperature"), dict) else "?"
-    weather = cond.get("weather", {}).get("current", "?") if isinstance(cond.get("weather"), dict) else "?"
+    temp = (
+        cond.get("temperature", {}).get("outdoorC", "?")
+        if isinstance(cond.get("temperature"), dict)
+        else "?"
+    )
+    weather = (
+        cond.get("weather", {}).get("current", "?")
+        if isinstance(cond.get("weather"), dict)
+        else "?"
+    )
     season = cond.get("seasonLabel", "?")
 
     colonists = []
-    if isinstance(status, dict):
+    if colonists_param is not None:
+        colonists = colonists_param if isinstance(colonists_param, list) else []
+    elif isinstance(status, dict):
         colonists = status.get("bundled", {}).get("list_colonists", {}).get("colonists", [])
     if not colonists:
         cr = call("list_colonists")
         if isinstance(cr, dict):
             colonists = cr.get("colonists", [])
-    names = ", ".join(f"{c.get('name')} (HP:{c.get('health')}% Mood:{c.get('mood')}%)" for c in colonists)
+    names = ", ".join(
+        f"{c.get('name')} (HP:{c.get('health')}% Mood:{c.get('mood')}%)" for c in colonists
+    )
 
-    alert_list = [a.get("label") for a in (alerts.get("activeAlerts", []) if isinstance(alerts, dict) else [])]
+    alert_list = [
+        a.get("label") for a in (alerts.get("activeAlerts", []) if isinstance(alerts, dict) else [])
+    ]
     alerts_str = ", ".join(alert_list) if alert_list else "None"
 
     cur = research.get("current") if isinstance(research, dict) else None
-    research_str = f"{cur.get('label', 'NONE')} ({cur.get('progressPercent', 0)}%)" if cur else "NONE"
+    research_str = (
+        f"{cur.get('label', 'NONE')} ({cur.get('progressPercent', 0)}%)" if cur else "NONE"
+    )
 
-    res_str = ", ".join(f"{r.get('label')}:{r.get('count')}" for r in (res.get("resources", []) if isinstance(res, dict) else []))
+    res_str = ", ".join(
+        f"{r.get('label')}:{r.get('count')}"
+        for r in (resources.get("resources", []) if isinstance(resources, dict) else [])
+    )
 
     # Determine slot label
     if slot == "auto":
@@ -93,7 +148,7 @@ def build_message(slot="auto", use_llm=False):
 
     # Advice: LLM or rule-based
     if use_llm:
-        llm_advice = build_llm_advice(status, alerts, research, res, cond)
+        llm_advice = build_llm_advice(status, alerts, research, resources, cond)
         if llm_advice:
             advice_str = llm_advice
         else:
@@ -102,17 +157,25 @@ def build_message(slot="auto", use_llm=False):
     if not use_llm:
         advice_lines = []
         if slot == "morning":
-            advice_lines.append("Morning priorities: check mood/health, assign work, harvest/grow food, build/repair.")
+            advice_lines.append(
+                "Morning priorities: check mood/health, assign work, harvest/grow food, build/repair."
+            )
         else:
-            advice_lines.append("Evening priorities: check defenses, ensure beds assigned, review alerts, plan tomorrow.")
+            advice_lines.append(
+                "Evening priorities: check defenses, ensure beds assigned, review alerts, plan tomorrow."
+            )
 
         low_labels = [a.lower() for a in alert_list]
         if any("food" in a or "low food" in a for a in low_labels):
-            advice_lines.append("FOOD: Check ground items — resource readout misses unstockpiled food.")
+            advice_lines.append(
+                "FOOD: Check ground items — resource readout misses unstockpiled food."
+            )
         if any("defens" in a or "raid" in a for a in low_labels):
             advice_lines.append("DEFENSE: Build sandbags, draft fighters, focus-fire raiders.")
         if any("bed" in a for a in low_labels):
-            advice_lines.append("BEDS: Assign colonists to beds; sleeping on ground = mood penalty.")
+            advice_lines.append(
+                "BEDS: Assign colonists to beds; sleeping on ground = mood penalty."
+            )
         if any("batter" in a for a in low_labels):
             advice_lines.append("POWER: Build batteries to store solar/wind energy.")
         if any("pen" in a for a in low_labels):
@@ -122,16 +185,20 @@ def build_message(slot="auto", use_llm=False):
 
         low_mood = [c for c in colonists if (c.get("mood") or 100) < 35]
         if low_mood:
-            advice_lines.append(f"MOOD: {', '.join(c.get('name') for c in low_mood)} below 35% — check needs, food, rest, recreation.")
+            advice_lines.append(
+                f"MOOD: {', '.join(c.get('name') for c in low_mood)} below 35% — check needs, food, rest, recreation."
+            )
 
         hurt = [c for c in colonists if (c.get("health") or 100) < 100]
         if hurt:
-            advice_lines.append(f"HEALTH: {', '.join(c.get('name') for c in hurt)} injured — tend wounds.")
+            advice_lines.append(
+                f"HEALTH: {', '.join(c.get('name') for c in hurt)} injured — tend wounds."
+            )
 
         advice_str = " | ".join(advice_lines)
 
     message = (
-        f"=== {slot.upper()} STATUS (Day {day}, Hour {hour}) ===\n"
+        f"=== {slot.upper()} STATUS (Day {day_str}, Hour {hour}) ===\n"
         f"Weather: {weather} | Temp: {temp}C | Season: {season}\n"
         f"Colonists: {names}\n"
         f"Alerts: {alerts_str}\n"
@@ -149,7 +216,9 @@ def say_message(text):
 
 def main():
     parser = argparse.ArgumentParser(description="Daily in-game status + advice via say command")
-    parser.add_argument("--slot", choices=["morning", "evening", "auto"], default="auto", help="Time slot")
+    parser.add_argument(
+        "--slot", choices=["morning", "evening", "auto"], default="auto", help="Time slot"
+    )
     parser.add_argument("--hour", type=int, default=None, help="Override hour for slot detection")
     parser.add_argument("--llm", action="store_true", help="Use LLM for advice (slower, richer)")
     args = parser.parse_args()

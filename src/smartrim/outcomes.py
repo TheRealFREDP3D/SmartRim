@@ -45,8 +45,22 @@ def _read_lessons():
 
 
 def _write_lessons(lessons):
-    with open(LESSONS_FILE, "w", encoding="utf-8") as f:
-        f.writelines(json.dumps(lesson, default=str) + "\n" for lesson in lessons)
+    try:
+        from smartrim.lesson_store import DEFAULT_SQLITE_PATH, SqliteLessonStore
+
+        db_path = (
+            os.path.splitext(LESSONS_FILE)[0] + ".sqlite"
+            if os.path.join(BASE_DIR, "memory", "lessons.jsonl") != LESSONS_FILE
+            else DEFAULT_SQLITE_PATH
+        )
+        store = SqliteLessonStore(db_path=db_path, jsonl_path=LESSONS_FILE)
+        try:
+            store.save_all(lessons)
+        finally:
+            store.close()
+    except Exception:
+        with open(LESSONS_FILE, "w", encoding="utf-8") as f:
+            f.writelines(json.dumps(lesson, default=str) + "\n" for lesson in lessons)
 
 
 def _close_advice(advice, snapshot_summary):
@@ -131,7 +145,7 @@ def close_outcomes(snapshot_summary, run_id=None):
         # A lesson is applied as soon as linked advice is issued, even if its
         # outcome remains open. Record that touch now so lineage is complete.
         effective_run_id = run_id or rec.get("run_id")
-        for lid in (rec.get("linked_lessons") or []):
+        for lid in rec.get("linked_lessons") or []:
             lesson = lesson_map.get(lid)
             if not lesson:
                 continue
@@ -142,7 +156,7 @@ def close_outcomes(snapshot_summary, run_id=None):
                 changed = True
 
         # Update linked lessons
-        for lid in (rec.get("linked_lessons") or []):
+        for lid in rec.get("linked_lessons") or []:
             lesson = lesson_map.get(lid)
             if not lesson:
                 continue
@@ -152,7 +166,9 @@ def close_outcomes(snapshot_summary, run_id=None):
             elif new_status == "failed":
                 lesson["times_failed"] = lesson.get("times_failed", 0) + 1
                 lesson["confidence"] = round(max(0.0, lesson.get("confidence", 0.3) - 0.15), 2)
-                if lesson.get("times_failed", 0) >= 3 and lesson.get("times_failed", 0) > lesson.get("times_helped", 0):
+                if lesson.get("times_failed", 0) >= 3 and lesson.get(
+                    "times_failed", 0
+                ) > lesson.get("times_helped", 0):
                     lesson["status"] = "needs_review"
             lesson["times_applied"] = lesson.get("times_applied", 0) + 1
             lesson["last_updated"] = datetime.now().strftime("%Y-%m-%d")
@@ -166,6 +182,7 @@ def close_outcomes(snapshot_summary, run_id=None):
 
 if __name__ == "__main__":
     import sys
+
     if len(sys.argv) < 2:
         print("Usage: outcomes.py <snapshot.json> [run_id]")
         sys.exit(0)

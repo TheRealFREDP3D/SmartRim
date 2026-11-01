@@ -31,7 +31,7 @@ memory/last_human_action.json
 # Re-scrape into this dir, then re-run the html->md conversion.
 memory/wiki/raw/
 
-# Derived lesson query index; rebuild with `python -m smartrim.lessons reindex`
+# Derived lesson query index; rebuild with `python -m smartrim.situation reindex`
 memory/lessons.sqlite
 *.zip
 
@@ -51,7 +51,9 @@ scratchpad/
 .claude/skills/developing-with-streamlit
 /.notebooklm
 
-#Ignore vscode AI rules
-.github\instructions\codacy.instructions.md
+# Ignore VS Code AI rules and local agent instructions
+.github/instructions/codacy.instructions.md
 AGENTS.md
 TODO.md
+/.github/skills
+/.docs

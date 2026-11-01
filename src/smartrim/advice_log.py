@@ -57,7 +57,7 @@ def log_advice(run_id, snapshot_day, trigger, severity, situation, actions,
 
 
 def update_outcome(advice_id, status, outcome_note=None):
-    """Update the status/outcome of an existing advice record by rewriting the file."""
+    """Update the status/outcome of an existing advice record by rewriting the file atomically."""
     _ensure_dir()
     if not os.path.exists(ADVICE_FILE):
         return False
@@ -77,9 +77,11 @@ def update_outcome(advice_id, status, outcome_note=None):
             records.append(rec)
     if not found:
         return False
-    with open(ADVICE_FILE, "w", encoding="utf-8") as f:
+    tmp_path = ADVICE_FILE + ".tmp"
+    with open(tmp_path, "w", encoding="utf-8") as f:
         for rec in records:
             f.write(json.dumps(rec, default=str) + "\n")
+    os.replace(tmp_path, ADVICE_FILE)
     return True
 
 
@@ -106,9 +108,11 @@ def set_event_cause(advice_id, cause):
             records.append(rec)
     if not found:
         return False
-    with open(ADVICE_FILE, "w", encoding="utf-8") as f:
+    tmp_path = ADVICE_FILE + ".tmp"
+    with open(tmp_path, "w", encoding="utf-8") as f:
         for rec in records:
             f.write(json.dumps(rec, default=str) + "\n")
+    os.replace(tmp_path, ADVICE_FILE)
     return True
 
 
@@ -135,9 +139,11 @@ def set_cause_matching(run_id, needle, cause):
                 changed += 1
             records.append(rec)
     if changed:
-        with open(ADVICE_FILE, "w", encoding="utf-8") as f:
+        tmp_path = ADVICE_FILE + ".tmp"
+        with open(tmp_path, "w", encoding="utf-8") as f:
             for rec in records:
                 f.write(json.dumps(rec, default=str) + "\n")
+        os.replace(tmp_path, ADVICE_FILE)
     return changed
 
 

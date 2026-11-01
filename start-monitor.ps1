@@ -100,7 +100,7 @@ if ($ObserveOnly) {
 }
 $proc = Start-Process -FilePath $pythonExe -ArgumentList $pyArgs -RedirectStandardOutput $logFile -RedirectStandardError "memory\monitor.err.log" -NoNewWindow -PassThru
 $childPid = $proc.Id
-$childPid | Out-File -FilePath $pidFile -Encoding ASCII
+# Let the monitor process write its own PID file (its PID may differ from the shim's).
 
 # Give the process a moment to start and acquire its own lock
 Start-Sleep -Milliseconds 500

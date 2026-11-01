@@ -20,6 +20,7 @@ from smartrim.config import (
     RUN_DAYS,
     RUN_ID,
     SAY_DAILY_HOURS,
+    SAY_DAILY_USE_LLM,
     SNAPSHOTS_DIR,
     URGENT_KEYWORDS,
 )
@@ -29,11 +30,9 @@ from smartrim.mcp_client import McpClient, McpError
 logger = get_logger(__name__)
 
 try:
-    from smartrim import situation as _lessons
     from smartrim import situation as _situation
 except ImportError:
     _situation = None
-    _lessons = None
 
 try:
     from smartrim import quests as _quests
@@ -531,7 +530,7 @@ def _advice_context(client, status_now, conditions, alerts):
     if _situation is not None:
         try:
             situation = _situation.build_situation(snap_summary, alerts)
-            lessons_list = _lessons.load_lessons() if _lessons else []
+            lessons_list = _situation.load_lessons() if _situation else []
             retrieved = _situation.retrieve(situation, lessons_list, limit=5)
             linked = [lesson.get("id") for lesson in retrieved]
             actions, _ = _situation.rank_actions(alerts, situation, retrieved, limit=5)
@@ -550,6 +549,35 @@ def _run_arm():
     return "reflex" if REFLEX_ENABLED else "on"
 
 
+def _say_visible(client: McpClient, text: str) -> dict[str, Any]:
+    """Send an in-game 'say' message, ensuring it actually renders.
+
+    The RimMolt 'say' command only displays while the game is unpaused, so when
+    the colony is paused we briefly unpause, show the message, and restore the
+    previous pause state afterwards.
+    """
+    was_paused = False
+    try:
+        st = client.call_tool("get_status")
+        if isinstance(st, dict):
+            was_paused = bool(st.get("paused"))
+    except (McpError, OSError, ValueError, TypeError, KeyError, AttributeError):
+        was_paused = False
+    if was_paused:
+        try:
+            client.call_tool("set_speed", {"action": "unpause"})
+        except (McpError, OSError, ValueError, TypeError, KeyError, AttributeError):
+            pass
+    try:
+        return client.call_tool("say", {"text": text})
+    finally:
+        if was_paused:
+            try:
+                client.call_tool("set_speed", {"action": "pause"})
+            except (McpError, OSError, ValueError, TypeError, KeyError, AttributeError):
+                pass
+
+
 def _say_daily_message(client: McpClient, conditions: dict[str, Any], slot: str | None = None) -> bool:
     """Display a daily status + advice message via the in-game say command."""
     if _say_daily is None:
@@ -558,9 +586,25 @@ def _say_daily_message(client: McpClient, conditions: dict[str, Any], slot: str 
         hour = conditions.get("hour", 0) if isinstance(conditions, dict) else 0
         if slot is None:
             slot = "morning" if (isinstance(hour, int) and hour < 12) else "evening"
-        use_llm = globals().get("SAY_DAILY_USE_LLM", False)
-        message, _ = _say_daily.build_message(slot, use_llm=use_llm)
-        result = client.call_tool("say", {"text": message})
+        use_llm = bool(globals().get("SAY_DAILY_USE_LLM", SAY_DAILY_USE_LLM))
+        # Fetch supporting data from the provided client (may be a test double)
+        # instead of the module-level MCP client, so this works without a live server.
+        status = client.call_tool("get_status")
+        alerts = client.call_tool("get_alerts")
+        research = client.call_tool("get_research")
+        resources = client.call_tool("get_resources")
+        colonists = client.call_tool("list_colonists")
+        message, _ = _say_daily.build_message(
+            slot,
+            use_llm=use_llm,
+            conditions=conditions,
+            status=status,
+            alerts=alerts,
+            research=research,
+            resources=resources,
+            colonists_param=colonists.get("colonists", []) if isinstance(colonists, dict) else [],
+        )
+        result = _say_visible(client, message)
         if isinstance(result, dict) and result.get("shown"):
             logger.info(f"Daily say ({slot}, hour {hour}): displayed {result.get('chars', 0)} chars")
             return True
@@ -635,6 +679,9 @@ class PollResult:
 
 def poll_once(client: McpClient, state: PollResult) -> PollResult:
     """Perform one monitoring iteration. Mutates and returns ``state``."""
+    # Ensure runtime directories exist so alert/snapshot writes never fail
+    # on a fresh checkout (memory/alerts and memory/snapshots are gitignored).
+    ensure_dirs()
     try:
         conditions = client.call_tool("get_conditions")
         if not conditions or not isinstance(conditions, dict) or conditions.get("error"):
@@ -727,7 +774,7 @@ def poll_once(client: McpClient, state: PollResult) -> PollResult:
                                 msg += " | Advice: " + "; ".join(ac.get("action", "") for ac in actions)
                         except (OSError, ValueError, TypeError, KeyError, AttributeError, json.JSONDecodeError):
                             pass
-                    client.call_tool("say", {"text": msg})
+                    _say_visible(client, msg)
                 except (McpError, OSError, ValueError, TypeError, KeyError, AttributeError, json.JSONDecodeError, RuntimeError) as e:
                     logger.error(f"say urgent error: {e}")
                 if adviser_acts(OBSERVE_ONLY):

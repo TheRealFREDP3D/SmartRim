@@ -54,7 +54,7 @@ BUNDLE_SYSTEM = ("You are a careful analyst. Follow the instructions in the user
 # A real v3 bundle is ~28K characters (~7K tokens). The old 12K cutoff dropped the advice-log
 # causes (section 7, ~offset 21K) and the task itself (section 8, ~offset 28K), so the model
 # could never follow the format. Keep the whole bundle for num_ctx=16384.
-BUNDLE_MAX_CHARS = 48000
+BUNDLE_MAX_CHARS = 65000
 
 # How many times to re-ask the model after a schema validation failure.
 SCHEMA_RETRY_ATTEMPTS = 3
@@ -106,10 +106,19 @@ class LessonCandidate(BaseModel):
 
 def _extract_first_json_fence(raw: str):
     match = FENCE_RE.search(raw or '')
-    if not match:
-        raise json.JSONDecodeError('no fenced ```json block found', raw or '', 0)
-    content = match.group(1).strip()
-    return json.loads(content)
+    if match:
+        content = match.group(1).strip()
+        return json.loads(content)
+    # Fallback: try to parse the first top-level JSON array in the raw text.
+    text = (raw or '').strip()
+    start = text.find('[')
+    end = text.rfind(']')
+    if start != -1 and end != -1 and end > start:
+        try:
+            return json.loads(text[start:end + 1])
+        except json.JSONDecodeError:
+            pass
+    raise json.JSONDecodeError('no fenced ```json block found', raw or '', 0)
 
 
 def _validate_lesson_candidates(data) -> list[dict]:
