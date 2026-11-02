@@ -848,6 +848,15 @@ def main() -> None:
     try:
         while not state.run_ended:
             state = poll_once(client, state)
+            # Optional timelapse capture at configured hours
+            try:
+                from smartrim.timelapse import capture, should_capture_now
+                if should_capture_now():
+                    logger.info("Timelapse capture triggered")
+                    capture_result = capture()
+                    logger.info(f"Timelapse capture: {capture_result}")
+            except Exception as e:
+                logger.debug(f"Timelapse capture failed: {e}")
             time.sleep(POLL_INTERVAL)
     finally:
         _release_lock()

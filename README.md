@@ -32,7 +32,13 @@ game state via a local HTTP API. Get it from: [Steam Workshop](https://steamcomm
    - The Command Center auto-refreshes (configurable in the sidebar) and is designed to
      sit on a second monitor next to the game: alert banner, vitals, colonist cards,
      resources, current advice, reflex log, and quick actions.
-9. (Optional) Start the desktop notifier for pop-up alerts even when you are not
+9. (Optional) Timelapse of the colony:
+   - Captures a screenshot twice a day (default 6am & 6pm, configurable via
+     `TIMELAPSE_HOURS`) when the monitor is running (`TIMELAPSE_ENABLED=1`).
+   - Manual capture: `python -m smartrim.timelapse capture`
+   - Build an animated GIF: `python -m smartrim.timelapse build`
+   - View in the dashboard's **Timelapse** tab (capture now / build GIF / browse frames).
+10. (Optional) Start the desktop notifier for pop-up alerts even when you are not
    looking at the second screen:
    - **Windows**: `.\start-notify.ps1`
    - **Linux/macOS**: `./start-notify.sh`

@@ -249,22 +249,20 @@ def command_center_body():
     else:
         st.markdown('<div class="alert-banner-ok">✅ All clear — no active alerts</div>', unsafe_allow_html=True)
 
-    # ---------- Three columns ----------
-    left, mid, right = st.columns([2, 3, 2])
-
-    # LEFT: colonist cards
-    with left:
-        st.subheader("👥 Colonists")
-        colonists = _game_colonists(game_state)[:4]
-        if colonists:
-            for c in colonists:
-                name = c.get("name", "?")
-                mood = c.get("mood", 0)
-                health = c.get("health", 0)
-                job = c.get("job", "")
-                downed = c.get("downed", False)
-                badge = " [DOWNED]" if downed else ""
-                color = mood_color(mood)
+    # ---------- Colonists (full width) ----------
+    st.subheader("👥 Colonists")
+    colonists = _game_colonists(game_state)[:8]
+    if colonists:
+        ccols = st.columns(4)
+        for i, c in enumerate(colonists):
+            name = c.get("name", "?")
+            mood = c.get("mood", 0)
+            health = c.get("health", 0)
+            job = c.get("job", "")
+            downed = c.get("downed", False)
+            badge = " [DOWNED]" if downed else ""
+            color = mood_color(mood)
+            with ccols[i % 4]:
                 st.markdown(
                     f'<div class="colonist-card">'
                     f'<b>{name}</b>{badge}<br>'
@@ -272,47 +270,48 @@ def command_center_body():
                     f'HP {health}%<br><small>{job}</small></div>',
                     unsafe_allow_html=True,
                 )
-        else:
-            st.info("No colonist data.")
+    else:
+        st.info("No colonist data.")
 
-        st.subheader("📦 Resources")
-        res_data = fetch_resources()
-        resources = (res_data or {}).get("resources", []) if isinstance(res_data, dict) else []
-        if resources:
-            important = ["Meal", "Medicine", "Steel", "Wood", "Component", "Food", "Cloth"]
-            filtered = [r for r in resources
-                        if any(k.lower() in str(r.get("label", "")).lower() for k in important)]
-            if filtered:
-                icon_map = {
-                    "steel": "steel.png", "wood": "wood.png", "medicine": "medicine.png",
-                    "component": "component.png", "cloth": "cloth.png", "leather": "leather.png",
-                    "food": "food.png", "meal": "food.png",
-                }
-                def _icon_for(label):
-                    low = str(label).lower()
-                    for key, fn in icon_map.items():
-                        if key in low:
-                            return os.path.join(os.path.dirname(__file__), "assets", "icons", fn)
-                    return None
-                cols = st.columns(4)
-                for i, r in enumerate(filtered[:8]):
-                    label = r.get("label", "?")
-                    count = r.get("count", 0)
-                    with cols[i % 4]:
-                        ipath = _icon_for(label)
-                        if ipath and os.path.exists(ipath):
-                            st.image(ipath, width=28)
-                        st.caption(f"{label}: {count}")
-            else:
-                st.info("No key resources.")
+    # ---------- Resources (full width, under colonists) ----------
+    st.subheader("📦 Resources")
+    res_data = fetch_resources()
+    resources = (res_data or {}).get("resources", []) if isinstance(res_data, dict) else []
+    if resources:
+        important = ["Meal", "Medicine", "Steel", "Wood", "Component", "Food", "Cloth", "Leather"]
+        filtered = [r for r in resources
+                    if any(k.lower() in str(r.get("label", "")).lower() for k in important)]
+        if filtered:
+            icon_map = {
+                "steel": "steel.png", "wood": "wood.png", "medicine": "medicine.png",
+                "component": "component.png", "cloth": "cloth.png", "leather": "leather.png",
+                "food": "food.png", "meal": "food.png",
+            }
+            def _icon_for(label):
+                low = str(label).lower()
+                for key, fn in icon_map.items():
+                    if key in low:
+                        return os.path.join(os.path.dirname(__file__), "assets", "icons", fn)
+                return None
+            rcols = st.columns(8)
+            for i, r in enumerate(filtered[:8]):
+                label = r.get("label", "?")
+                count = r.get("count", 0)
+                with rcols[i % 8]:
+                    ipath = _icon_for(label)
+                    if ipath and os.path.exists(ipath):
+                        st.image(ipath, width=28)
+                    st.caption(f"{label}: {count}")
         else:
-            st.info("No resource data.")
+            st.info("No key resources.")
+    else:
+        st.info("No resource data.")
 
-    # MIDDLE: live alerts + why paused + reflex info
-    with mid:
+    # ---------- Alerts + Reflex | Lessons (two columns) ----------
+    aleft, aright = st.columns([3, 2])
+    with aleft:
         st.subheader("🚨 Live Alerts")
         active_game, _ = _game_alerts(game_state)
-        # SmartRim alerts first
         for a in sm_alerts[:4]:
             sev = a.get("type", "info")
             icon = "🔴" if sev == "urgent" else "🟡" if sev == "warning" else "🟢"
@@ -343,8 +342,7 @@ def command_center_body():
         st.markdown(f"Reflex: {'enabled' if _reflex_enabled() else 'disabled'} · "
                     f"{'dry-run' if _reflex_dry_run() else 'LIVE writes'}")
 
-    # RIGHT: trends + lessons
-    with right:
+    with aright:
         st.subheader("📚 Active Lessons")
         lessons = [ls for ls in load_lessons() if ls.get("status", "active") == "active"]
         lessons.sort(key=lambda x: (x.get("confidence") or 0), reverse=True)
@@ -367,17 +365,22 @@ def command_center_body():
                 "wealth": s.get("wealth", 0),
             })
         tdf = pd.DataFrame(tdata)
-        fig1 = go.Figure()
-        fig1.add_trace(go.Scatter(x=tdf["day"], y=tdf["mood"], name="Min mood", mode="lines+markers", line={"color": "#16a34a"}))
-        fig1.add_trace(go.Scatter(x=tdf["day"], y=tdf["food"], name="Food days", mode="lines+markers", line={"color": "#f59e0b"}, yaxis="y2"))
-        fig1.update_layout(
-            height=180, margin={"l": 10, "r": 10, "t": 10, "b": 10},
-            yaxis={"title": "Mood", "range": [0, 100]},
-            yaxis2={"title": "Food days", "overlaying": "y", "side": "right"},
-            legend={"orientation": "h", "y": 1.15, "x": 0, "font": {"size": 9}},
-            xaxis={"tickangle": -30, "tickfont": {"size": 8}},
-        )
-        st.plotly_chart(fig1, use_container_width=True)
+        fig_mood = go.Figure()
+        fig_mood.add_trace(go.Scatter(x=tdf["day"], y=tdf["mood"], name="Min mood", mode="lines+markers", fill="tozeroy", line={"color": "#16a34a"}))
+        fig_mood.update_layout(height=140, margin={"l": 10, "r": 10, "t": 5, "b": 10},
+                               yaxis={"title": "Mood", "range": [0, 100]},
+                               xaxis={"tickangle": -30, "tickfont": {"size": 8}},
+                               yaxis_tickfont={"size": 8})
+        st.plotly_chart(fig_mood, use_container_width=True)
+
+        fig_food = go.Figure()
+        fig_food.add_trace(go.Scatter(x=tdf["day"], y=tdf["food"], name="Food days", mode="lines+markers", fill="tozeroy", line={"color": "#f59e0b"}))
+        fig_food.update_layout(height=140, margin={"l": 10, "r": 10, "t": 5, "b": 10},
+                               yaxis={"title": "Food days"},
+                               xaxis={"tickangle": -30, "tickfont": {"size": 8}},
+                               yaxis_tickfont={"size": 8})
+        st.plotly_chart(fig_food, use_container_width=True)
+
         fig2 = go.Figure()
         fig2.add_trace(go.Scatter(x=tdf["day"], y=tdf["wealth"], name="Wealth", mode="lines+markers", fill="tozeroy", line={"color": "#3b82f6"}))
         fig2.update_layout(height=120, margin={"l": 10, "r": 10, "t": 5, "b": 10},
@@ -679,6 +682,42 @@ def debrief_viewer_tab():
         st.markdown(debrief_content)
 
 
+def timelapse_tab():
+    st.header("🎞 Timelapse")
+    try:
+        from smartrim.timelapse import build_gif, capture, list_captures
+    except Exception as e:
+        st.error(f"Timelapse module unavailable: {e}")
+        return
+    data = list_captures(RUN_ID)
+    st.write(f"Run: {data['run_id']}  |  Captures: {len(data['files'])}")
+    c1, c2 = st.columns(2)
+    with c1:
+        if st.button("📸 Capture now", use_container_width=True):
+            r = capture(RUN_ID)
+            st.write(r)
+            st.cache_data.clear()
+    with c2:
+        if st.button("🎞 Build GIF", use_container_width=True):
+            r = build_gif(RUN_ID)
+            st.write(r)
+            st.cache_data.clear()
+    files = data["files"]
+    d = data["dir"]
+    if not files:
+        st.info("No captures yet. Enable TIMELAPSE_ENABLED and wait for configured hours, or click Capture now.")
+        return
+    latest = os.path.join(d, files[-1])
+    st.image(latest, caption=f"Latest: {files[-1]}", use_container_width=True)
+    gif_path = os.path.join(d, "timelapse.gif")
+    if os.path.exists(gif_path):
+        st.subheader("Animated GIF")
+        st.image(gif_path)
+    st.subheader("Browse frames")
+    idx = st.slider("Frame", 0, len(files) - 1, len(files) - 1)
+    st.image(os.path.join(d, files[idx]), caption=files[idx], use_container_width=True)
+
+
 # ---------- Main ----------
 
 def main():
@@ -689,7 +728,7 @@ def main():
         st.markdown("### Navigation")
         mode = st.radio(
             "View",
-            ["🎯 Command Center", "📡 Live Monitor", "📚 Advice Browser",
+            ["🎯 Command Center", "📡 Live Monitor", "🎞 Timelapse", "📚 Advice Browser",
              "📖 Lesson Explorer", "📈 Run History", "📝 Debrief Viewer"],
             index=0,
         )
@@ -733,6 +772,8 @@ def main():
         _cc()
     elif mode == "📡 Live Monitor":
         live_monitor_tab()
+    elif mode == "🎞 Timelapse":
+        timelapse_tab()
     elif mode == "📚 Advice Browser":
         advice_browser_tab()
     elif mode == "📖 Lesson Explorer":
