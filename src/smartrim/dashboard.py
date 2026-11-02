@@ -371,7 +371,7 @@ def command_center_body():
                                yaxis={"title": "Mood", "range": [0, 100]},
                                xaxis={"tickangle": -30, "tickfont": {"size": 8}},
                                yaxis_tickfont={"size": 8})
-        st.plotly_chart(fig_mood, use_container_width=True)
+        st.plotly_chart(fig_mood, width='stretch')
 
         fig_food = go.Figure()
         fig_food.add_trace(go.Scatter(x=tdf["day"], y=tdf["food"], name="Food days", mode="lines+markers", fill="tozeroy", line={"color": "#f59e0b"}))
@@ -379,14 +379,14 @@ def command_center_body():
                                yaxis={"title": "Food days"},
                                xaxis={"tickangle": -30, "tickfont": {"size": 8}},
                                yaxis_tickfont={"size": 8})
-        st.plotly_chart(fig_food, use_container_width=True)
+        st.plotly_chart(fig_food, width='stretch')
 
         fig2 = go.Figure()
         fig2.add_trace(go.Scatter(x=tdf["day"], y=tdf["wealth"], name="Wealth", mode="lines+markers", fill="tozeroy", line={"color": "#3b82f6"}))
         fig2.update_layout(height=120, margin={"l": 10, "r": 10, "t": 5, "b": 10},
                            xaxis={"tickangle": -30, "tickfont": {"size": 8}},
                            yaxis={"tickfont": {"size": 8}})
-        st.plotly_chart(fig2, use_container_width=True)
+        st.plotly_chart(fig2, width='stretch')
     else:
         st.info("No trend data yet.")
 
@@ -421,28 +421,28 @@ def command_center_body():
     st.divider()
     q1, q2, q3, q4 = st.columns(4)
     with q1:
-        if st.button("⏸ Pause Game", use_container_width=True):
+        if st.button("⏸ Pause Game", width='stretch'):
             try:
                 from smartrim import counselor as c
                 st.write(c.pause())
             except Exception as e:
                 st.error(str(e))
     with q2:
-        if st.button("▶️ Resume Game", use_container_width=True):
+        if st.button("▶️ Resume Game", width='stretch'):
             try:
                 from smartrim import counselor as c
                 st.write(c.resume())
             except Exception as e:
                 st.error(str(e))
     with q3:
-        if st.button("📋 Daily Summary", use_container_width=True):
+        if st.button("📋 Daily Summary", width='stretch'):
             try:
                 from smartrim import counselor as c
                 st.write(c.daily_summary())
             except Exception as e:
                 st.error(str(e))
     with q4:
-        if st.button("🔄 Refresh Now", use_container_width=True):
+        if st.button("🔄 Refresh Now", width='stretch'):
             st.cache_data.clear()
             st.rerun()
 
@@ -454,7 +454,7 @@ def live_monitor_tab():
 
     col1, col2, col3 = st.columns(3)
     with col1:
-        if st.button("🔄 Refresh", use_container_width=True):
+        if st.button("🔄 Refresh", width='stretch'):
             st.cache_data.clear()
             st.rerun()
     with col2:
@@ -504,7 +504,7 @@ def live_monitor_tab():
                 display_cols = ['name', 'age', 'mood', 'health', 'job']
                 available_cols = [col for col in display_cols if col in colonist_df.columns]
                 if available_cols:
-                    st.dataframe(colonist_df[available_cols], use_container_width=True)
+                    st.dataframe(colonist_df[available_cols], width='stretch')
         except (McpError, ValueError, KeyError, TypeError, OSError, AttributeError) as e:
             st.warning(f"Could not load colonist data: {e}")
 
@@ -518,7 +518,7 @@ def live_monitor_tab():
                 important = ['Meal', 'Medicine', 'Steel', 'Wood', 'Component', 'Food']
                 filtered = res_df[res_df['label'].str.contains('|'.join(important), case=False, na=False)]
                 if not filtered.empty:
-                    st.dataframe(filtered, use_container_width=True)
+                    st.dataframe(filtered, width='stretch')
         except (McpError, ValueError, KeyError, TypeError, OSError, AttributeError) as e:
             st.warning(f"Could not load resource data: {e}")
     else:
@@ -606,7 +606,7 @@ def lesson_explorer_tab():
         }
         fig = px.pie(values=list(effectiveness_data.values()), names=list(effectiveness_data.keys()),
                      title="Lesson Effectiveness")
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
     for _, row in filtered_df.iterrows():
         with st.expander(f"{row.get('title', 'Untitled')} - {row.get('status', 'N/A')}"):
             st.markdown(f"**ID:** {row.get('id', 'N/A')}")
@@ -630,7 +630,7 @@ def run_history_tab():
     display_cols = ['run_id', 'arm', 'days_passed', 'urgent_alerts', 'auto_pauses',
                     'reflex_snapshots', 'difficulty', 'storyteller', 'stop_reason']
     available_cols = [col for col in display_cols if col in df.columns]
-    st.dataframe(df[available_cols], use_container_width=True)
+    st.dataframe(df[available_cols], width='stretch')
     selected_run = st.selectbox("Select Run for Details", options=df['run_id'].unique())
     if selected_run:
         run_data = df[df['run_id'] == selected_run].iloc[0]
@@ -659,10 +659,10 @@ def run_history_tab():
             col1, col2 = st.columns(2)
             with col1:
                 fig_mood = px.line(timeline_df, x='day', y='min_mood', title='Minimum Mood Over Time', markers=True)
-                st.plotly_chart(fig_mood, use_container_width=True)
+                st.plotly_chart(fig_mood, width='stretch')
             with col2:
                 fig_food = px.line(timeline_df, x='day', y='food_days', title='Food Days Supply Over Time', markers=True)
-                st.plotly_chart(fig_food, use_container_width=True)
+                st.plotly_chart(fig_food, width='stretch')
             st.subheader("Snapshot Details")
             for snap in snapshots:
                 with st.expander(f"Day: {snap.get('day', 'Unknown')}"):
@@ -693,12 +693,12 @@ def timelapse_tab():
     st.write(f"Run: {data['run_id']}  |  Captures: {len(data['files'])}")
     c1, c2 = st.columns(2)
     with c1:
-        if st.button("📸 Capture now", use_container_width=True):
+        if st.button("📸 Capture now", width='stretch'):
             r = capture(RUN_ID)
             st.write(r)
             st.cache_data.clear()
     with c2:
-        if st.button("🎞 Build GIF", use_container_width=True):
+        if st.button("🎞 Build GIF", width='stretch'):
             r = build_gif(RUN_ID)
             st.write(r)
             st.cache_data.clear()
@@ -708,14 +708,14 @@ def timelapse_tab():
         st.info("No captures yet. Enable TIMELAPSE_ENABLED and wait for configured hours, or click Capture now.")
         return
     latest = os.path.join(d, files[-1])
-    st.image(latest, caption=f"Latest: {files[-1]}", use_container_width=True)
+    st.image(latest, caption=f"Latest: {files[-1]}", width='stretch')
     gif_path = os.path.join(d, "timelapse.gif")
     if os.path.exists(gif_path):
         st.subheader("Animated GIF")
         st.image(gif_path)
     st.subheader("Browse frames")
     idx = st.slider("Frame", 0, len(files) - 1, len(files) - 1)
-    st.image(os.path.join(d, files[idx]), caption=files[idx], use_container_width=True)
+    st.image(os.path.join(d, files[idx]), caption=files[idx], width='stretch')
 
 
 # ---------- Main ----------
