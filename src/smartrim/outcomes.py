@@ -8,27 +8,19 @@ try:
     from smartrim.config import BASE_DIR
 except ImportError:
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-ADVICE_FILE = os.path.join(BASE_DIR, "memory", "advice", "advice.jsonl")
 LESSONS_FILE = os.path.join(BASE_DIR, "memory", "lessons.jsonl")
 
 
 def _read_advice():
-    if not os.path.exists(ADVICE_FILE):
-        return []
-    out = []
-    with open(ADVICE_FILE, encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            out.append(json.loads(line))
-    return out
+    """Read advice records via the single owner of the advice file (advice_log)."""
+    from smartrim.advice_log import _read_all
+    return _read_all()
 
 
 def _write_advice(records):
-    os.makedirs(os.path.dirname(ADVICE_FILE), exist_ok=True)
-    with open(ADVICE_FILE, "w", encoding="utf-8") as f:
-        f.writelines(json.dumps(rec, default=str) + "\n" for rec in records)
+    """Rewrite the advice file atomically via the single owner (advice_log)."""
+    from smartrim.advice_log import save_atomic
+    save_atomic(records)
 
 
 def _read_lessons():
@@ -123,7 +115,14 @@ def _close_advice(advice, snapshot_summary):
 
 
 def close_outcomes(snapshot_summary, run_id=None):
-    """Close open advice records and update lesson confidence. Idempotent."""
+    """Close open advice records and update lesson confidence. Idempotent.
+
+    First ages out stale `open` records (advice given > 3 days ago with no recorded
+    outcome) so the debrief/evaluation reads reflect reality rather than dead entries.
+    """
+    from smartrim.advice_log import expire_stale
+    expire_stale()
+
     records = _read_advice()
     lessons = _read_lessons()
     lesson_map = {lesson["id"]: lesson for lesson in lessons}

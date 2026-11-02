@@ -25,11 +25,19 @@ game state via a local HTTP API. Get it from: [Steam Workshop](https://steamcomm
    - The monitor displays a daily status + advice message in-game at configured hours (default: 6am and 6pm).
    - Configure hours via `SAY_DAILY_HOURS` env var (e.g., `SAY_DAILY_HOURS=6,12,18` for 3 messages/day).
    - Manual trigger: `python -m smartrim.say_daily` or `python -m smartrim.say_daily --slot evening`.
-8. (Optional) Start the Streamlit dashboard:
+8. (Optional) Start the Streamlit dashboard (now opens on the **Command Center** view):
    - First install dashboard dependencies: `pip install -e ".[dashboard]"`
    - **Windows**: `.\start-dashboard.ps1` or `streamlit run src/smartrim/dashboard.py`
    - **Linux/macOS**: `./start-dashboard.sh` or `streamlit run src/smartrim/dashboard.py`
-9. Layer 2 reflex actor (opt-in): set `REFLEX_KILL=0` in `.env` to enable whitelisted actions
+   - The Command Center auto-refreshes (configurable in the sidebar) and is designed to
+     sit on a second monitor next to the game: alert banner, vitals, colonist cards,
+     resources, current advice, reflex log, and quick actions.
+9. (Optional) Start the desktop notifier for pop-up alerts even when you are not
+   looking at the second screen:
+   - **Windows**: `.\start-notify.ps1`
+   - **Linux/macOS**: `./start-notify.sh`
+   - Or one-shot: `python -m smartrim.notify --once`
+10. Layer 2 reflex actor (opt-in): set `REFLEX_KILL=0` in `.env` to enable whitelisted actions
    (`draft-and-focus-fire`, `designate-firefighting`, `assign-beds-to-unassigned`). Default is
    `REFLEX_KILL=1` (all reflex actions dry-run only / disabled).    Use `python -m smartrim.cli reflex pause|resume|status`
    to manage the one in-game day pause. All reflex actions ship `dry_run: true` by default; set

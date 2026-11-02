@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Desktop notifier for urgent alerts (`python -m smartrim.notify` + start/stop scripts): pop-up + beep when a *new* urgent signature appears
+- Dashboard resource icons (`src/smartrim/assets/icons/`)
+- Stale-advice sweeper `advice_log.expire_stale()` — open records older than 3 days auto-expire before each debrief (wired into `outcomes.close_outcomes`, plus CLI `python -m smartrim.advice_log expire [days]`)
+- `tests/test_advice_maintenance.py` — sweeper semantics, boundary ages, idempotency, atomic-write pin (test suite grows 186 → 194)
+- `.mcp.json.example` template so fresh clones get the rimmolt config
+- `docs/local_llm/RUN-PROTOCOL.md` tracked in the repo (moved out of gitignored `.DEV/`)
 - MIT License
 - Gitleaks configuration with allowlist for wiki raw HTML
 - Gitleaks pre-commit hook for secret scanning
@@ -23,6 +29,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **MCP config is dev-only**: `.mcp.json` removed from the repo and gitignored (machine-specific servers stay local); committed template covers rimmolt only
+- **`advice_log.py` is the single owner of `memory/advice/advice.jsonl`**: `outcomes.py` delegates its reads/writes — all advice rewrites now use one atomic tmp+`os.replace` implementation
+- Cheat sheet rewritten and verified against the code (every command, flag, and env default checked; fixed broken code fences, `debrief_bundle` positional run id, stale `sidecar/replay.py` path)
+- Project docs accuracy pass: README (module roster, `RUN-PROTOCOL.md` path, per-run snapshot layout), PROJECT-OVERVIEW (sidecar section rewrite, drifted line counts), stale `python sidecar/...` usage examples in module docstrings fixed to `python -m smartrim...`
+- Dashboard rewrite: opens on a second-monitor **Command Center** view (alert banner, vitals, colonist cards, resources with icons, current advice, reflex log, quick actions, auto-refresh)
+- Monitor: `contextlib.suppress` used for best-effort say pause/unpause cleanup
+- Pre-commit ruff hook fixed: `sidecar tests` → `src tests`
+- Lint baseline green: collapsed placeholder-only f-strings in `debrief_llm.py` (braces preserved for `.format()`), unused `resolved_model` binding dropped, import sorting, ruff `allowed-confusables` for `×`/`≈` math notation
 - Updated README with cross-platform setup instructions (Windows PowerShell and Linux/macOS bash)
 - Updated README to explain RimMolt and link to Steam Workshop
 - Removed "Windows/PowerShell-based" limitation from README
@@ -36,6 +50,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `RUN_DAYS` tests no longer break when `.env` overrides it for long runs (env-forced reload + mock instead of hardcoded default)
+- Non-atomic rewrite of the tracked `memory/advice/advice.jsonl` in `outcomes.py` (crash mid-write could truncate the ledger)
+- Pre-commit ruff hook referenced a nonexistent `sidecar/` directory
 - High-priority lint issues (F405 star-import warnings, F841 unused variables)
 - Fixed .gitignore Streamlit skills paths (backslash to forward slash)
 - Fixed .gitignore + prefix artifacts from diff merge

@@ -1,7 +1,9 @@
 import json
 import os
 import unittest
+from unittest import mock
 
+from smartrim import monitor
 from smartrim.debrief import generate_debrief
 from smartrim.monitor import PollResult, normalize_snapshot, poll_once, run_reflex_checks
 
@@ -118,7 +120,8 @@ class TestPollOnce(unittest.TestCase):
         }
         client = self._client(snapshot)
         state = PollResult()
-        new = poll_once(client, state)
+        with mock.patch.object(monitor, "RUN_DAYS", 11):
+            new = poll_once(client, state)
         self.assertTrue(new.run_ended)
 
     def test_urgent_alert_fired(self):

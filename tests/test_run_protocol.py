@@ -39,10 +39,25 @@ class TestRunLength(unittest.TestCase):
         self.assertFalse(run_length_reached(None, 10))
 
     def test_default_is_config_value(self):
-        from smartrim.config import RUN_DAYS
-        self.assertEqual(RUN_DAYS, 11)
-        self.assertFalse(run_length_reached(RUN_DAYS - 1))
-        self.assertTrue(run_length_reached(RUN_DAYS))
+        import importlib
+
+        from smartrim import config as config_mod
+
+        # .env may legitimately override RUN_DAYS for long evaluation runs;
+        # verify the documented default by reloading config with it forced to 11.
+        saved = os.environ.get("RUN_DAYS")
+        try:
+            os.environ["RUN_DAYS"] = "11"
+            importlib.reload(config_mod)
+            self.assertEqual(config_mod.RUN_DAYS, 11)
+            self.assertFalse(run_length_reached(config_mod.RUN_DAYS - 1, config_mod.RUN_DAYS))
+            self.assertTrue(run_length_reached(config_mod.RUN_DAYS, config_mod.RUN_DAYS))
+        finally:
+            if saved is None:
+                os.environ.pop("RUN_DAYS", None)
+            else:
+                os.environ["RUN_DAYS"] = saved
+            importlib.reload(config_mod)
 
 
 class TestRunEndMarker(unittest.TestCase):

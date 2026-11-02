@@ -1,9 +1,15 @@
-"""Advice log: append-only JSONL of every piece of advice given, with outcome tracking."""
+"""Advice log: append-only JSONL of every piece of advice given, with outcome tracking.
+
+This module is the single owner of ``memory/advice/advice.jsonl``: every read and every
+rewrite (update_outcome, set_event_cause, outcomes.close_outcomes, expire_stale) goes
+through ``read_advice`` / ``_read_all`` / ``save_atomic`` here, so there is exactly one
+atomic-write implementation to keep correct.
+"""
 
 import json
 import os
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 
 try:
     from smartrim.config import BASE_DIR
@@ -56,33 +62,67 @@ def log_advice(run_id, snapshot_day, trigger, severity, situation, actions,
     return advice_id
 
 
-def update_outcome(advice_id, status, outcome_note=None):
-    """Update the status/outcome of an existing advice record by rewriting the file atomically."""
-    _ensure_dir()
+def _read_all():
+    """Read every advice record (no filtering)."""
     if not os.path.exists(ADVICE_FILE):
-        return False
-    records = []
-    found = False
+        return []
+    out = []
     with open(ADVICE_FILE, encoding="utf-8") as f:
         for line in f:
             line = line.strip()
-            if not line:
-                continue
-            rec = json.loads(line)
-            if rec.get("advice_id") == advice_id:
-                rec["status"] = status
-                if outcome_note is not None:
-                    rec["outcome_note"] = outcome_note
-                found = True
-            records.append(rec)
-    if not found:
-        return False
+            if line:
+                out.append(json.loads(line))
+    return out
+
+
+def read_advice(run_id=None, status=None):
+    """Read advice records, optionally filtered by run_id or status."""
+    _ensure_dir()
+    return [
+        rec for rec in _read_all()
+        if (not run_id or rec.get("run_id") == run_id)
+        and (not status or rec.get("status") == status)
+    ]
+
+
+def save_atomic(records):
+    """Atomically replace the advice file with the given records (tmp write + os.replace)."""
+    _ensure_dir()
     tmp_path = ADVICE_FILE + ".tmp"
     with open(tmp_path, "w", encoding="utf-8") as f:
         for rec in records:
             f.write(json.dumps(rec, default=str) + "\n")
     os.replace(tmp_path, ADVICE_FILE)
-    return True
+
+
+def _mutate(predicate, mutator):
+    """Change matching records in place, then atomically rewrite the file if any changed.
+
+    Returns the list of changed records.
+    """
+    records = _read_all()
+    changed = []
+    for rec in records:
+        if predicate(rec):
+            mutator(rec)
+            changed.append(rec)
+    if changed:
+        save_atomic(records)
+    return changed
+
+
+def update_outcome(advice_id, status, outcome_note=None):
+    """Update the status/outcome of an existing advice record. Returns True if found.
+
+    Rewrites the file atomically.
+    """
+
+    def _set(rec):
+        rec["status"] = status
+        if outcome_note is not None:
+            rec["outcome_note"] = outcome_note
+
+    return bool(_mutate(lambda rec: rec.get("advice_id") == advice_id, _set))
 
 
 def set_event_cause(advice_id, cause):
@@ -90,30 +130,13 @@ def set_event_cause(advice_id, cause):
 
     The bundle can see symptoms (Fire!, DOWNED) but not causes (raider arson, quest target
     extraction). Without this field the reviewer has to guess, and the guesses were wrong.
+    Returns True if the record was found.
     """
-    _ensure_dir()
-    if not os.path.exists(ADVICE_FILE):
-        return False
-    records = []
-    found = False
-    with open(ADVICE_FILE, encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            rec = json.loads(line)
-            if rec.get("advice_id") == advice_id:
-                rec["event_cause"] = cause
-                found = True
-            records.append(rec)
-    if not found:
-        return False
-    tmp_path = ADVICE_FILE + ".tmp"
-    with open(tmp_path, "w", encoding="utf-8") as f:
-        for rec in records:
-            f.write(json.dumps(rec, default=str) + "\n")
-    os.replace(tmp_path, ADVICE_FILE)
-    return True
+
+    def _set(rec):
+        rec["event_cause"] = cause
+
+    return bool(_mutate(lambda rec: rec.get("advice_id") == advice_id, _set))
 
 
 def set_cause_matching(run_id, needle, cause):
@@ -122,29 +145,46 @@ def set_cause_matching(run_id, needle, cause):
     Returns the number of records changed. Convenience for tagging a burst of identical
     alerts (eight "Fire!" records from one incident) without pasting ids one at a time.
     """
-    _ensure_dir()
-    if not os.path.exists(ADVICE_FILE):
-        return 0
     needle_low = str(needle).lower()
-    records = []
-    changed = 0
-    with open(ADVICE_FILE, encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            rec = json.loads(line)
-            if rec.get("run_id") == run_id and needle_low in str(rec.get("situation", "")).lower():
-                rec["event_cause"] = cause
-                changed += 1
-            records.append(rec)
-    if changed:
-        tmp_path = ADVICE_FILE + ".tmp"
-        with open(tmp_path, "w", encoding="utf-8") as f:
-            for rec in records:
-                f.write(json.dumps(rec, default=str) + "\n")
-        os.replace(tmp_path, ADVICE_FILE)
-    return changed
+
+    def _matches(rec):
+        return rec.get("run_id") == run_id and needle_low in str(rec.get("situation", "")).lower()
+
+    def _set(rec):
+        rec["event_cause"] = cause
+
+    return len(_mutate(_matches, _set))
+
+
+def _parse_ts(value):
+    """Parse an ISO timestamp from a record; None if missing/unparseable."""
+    try:
+        return datetime.fromisoformat(str(value))
+    except (TypeError, ValueError):
+        return None
+
+
+def expire_stale(max_age_days: float = 3.0, now: datetime | None = None) -> int:
+    """Auto-expire old open records so stale advice stops polluting debrief bundles.
+
+    An ``open`` record whose ISO ``timestamp`` is older than max_age_days (wall clock)
+    is marked ``expired``. Records with a missing/unparseable timestamp are left alone
+    (manually seeded test data). Idempotent; returns how many records were expired.
+    """
+    now = now or datetime.now()
+    cutoff = now - timedelta(days=max_age_days)
+
+    def _matches(rec):
+        if rec.get("status") != "open":
+            return False
+        ts = _parse_ts(rec.get("timestamp"))
+        return ts is not None and ts < cutoff
+
+    def _expire(rec):
+        rec["status"] = "expired"
+        rec["outcome_note"] = f"auto-expired: no outcome recorded within {max_age_days} d"
+
+    return len(_mutate(_matches, _expire))
 
 
 def find_open_duplicate(run_id, situation):
@@ -159,31 +199,12 @@ def find_open_duplicate(run_id, situation):
     return None
 
 
-def read_advice(run_id=None, status=None):
-    """Read advice records, optionally filtered by run_id or status."""
-    _ensure_dir()
-    if not os.path.exists(ADVICE_FILE):
-        return []
-    out = []
-    with open(ADVICE_FILE, encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            rec = json.loads(line)
-            if run_id and rec.get("run_id") != run_id:
-                continue
-            if status and rec.get("status") != status:
-                continue
-            out.append(rec)
-    return out
-
-
 if __name__ == "__main__":
     import sys
     if len(sys.argv) < 2:
         print("Usage: advice_log.py list [run_id] | update <advice_id> <status> [note] "
-              "| cause <advice_id> <text> | cause-match <run_id> <substring> <text>")
+              "| cause <advice_id> <text> | cause-match <run_id> <substring> <text> "
+              "| expire [days]")
         sys.exit(0)
     cmd = sys.argv[1]
     if cmd == "list":
@@ -203,3 +224,6 @@ if __name__ == "__main__":
         rid, needle = sys.argv[2], sys.argv[3]
         cause = " ".join(sys.argv[4:])
         print("records changed:", set_cause_matching(rid, needle, cause))
+    elif cmd == "expire":
+        days = float(sys.argv[2]) if len(sys.argv) > 2 else 3.0
+        print("records expired:", expire_stale(days))

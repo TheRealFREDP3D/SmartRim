@@ -1,3 +1,4 @@
+import contextlib
 import glob
 import json
 import logging
@@ -564,18 +565,14 @@ def _say_visible(client: McpClient, text: str) -> dict[str, Any]:
     except (McpError, OSError, ValueError, TypeError, KeyError, AttributeError):
         was_paused = False
     if was_paused:
-        try:
+        with contextlib.suppress(McpError, OSError, ValueError, TypeError, KeyError, AttributeError):
             client.call_tool("set_speed", {"action": "unpause"})
-        except (McpError, OSError, ValueError, TypeError, KeyError, AttributeError):
-            pass
     try:
         return client.call_tool("say", {"text": text})
     finally:
         if was_paused:
-            try:
+            with contextlib.suppress(McpError, OSError, ValueError, TypeError, KeyError, AttributeError):
                 client.call_tool("set_speed", {"action": "pause"})
-            except (McpError, OSError, ValueError, TypeError, KeyError, AttributeError):
-                pass
 
 
 def _say_daily_message(client: McpClient, conditions: dict[str, Any], slot: str | None = None) -> bool:
