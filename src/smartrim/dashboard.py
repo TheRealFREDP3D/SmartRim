@@ -17,6 +17,10 @@ from smartrim.config import (
     SNAPSHOTS_DIR,
 )
 
+# Initialize session state for theme
+if "theme" not in st.session_state:
+    st.session_state.theme = "light"
+
 try:
     from smartrim.mcp_client import McpError
 except ImportError:
@@ -31,7 +35,52 @@ st.set_page_config(
 )
 
 # Custom CSS
-st.markdown("""
+def get_theme_css(theme):
+    if theme == "dark":
+        return """
+<style>
+    .main-header {
+        font-size: 2.5rem;
+        font-weight: bold;
+        color: #60a5fa;
+        margin-bottom: 1rem;
+    }
+    .metric-card {
+        background: #1e293b;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        margin: 0.5rem 0;
+    }
+    .status-urgent { color: #f87171; font-weight: bold; }
+    .status-warning { color: #fbbf24; font-weight: bold; }
+    .status-info { color: #60a5fa; }
+    .alert-banner-urgent {
+        background: #7f1d1d; border-left: 6px solid #f87171;
+        padding: 1rem; border-radius: 0.5rem; margin-bottom: 1rem;
+        font-size: 1.1rem; color: #f1f5f9;
+    }
+    .alert-banner-ok {
+        background: #14532d; border-left: 6px solid #4ade80;
+        padding: 1rem; border-radius: 0.5rem; margin-bottom: 1rem;
+        font-size: 1.1rem; color: #f1f5f9;
+    }
+    .colonist-card {
+        background: #1e293b; border: 1px solid #334155;
+        padding: 0.75rem; border-radius: 0.5rem; margin-bottom: 0.5rem;
+        color: #f1f5f9;
+    }
+    .big-metric { font-size: 2rem; font-weight: bold; }
+    .compact { font-size: 0.85rem; line-height: 1.2; }
+    .stMarkdown p { margin-bottom: 0.25rem; }
+    section.main > div { padding-top: 0.25rem; }
+    header[data-testid="stHeader"] { display: none; }
+    #MainMenu { visibility: hidden; }
+    footer { visibility: hidden; }
+    .block-container { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+</style>
+"""
+    else:
+        return """
 <style>
     .main-header {
         font-size: 2.5rem;
@@ -72,7 +121,9 @@ st.markdown("""
     footer { visibility: hidden; }
     .block-container { padding-top: 0.5rem; padding-bottom: 0.5rem; }
 </style>
-""", unsafe_allow_html=True)
+"""
+
+st.markdown(get_theme_css(st.session_state.theme), unsafe_allow_html=True)
 
 
 # ---------- Data loading ----------
@@ -84,6 +135,30 @@ def load_current_alerts():
         with open(alert_path, encoding='utf-8') as f:
             return json.load(f)
     return []
+
+
+@st.cache_data(ttl=60)
+def load_dismissed_alerts():
+    dismissed_path = os.path.join(ALERTS_DIR, "dismissed.jsonl")
+    dismissed = []
+    if os.path.exists(dismissed_path):
+        with open(dismissed_path, encoding='utf-8') as f:
+            for line in f:
+                if line.strip():
+                    dismissed.append(json.loads(line))
+    return dismissed
+
+
+def dismiss_alert(alert_message, alert_type):
+    dismissed_path = os.path.join(ALERTS_DIR, "dismissed.jsonl")
+    dismissed_entry = {
+        "message": alert_message,
+        "type": alert_type,
+        "dismissed_at": datetime.now().isoformat(),
+    }
+    with open(dismissed_path, 'a', encoding='utf-8') as f:
+        f.write(json.dumps(dismissed_entry) + '\n')
+    st.cache_data.clear()
 
 
 @st.cache_data(ttl=30)
@@ -239,13 +314,34 @@ def command_center_body():
     # ---------- Alert banner ----------
     urgent = [a for a in sm_alerts if a.get("type") == "urgent"]
     warnings = [a for a in sm_alerts if a.get("type") == "warning"]
+
+    # Load dismissed alerts to filter them out
+    dismissed = load_dismissed_alerts()
+    dismissed_messages = {d.get("message") for d in dismissed}
+
+    # Filter out dismissed alerts
+    urgent = [a for a in urgent if a.get("message") not in dismissed_messages]
+    warnings = [a for a in warnings if a.get("message") not in dismissed_messages]
+
     if urgent:
-        msgs = " · ".join(a.get("message", "") for a in urgent)
-        st.markdown(f'<div class="alert-banner-urgent">🚨 {msgs}</div>', unsafe_allow_html=True)
+        for i, a in enumerate(urgent):
+            cols = st.columns([10, 1])
+            with cols[0]:
+                st.markdown(f'<div class="alert-banner-urgent">🚨 {a.get("message","")}</div>', unsafe_allow_html=True)
+            with cols[1]:
+                if st.button("✕", key=f"dismiss_urgent_{i}"):
+                    dismiss_alert(a.get("message", ""), "urgent")
+                    st.rerun()
     elif warnings:
-        msgs = " · ".join(a.get("message", "") for a in warnings)
-        st.markdown(f'<div class="alert-banner-urgent" style="background:#fef3c7;border-color:#f59e0b;">⚠️ {msgs}</div>',
-                    unsafe_allow_html=True)
+        for i, a in enumerate(warnings):
+            cols = st.columns([10, 1])
+            with cols[0]:
+                st.markdown(f'<div class="alert-banner-urgent" style="background:#fef3c7;border-color:#f59e0b;">⚠️ {a.get("message","")}</div>',
+                            unsafe_allow_html=True)
+            with cols[1]:
+                if st.button("✕", key=f"dismiss_warning_{i}"):
+                    dismiss_alert(a.get("message", ""), "warning")
+                    st.rerun()
     else:
         st.markdown('<div class="alert-banner-ok">✅ All clear — no active alerts</div>', unsafe_allow_html=True)
 
@@ -262,14 +358,33 @@ def command_center_body():
             downed = c.get("downed", False)
             badge = " [DOWNED]" if downed else ""
             color = mood_color(mood)
-            with ccols[i % 4]:
+            with ccols[i % 4], st.expander(f"{name}{badge}", expanded=False):
                 st.markdown(
-                    f'<div class="colonist-card">'
-                    f'<b>{name}</b>{badge}<br>'
                     f'<span style="color:{color};font-weight:bold;">Mood {mood}%</span> · '
-                    f'HP {health}%<br><small>{job}</small></div>',
+                    f'HP {health}%<br><small>{job}</small>',
                     unsafe_allow_html=True,
                 )
+                # Additional details
+                skills = c.get("skills", {})
+                if skills:
+                    st.markdown("**Skills:**")
+                    for skill_name, skill_level in skills.items():
+                        st.caption(f"{skill_name}: {skill_level}")
+                needs = c.get("needs", {})
+                if needs:
+                    st.markdown("**Needs:**")
+                    for need_name, need_value in needs.items():
+                        st.caption(f"{need_name}: {need_value}%")
+                health_conditions = c.get("healthConditions", [])
+                if health_conditions:
+                    st.markdown("**Health Conditions:**")
+                    for condition in health_conditions:
+                        st.caption(f"- {condition}")
+                equipment = c.get("equipment", [])
+                if equipment:
+                    st.markdown("**Equipment:**")
+                    for item in equipment:
+                        st.caption(f"- {item}")
     else:
         st.info("No colonist data.")
 
@@ -277,6 +392,18 @@ def command_center_body():
     st.subheader("📦 Resources")
     res_data = fetch_resources()
     resources = (res_data or {}).get("resources", []) if isinstance(res_data, dict) else []
+
+    # Load historical resource data for trend calculation
+    snapshots = load_run_snapshots(RUN_ID)
+    resource_history = {}
+    if snapshots and len(snapshots) >= 2:
+        for snap in snapshots[-5:]:  # Last 5 snapshots
+            res_summary = snap.get("summary", {}).get("resources", {})
+            for res_label, res_count in res_summary.items():
+                if res_label not in resource_history:
+                    resource_history[res_label] = []
+                resource_history[res_label].append(res_count)
+
     if resources:
         important = ["Meal", "Medicine", "Steel", "Wood", "Component", "Food", "Cloth", "Leather"]
         filtered = [r for r in resources
@@ -293,15 +420,46 @@ def command_center_body():
                     if key in low:
                         return os.path.join(os.path.dirname(__file__), "assets", "icons", fn)
                 return None
+
+            def _get_trend_and_projection(label, current_count):
+                # Calculate trend from history
+                history = resource_history.get(label, [])
+                if len(history) >= 2:
+                    recent = history[-1]
+                    prev = history[-2]
+                    change = current_count - recent
+                    # Simple daily consumption rate
+                    consumption_rate = (prev - current_count) if prev > current_count else 0
+                    # Project days until depletion
+                    days_left = "∞" if consumption_rate == 0 else max(0, int(current_count / consumption_rate))
+                    arrow = "↑" if change > 0 else "↓" if change < 0 else "→"
+                    return arrow, days_left, consumption_rate
+                return "→", "∞", 0
+
             rcols = st.columns(8)
             for i, r in enumerate(filtered[:8]):
                 label = r.get("label", "?")
                 count = r.get("count", 0)
+                arrow, days_left, _consumption_rate = _get_trend_and_projection(label, count)
+
+                # Color coding based on urgency
+                if days_left != "∞":
+                    if days_left < 5:
+                        urgency_color = "🔴"
+                    elif days_left < 10:
+                        urgency_color = "🟡"
+                    else:
+                        urgency_color = "🟢"
+                else:
+                    urgency_color = ""
+
                 with rcols[i % 8]:
                     ipath = _icon_for(label)
                     if ipath and os.path.exists(ipath):
                         st.image(ipath, width=28)
-                    st.caption(f"{label}: {count}")
+                    st.caption(f"{label}: {count} {arrow}")
+                    if days_left != "∞":
+                        st.caption(f"{urgency_color} ~{days_left}d left")
         else:
             st.info("No key resources.")
     else:
@@ -342,6 +500,16 @@ def command_center_body():
         st.markdown(f"Reflex: {'enabled' if _reflex_enabled() else 'disabled'} · "
                     f"{'dry-run' if _reflex_dry_run() else 'LIVE writes'}")
 
+        st.subheader("📜 Dismissed Alerts")
+        dismissed = load_dismissed_alerts()
+        if dismissed:
+            with st.expander(f"View {len(dismissed)} dismissed alerts", expanded=False):
+                for d in dismissed[-10:]:  # Show last 10
+                    st.caption(f"🗑 {d.get('type','info').upper()}: {d.get('message','')} "
+                              f"({d.get('dismissed_at','')[:16]})")
+        else:
+            st.caption("No dismissed alerts.")
+
     with aright:
         st.subheader("📚 Active Lessons")
         lessons = [ls for ls in load_lessons() if ls.get("status", "active") == "active"]
@@ -365,27 +533,41 @@ def command_center_body():
                 "wealth": s.get("wealth", 0),
             })
         tdf = pd.DataFrame(tdata)
+
+        # Theme colors
+        mood_line_color = "#4ade80" if st.session_state.theme == "dark" else "#16a34a"
+        food_color = "#fbbf24" if st.session_state.theme == "dark" else "#f59e0b"
+        wealth_color = "#60a5fa" if st.session_state.theme == "dark" else "#3b82f6"
+        bg_color = "#1e293b" if st.session_state.theme == "dark" else "#ffffff"
+        text_color = "#f1f5f9" if st.session_state.theme == "dark" else "#111827"
+
         fig_mood = go.Figure()
-        fig_mood.add_trace(go.Scatter(x=tdf["day"], y=tdf["mood"], name="Min mood", mode="lines+markers", fill="tozeroy", line={"color": "#16a34a"}))
+        fig_mood.add_trace(go.Scatter(x=tdf["day"], y=tdf["mood"], name="Min mood", mode="lines+markers", fill="tozeroy", line={"color": mood_line_color}))
         fig_mood.update_layout(height=140, margin={"l": 10, "r": 10, "t": 5, "b": 10},
                                yaxis={"title": "Mood", "range": [0, 100]},
                                xaxis={"tickangle": -30, "tickfont": {"size": 8}},
-                               yaxis_tickfont={"size": 8})
+                               yaxis_tickfont={"size": 8},
+                               plot_bgcolor=bg_color, paper_bgcolor=bg_color,
+                               font={"color": text_color})
         st.plotly_chart(fig_mood, width='stretch')
 
         fig_food = go.Figure()
-        fig_food.add_trace(go.Scatter(x=tdf["day"], y=tdf["food"], name="Food days", mode="lines+markers", fill="tozeroy", line={"color": "#f59e0b"}))
+        fig_food.add_trace(go.Scatter(x=tdf["day"], y=tdf["food"], name="Food days", mode="lines+markers", fill="tozeroy", line={"color": food_color}))
         fig_food.update_layout(height=140, margin={"l": 10, "r": 10, "t": 5, "b": 10},
                                yaxis={"title": "Food days"},
                                xaxis={"tickangle": -30, "tickfont": {"size": 8}},
-                               yaxis_tickfont={"size": 8})
+                               yaxis_tickfont={"size": 8},
+                               plot_bgcolor=bg_color, paper_bgcolor=bg_color,
+                               font={"color": text_color})
         st.plotly_chart(fig_food, width='stretch')
 
         fig2 = go.Figure()
-        fig2.add_trace(go.Scatter(x=tdf["day"], y=tdf["wealth"], name="Wealth", mode="lines+markers", fill="tozeroy", line={"color": "#3b82f6"}))
+        fig2.add_trace(go.Scatter(x=tdf["day"], y=tdf["wealth"], name="Wealth", mode="lines+markers", fill="tozeroy", line={"color": wealth_color}))
         fig2.update_layout(height=120, margin={"l": 10, "r": 10, "t": 5, "b": 10},
                            xaxis={"tickangle": -30, "tickfont": {"size": 8}},
-                           yaxis={"tickfont": {"size": 8}})
+                           yaxis={"tickfont": {"size": 8}},
+                           plot_bgcolor=bg_color, paper_bgcolor=bg_color,
+                           font={"color": text_color})
         st.plotly_chart(fig2, width='stretch')
     else:
         st.info("No trend data yet.")
@@ -543,6 +725,17 @@ def advice_browser_tab():
         status_filter = st.multiselect("Filter by Status", options=df['status'].unique(), default=df['status'].unique())
     filtered_df = df[df['run_id'].isin(run_filter) & df['severity'].isin(severity_filter) & df['status'].isin(status_filter)]
     st.metric("Total Advice Records", len(filtered_df))
+
+    # CSV Export
+    if st.button("📥 Export Filtered Advice as CSV"):
+        csv = filtered_df.to_csv(index=False)
+        st.download_button(
+            label="Download CSV",
+            data=csv,
+            file_name=f"advice_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+            mime="text/csv",
+        )
+
     for _, row in filtered_df.iterrows():
         with st.expander(f"{row['timestamp']} - {row['severity'].upper()} - {row['trigger']}"):
             st.markdown(f"**Situation:** {row.get('situation', 'N/A')}")
@@ -590,6 +783,16 @@ def lesson_explorer_tab():
     if tag_filter:
         filtered_df = filtered_df[filtered_df['tags'].apply(lambda ts: any(t in (ts or []) for t in tag_filter))]
     st.metric("Total Lessons", len(filtered_df))
+
+    # CSV Export
+    if st.button("📥 Export Filtered Lessons as CSV"):
+        csv = filtered_df.to_csv(index=False)
+        st.download_button(
+            label="Download CSV",
+            data=csv,
+            file_name=f"lessons_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+            mime="text/csv",
+        )
     col1, col2, col3 = st.columns(3)
     with col1:
         st.metric("Total Times Used", int(filtered_df['times_applied'].sum()))
@@ -604,8 +807,11 @@ def lesson_explorer_tab():
             'Failed': int(filtered_df['times_failed'].sum()),
             'Unknown': total_used - int(filtered_df['times_helped'].sum()) - int(filtered_df['times_failed'].sum()),
         }
+        bg_color = "#1e293b" if st.session_state.theme == "dark" else "#ffffff"
+        text_color = "#f1f5f9" if st.session_state.theme == "dark" else "#111827"
         fig = px.pie(values=list(effectiveness_data.values()), names=list(effectiveness_data.keys()),
                      title="Lesson Effectiveness")
+        fig.update_layout(plot_bgcolor=bg_color, paper_bgcolor=bg_color, font={"color": text_color})
         st.plotly_chart(fig, width='stretch')
     for _, row in filtered_df.iterrows():
         with st.expander(f"{row.get('title', 'Untitled')} - {row.get('status', 'N/A')}"):
@@ -656,12 +862,16 @@ def run_history_tab():
                     'wealth': summary.get('wealth', 0),
                 })
             timeline_df = pd.DataFrame(timeline_data)
+            bg_color = "#1e293b" if st.session_state.theme == "dark" else "#ffffff"
+            text_color = "#f1f5f9" if st.session_state.theme == "dark" else "#111827"
             col1, col2 = st.columns(2)
             with col1:
                 fig_mood = px.line(timeline_df, x='day', y='min_mood', title='Minimum Mood Over Time', markers=True)
+                fig_mood.update_layout(plot_bgcolor=bg_color, paper_bgcolor=bg_color, font={"color": text_color})
                 st.plotly_chart(fig_mood, width='stretch')
             with col2:
                 fig_food = px.line(timeline_df, x='day', y='food_days', title='Food Days Supply Over Time', markers=True)
+                fig_food.update_layout(plot_bgcolor=bg_color, paper_bgcolor=bg_color, font={"color": text_color})
                 st.plotly_chart(fig_food, width='stretch')
             st.subheader("Snapshot Details")
             for snap in snapshots:
@@ -732,6 +942,14 @@ def main():
              "📖 Lesson Explorer", "📈 Run History", "📝 Debrief Viewer"],
             index=0,
         )
+        st.divider()
+
+        # Theme toggle
+        st.markdown("### Appearance")
+        theme = st.selectbox("Theme", ["light", "dark"], index=0 if st.session_state.theme == "light" else 1)
+        if theme != st.session_state.theme:
+            st.session_state.theme = theme
+            st.rerun()
         st.divider()
         # Session details (moved from top bar)
         try:
