@@ -63,3 +63,8 @@ TODO.md
 /.docs
 # Local MCP config (dev-only)
 .mcp.json
+
+# Runtime generated data
+memory/timelapse/
+memory/advice/
+
