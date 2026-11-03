@@ -38,13 +38,11 @@ game state via a local HTTP API. Get it from: [Steam Workshop](https://steamcomm
    - Manual capture: `python -m smartrim.timelapse capture`
    - Build an animated GIF: `python -m smartrim.timelapse build`
    - View in the dashboard's **Timelapse** tab (capture now / build GIF / browse frames).
-10. (Optional) Start the desktop notifier for pop-up alerts even when you are not
-   looking at the second screen:
+10. (Optional) Start the desktop notifier for pop-up alerts even when you are not focused on the terminal.\r\n   looking at the second screen:
    - **Windows**: `.\start-notify.ps1`
    - **Linux/macOS**: `./start-notify.sh`
    - Or one-shot: `python -m smartrim.notify --once`
-10. Layer 2 reflex actor (opt-in): set `REFLEX_KILL=0` in `.env` to enable whitelisted actions
-   (`draft-and-focus-fire`, `designate-firefighting`, `assign-beds-to-unassigned`). Default is
+11. Layer 2 reflex actor (opt-in): set REFLEX_KILL=0 in .env to enable whitelisted actions.\r\n   (`draft-and-focus-fire`, `designate-firefighting`, `assign-beds-to-unassigned`). Default is
    `REFLEX_KILL=1` (all reflex actions dry-run only / disabled).    Use `python -m smartrim.cli reflex pause|resume|status`
    to manage the one in-game day pause. All reflex actions ship `dry_run: true` by default; set
    `REFLEX_DRY_RUN=0` to allow actual MCP writes.
@@ -93,7 +91,7 @@ The following runtime files are also gitignored and written by the reflex actor:
 python -m pytest
 ```
 
-See `memory/phases.md` and `RUN-PROTOCOL.md` for evaluation protocol.
+See `memory/phases.md` and `docs/local_llm/RUN-PROTOCOL.md` for evaluation protocol.
 
 ## License
 
