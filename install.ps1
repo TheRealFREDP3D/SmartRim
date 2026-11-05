@@ -40,7 +40,7 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 # Ensure directories exist
-$dirs = @("memory\alerts", "memory\snapshots", "memory\debriefs")
+$dirs = @("runtime\control")
 foreach ($dir in $dirs) {
     if (-not (Test-Path $dir)) {
         New-Item -ItemType Directory -Force -Path $dir | Out-Null

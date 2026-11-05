@@ -5,11 +5,10 @@ import os
 import sys
 from datetime import datetime
 
+from smartrim import config
 from smartrim import counselor as c
-from smartrim.config import BASE_DIR
 from smartrim.reflex_actor import ReflexActor
 
-HUMAN_ACTION_FILE = os.path.join(BASE_DIR, "memory", "last_human_action.json")
 HUMAN_ACTIONS = ("order_pawn", "build", "designate")
 HUMAN_WINDOW_SECONDS = 60
 
@@ -53,8 +52,9 @@ def _record_human_action(action):
     if action not in HUMAN_ACTIONS:
         return
     try:
-        os.makedirs(os.path.dirname(HUMAN_ACTION_FILE), exist_ok=True)
-        with open(HUMAN_ACTION_FILE, "w", encoding="utf-8") as f:
+        path = config.HUMAN_ACTION_FILE
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as f:
             json.dump({"action": action, "timestamp": datetime.now().isoformat()}, f)
     except OSError:
         pass

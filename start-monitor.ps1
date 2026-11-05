@@ -9,13 +9,19 @@ param(
 $ErrorActionPreference = "Stop"
 
 # (module launched via -m smartrim.monitor)
-$logFile = "memory\monitor.log"
+$controlDir = "runtime\control"
+$logFile = "$controlDir\monitor.log"
+
+# Control dir holds PID/log/lock files and the active-run pointer.
+if (-not (Test-Path $controlDir)) {
+    New-Item -ItemType Directory -Force -Path $controlDir | Out-Null
+}
 
 # Rotate oversized log files to keep them manageable
 if (Test-Path $logFile) {
     $size = (Get-Item $logFile).Length
     if ($size -gt 5MB) {
-        $archive = "memory\monitor.$(Get-Date -Format 'yyyyMMdd-HHmmss').log"
+        $archive = "$controlDir\monitor.$(Get-Date -Format 'yyyyMMdd-HHmmss').log"
         Move-Item $logFile $archive -Force
         Write-Host "Rotated oversized log to $archive" -ForegroundColor Yellow
     }
@@ -25,8 +31,8 @@ $venvPython = Join-Path $PSScriptRoot ".venv\Scripts\python.exe"
 $pythonExe = if (Test-Path $venvPython) { $venvPython } else { "python" }
 
 # Atomic startup lock to prevent concurrent launches
-$startupLock = "memory\monitor.startup.lock"
-$pidFile = "memory\monitor.pid"
+$startupLock = "$controlDir\monitor.startup.lock"
+$pidFile = "$controlDir\monitor.pid"
 
 # Acquire startup lock using directory creation (atomic operation)
 try {
@@ -98,7 +104,7 @@ if ($ObserveOnly) {
     $env:OBSERVE_ONLY = "0"
     Write-Host "Starting reflex monitor (adviser ON)..." -ForegroundColor Cyan
 }
-$proc = Start-Process -FilePath $pythonExe -ArgumentList $pyArgs -RedirectStandardOutput $logFile -RedirectStandardError "memory\monitor.err.log" -NoNewWindow -PassThru
+$proc = Start-Process -FilePath $pythonExe -ArgumentList $pyArgs -RedirectStandardOutput $logFile -RedirectStandardError "$controlDir\monitor.err.log" -NoNewWindow -PassThru
 $childPid = $proc.Id
 # Let the monitor process write its own PID file (its PID may differ from the shim's).
 
@@ -114,7 +120,7 @@ if (-not $procCheck) {
     exit 1
 }
 
-Write-Host "Monitor started (PID $childPid). Alerts: memory\alerts\current.json" -ForegroundColor Green
+Write-Host "Monitor started (PID $childPid). Runtime: runtime\<run-id>\" -ForegroundColor Green
 Write-Host "Log: $logFile"
 Write-Host "Stop with: .\stop-monitor.ps1 (Windows) or ./stop-monitor.sh (Linux/macOS)"
 

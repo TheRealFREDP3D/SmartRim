@@ -1,8 +1,8 @@
 """AI-ready debrief bundle (template-only, no API calls).
 
 Writes one self-contained markdown file per run that can be pasted into any chat model:
-  memory/debriefs/<run>.bundle.md          the prompt + data
-  memory/debriefs/<run>.response.md        empty template for the model's answer
+  runtime/<run>/debriefs/<run>.bundle.md          the prompt + data
+  runtime/<run>/debriefs/<run>.response.md        empty template for the model's answer
 The wiki facts block is loaded from memory/wiki_facts.yaml (single source of truth).
 """
 
@@ -16,11 +16,14 @@ from datetime import datetime
 logger = logging.getLogger(__name__)
 
 try:
-    from smartrim.config import BASE_DIR
+    from smartrim import config
 except ImportError:
+    config = None
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-WIKI_FACTS_PATH = os.path.join(BASE_DIR, "memory", "wiki_facts.yaml")
+WIKI_FACTS_PATH = (
+    config.WIKI_FACTS_FILE if config else os.path.join(BASE_DIR, "memory", "wiki_facts.yaml")
+)
 
 
 def _load_wiki_facts():
@@ -348,10 +351,12 @@ def _event_digest(snapshots, advice_records, reflex_snapshots=None):
 
 
 def _load_run_marker(run_id):
-    """Read memory/runs/<run_id>.end.json (monitor) and <run_id>.meta.json (human/agent notes)."""
+    """Read runtime/<run_id>/end.json (monitor) and meta.json (human/agent notes)."""
     out = {}
-    for suffix in (".meta.json", ".end.json"):
-        path = os.path.join(BASE_DIR, "memory", "runs", f"{run_id}{suffix}")
+    for name in ("meta.json", "end.json"):
+        path = config.run_file(name, run_id) if config else None
+        if not path:
+            continue
         try:
             with open(path, encoding="utf-8") as f:
                 data = json.load(f)
@@ -552,13 +557,16 @@ if __name__ == "__main__":
     import sys
 
     from smartrim.advice_log import read_advice
-    from smartrim.config import DEBRIEFS_DIR, SNAPSHOTS_DIR
 
-    run = sys.argv[1] if len(sys.argv) > 1 else "current-run"
-    snap_dir = SNAPSHOTS_DIR
-    nested = os.path.join(SNAPSHOTS_DIR, run)
-    if glob.glob(os.path.join(nested, "day-*.json")):
-        snap_dir = nested
-    b, r = build_bundle(snap_dir, DEBRIEFS_DIR, run, read_advice(run_id=run))
+    run = sys.argv[1] if len(sys.argv) > 1 else config.resolve_run_id()
+    if not run:
+        print("No active run. Pass a run id: python -m smartrim.debrief_bundle <run-id>")
+        raise SystemExit(1)
+    snap_dir = config.snapshots_dir(run)
+    if not snap_dir:
+        print(f"No snapshots for run {run}")
+        raise SystemExit(1)
+    debrief_dir = config.debriefs_dir(run, create=True)
+    b, r = build_bundle(snap_dir, debrief_dir, run, read_advice(run_id=run))
     print("bundle:", b)
     print("response template:", r)

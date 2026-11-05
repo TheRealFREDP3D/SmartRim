@@ -33,7 +33,8 @@ RimWorld (RimMolt MCP)  <--poll-->  monitor.py  -->  situation.py (classify + re
 | `src/smartrim/` | Main Python package (src layout). |
 | `schemas/` | JSON schemas for lessons, advice, snapshots. |
 | `tests/` | pytest suite. |
-| `memory/` | Persistent data (tracked: `lessons.jsonl`, `phases.md`, `wiki/*.md`; gitignored runtime: `snapshots/`, `debriefs/`, `alerts/`, `runs/`, `advice/`, `actions.jsonl`, `reflex.lock`, `reflex_pause.json`, `last_human_action.json`, `lessons.sqlite`, `wiki/raw/`). |
+| `memory/` | Durable knowledge (tracked: `lessons.jsonl`, `phases.md`, `wiki/*.md`; derived/gitignored: `lessons.sqlite`, `wiki/raw/`). |
+| `runtime/` | Disposable runtime state (gitignored): `control/` (pid, logs, locks, `active.json`) and one `runtime/<run-id>/` per run (snapshots, alerts, advice, actions, debriefs, candidates, timelapse, quests, `end.json`). |
 | `docs/local_llm/ollama/` | Modelfiles for tuned Ollama models (`gemma4-e2b-rimworld`, `qwen3-rimworld`). |
 | 
 | `install.*` | Venv + dependency installer. |

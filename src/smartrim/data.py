@@ -12,14 +12,12 @@ import os
 from datetime import datetime
 from typing import Any
 
+from smartrim import config
 from smartrim.config import (
-    ALERTS_DIR,
     BASE_DIR,
-    DEBRIEFS_DIR,
     MCP_DELAY,
     MCP_URL,
-    RUN_ID,
-    SNAPSHOTS_DIR,
+    resolve_run_id,
 )
 
 try:
@@ -74,7 +72,10 @@ def game_alerts(game_state: Any) -> tuple[list[Any], list[Any]]:
 
 
 def load_current_alerts() -> list[Any]:
-    alert_path = os.path.join(ALERTS_DIR, "current.json")
+    alert_dir = config.alerts_dir()
+    if not alert_dir:
+        return []
+    alert_path = os.path.join(alert_dir, "current.json")
     if os.path.exists(alert_path):
         with open(alert_path, encoding="utf-8") as f:
             return json.load(f)
@@ -82,7 +83,10 @@ def load_current_alerts() -> list[Any]:
 
 
 def load_dismissed_alerts() -> list[dict[str, Any]]:
-    dismissed_path = os.path.join(ALERTS_DIR, "dismissed.jsonl")
+    alert_dir = config.alerts_dir()
+    if not alert_dir:
+        return []
+    dismissed_path = os.path.join(alert_dir, "dismissed.jsonl")
     dismissed: list[dict[str, Any]] = []
     if os.path.exists(dismissed_path):
         with open(dismissed_path, encoding="utf-8") as f:
@@ -93,7 +97,10 @@ def load_dismissed_alerts() -> list[dict[str, Any]]:
 
 
 def dismiss_alert(alert_message: str, alert_type: str) -> None:
-    dismissed_path = os.path.join(ALERTS_DIR, "dismissed.jsonl")
+    alert_dir = config.alerts_dir(create=True)
+    if not alert_dir:
+        return
+    dismissed_path = os.path.join(alert_dir, "dismissed.jsonl")
     dismissed_entry = {
         "message": alert_message,
         "type": alert_type,
@@ -104,10 +111,26 @@ def dismiss_alert(alert_message: str, alert_type: str) -> None:
         f.write(json.dumps(dismissed_entry) + "\n")
 
 
+def _run_dirs() -> list[str]:
+    """Every runtime run directory (control/ and archive/ excluded)."""
+    try:
+        names = os.listdir(config.RUNTIME_DIR)
+    except OSError:
+        return []
+    return [
+        os.path.join(config.RUNTIME_DIR, n)
+        for n in sorted(names)
+        if n not in ("control", "archive") and os.path.isdir(os.path.join(config.RUNTIME_DIR, n))
+    ]
+
+
 def load_all_advice() -> list[dict[str, Any]]:
-    advice_path = os.path.join(BASE_DIR, "memory", "advice", "advice.jsonl")
+    """Advice records from every run, newest run last."""
     advice_list: list[dict[str, Any]] = []
-    if os.path.exists(advice_path):
+    for run_path in _run_dirs():
+        advice_path = os.path.join(run_path, "advice.jsonl")
+        if not os.path.exists(advice_path):
+            continue
         with open(advice_path, encoding="utf-8") as f:
             for line in f:
                 if line.strip():
@@ -116,7 +139,7 @@ def load_all_advice() -> list[dict[str, Any]]:
 
 
 def load_lessons() -> list[dict[str, Any]]:
-    lessons_path = os.path.join(BASE_DIR, "memory", "lessons.jsonl")
+    lessons_path = config.LESSONS_FILE
     lessons_list: list[dict[str, Any]] = []
     if os.path.exists(lessons_path):
         with open(lessons_path, encoding="utf-8") as f:
@@ -127,19 +150,20 @@ def load_lessons() -> list[dict[str, Any]]:
 
 
 def load_runs_metadata() -> list[dict[str, Any]]:
-    runs_dir = os.path.join(BASE_DIR, "memory", "runs")
+    """Run-end markers: runtime/<run_id>/end.json for every run."""
     runs: list[dict[str, Any]] = []
-    if os.path.exists(runs_dir):
-        for file in glob.glob(os.path.join(runs_dir, "*.end.json")):
-            with open(file, encoding="utf-8") as f:
+    for run_path in _run_dirs():
+        marker = os.path.join(run_path, "end.json")
+        if os.path.exists(marker):
+            with open(marker, encoding="utf-8") as f:
                 runs.append(json.load(f))
     return runs
 
 
 def load_run_snapshots(run_id: str) -> list[dict[str, Any]]:
-    snapshot_dir = os.path.join(SNAPSHOTS_DIR, run_id)
+    snapshot_dir = config.snapshots_dir(run_id)
     snapshots: list[dict[str, Any]] = []
-    if os.path.exists(snapshot_dir):
+    if snapshot_dir and os.path.exists(snapshot_dir):
         for file in glob.glob(os.path.join(snapshot_dir, "day-*.json")):
             with open(file, encoding="utf-8") as f:
                 snapshots.append(json.load(f))
@@ -148,19 +172,22 @@ def load_run_snapshots(run_id: str) -> list[dict[str, Any]]:
 
 
 def load_debriefs() -> list[dict[str, Any]]:
-    debriefs_dir = DEBRIEFS_DIR
+    """Debrief markdown files from every run."""
     debriefs: list[dict[str, Any]] = []
-    if os.path.exists(debriefs_dir):
-        for file in glob.glob(os.path.join(debriefs_dir, "*.md")):
+    for run_path in _run_dirs():
+        run_debriefs = os.path.join(run_path, "debriefs")
+        if not os.path.exists(run_debriefs):
+            continue
+        for file in glob.glob(os.path.join(run_debriefs, "*.md")):
             with open(file, encoding="utf-8") as f:
                 debriefs.append({"filename": os.path.basename(file), "content": f.read()})
     return debriefs
 
 
 def load_reflex_actions(limit: int = 8) -> list[dict[str, Any]]:
-    path = os.path.join(BASE_DIR, "memory", "actions.jsonl")
+    path = config.actions_file()
     out: list[dict[str, Any]] = []
-    if os.path.exists(path):
+    if path and os.path.exists(path):
         with open(path, encoding="utf-8") as f:
             for line in f:
                 if line.strip():
@@ -206,13 +233,9 @@ def fetch_resources() -> Any:
 
 
 __all__ = [
-    "ALERTS_DIR",
     "BASE_DIR",
-    "DEBRIEFS_DIR",
     "MCP_DELAY",
     "MCP_URL",
-    "RUN_ID",
-    "SNAPSHOTS_DIR",
     "dismiss_alert",
     "fetch_colonists",
     "fetch_resources",
@@ -230,4 +253,5 @@ __all__ = [
     "mood_color",
     "reflex_dry_run",
     "reflex_enabled",
+    "resolve_run_id",
 ]

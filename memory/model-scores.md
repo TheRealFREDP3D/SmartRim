@@ -2,7 +2,7 @@
 
 Purpose: track how well different models turn a run's debrief bundle into reusable, wiki-grounded
 lessons. Scores use `memory/debrief-rubric.md` (10 criteria, 20 points). Raw answers and the filled-in
-scorecards live in `memory/debriefs/` (gitignored); this table is the durable summary.
+scorecards live in `runtime/<run>/debriefs/` (gitignored); this table is the durable summary.
 
 Rules:
 - Same bundle version for every model in a comparison row. If the bundle changes, re-run the models,
@@ -10,7 +10,66 @@ Rules:
 - Record the provider/model as reported by the tooling. "Unknown" is not comparable.
 - Note which criterion lost points if the loss is a bundle defect rather than a model defect.
 
-## run-002-adv-cassandra (11 days, adviser on, 3/3 colonists alive, 12 urgent alerts)
+## Ollama benchmark — 2026-11-05 (run-009-adv bundle)
+
+Hardware: GTX 1050 Ti (4 GB VRAM), 32 GB RAM, 31.9 GB usable. Ollama 0.40.11.
+Bundle: `run-009-adv.bundle.md` (28,014 chars, v3). Settings: `num_ctx=16384`,
+`temperature=0.3`, `num_predict=4096`, cold load, one run per model, zero-shot.
+Digests are recorded per row; `qwen3:latest` and `qwen3:8b` share one digest.
+
+| Model | Digest | GB | Rubric | Decode tok/s | Wall | Schema |
+|---|---|---:|---:|---:|---:|:--:|
+| gemma-4-E2B-it-Q4_K_M | `ebb4e91482e6` | 3.1 | **19/20** | 16.7 | 196 s | fail |
+| Qwen3-1.7B-Q6_K | `ad47863af7c1` | 1.7 | 17/20 | 15.4 | 167 s | fail |
+| llama3.2:3b | `a80c4f17acd5` | 2.0 | 15/20 | 5.5 | 291 s | fail |
+| gemma4-e2b-rimworld | `c95ec9b9354f` | 3.1 | 14/20 | 16.0 | 234 s | fail |
+| gemma3:1b | `8648f39daa8f` | 0.8 | 9/20 | **29.4** | 154 s | fail |
+| gemma-3-1B-it-QAT-Q4_0 | `02f708abca79` | 0.7 | 0/20 | **32.7** | 47 s | fail |
+| llama3.2:1b-instruct-q4_K_M | `22bc6b92eb01` | 0.8 | 0/20 | 31.8 | 149 s | fail |
+| deepseek-r1:1.5b | `a42b25d8c10a` | 1.1 | 0/20 | 23.2 | 209 s | fail |
+
+Timed out at 300 s (7): Mistral-7B-Instruct-v0.3, llama3.1:latest,
+qwen3-rimworld, qwen3:latest, deepseek-r1:8b, DeepSeek-R1-0528-Qwen3-8B,
+DeepSeek-R1-Distill-Llama-8B. `llama3.2-vision` returned HTTP 500 on load.
+Phi-4-mini-reasoning also timed out at 300 s.
+
+**Key finding:** no model produced a schema-valid Section A zero-shot. The
+failures are vocabulary/type errors (`"injury"` vs `colonist_injured`,
+`"low food"` vs `low_food`, string where a list is required), not missing
+content — the rubric's best answer scored 19/20 while failing the contract.
+The monitor's debrief path retries up to 3 times with the exact error plus the
+allowed vocabulary; treat the zero-shot column as a robustness signal, not a
+verdict.
+
+**Hardware ceiling:** every model above 4 GB splits or runs on CPU here. The
+7–11B group could not answer within 300 s, so it is not usable for interactive
+advice on this machine regardless of quality.
+
+### Retry pass (app's 3-attempt repair loop)
+
+| Model | Attempts | Total wall | Rubric | Schema |
+|---|---:|---:|---:|:--:|
+| gemma-4-E2B-it-Q4_K_M | 3 | 598 s | **20/20** | fail |
+| gemma4-e2b-rimworld | 3 | 600 s | 20/20 | fail |
+| Qwen3-1.7B-Q6_K | 3 | 463 s | 17/20 | fail |
+| llama3.2:3b | 3 | 435 s | 16/20 | fail |
+
+After retries the vocabulary is correct but the models emit scalars where the
+schema requires lists (`phases='stabilization'`). `TriggerCandidate` accepted a
+scalar only for `difficulty`/`storyteller`/`biome`, so semantically correct
+answers still failed on shape.
+
+**Fixed:** scalar→list coercion for `phases`/`threats`/`resources` (invalid
+vocabulary still fails). Verified after the change:
+
+| Model | Attempts | Total wall | Rubric | Schema |
+|---|---:|---:|---:|:--:|
+| gemma-4-E2B-it-Q4_K_M | 2 | 433 s | 19/20 | ok |
+| Qwen3-1.7B-Q6_K | 2 | 417 s | 17/20 | ok |
+
+Full report: `docs/local_llm/BENCHMARK-2026-11-05.md`.
+
+
 
 | Model | Provider | Date | Bundle version | Total | Weakest criteria | Notes |
 |---|---|---|---|---|---|---|

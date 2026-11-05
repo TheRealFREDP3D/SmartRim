@@ -6,6 +6,7 @@ process/memory status.
 
 from __future__ import annotations
 
+import contextlib
 import os
 import subprocess
 import sys
@@ -17,7 +18,7 @@ from textual.containers import Horizontal, ScrollableContainer, Vertical
 from textual.widgets import Button, Static
 
 from smartrim import data as D
-from smartrim.config import BASE_DIR, RUN_ID
+from smartrim.config import BASE_DIR, MONITOR_PID_FILE, resolve_run_id
 
 
 class WorkflowScreen(ScrollableContainer):
@@ -29,7 +30,7 @@ class WorkflowScreen(ScrollableContainer):
     # --- process helpers (cross-platform, PID-file aware) -----------------
     @staticmethod
     def _pid_file() -> Path:
-        return Path(BASE_DIR) / "memory" / "monitor.pid"
+        return Path(MONITOR_PID_FILE)
 
     def _monitor_pid(self) -> int | None:
         pf = self._pid_file()
@@ -93,10 +94,8 @@ class WorkflowScreen(ScrollableContainer):
             return
         if not self._proc_alive(pid):
             self._log(f"[{label}] Stale PID file (PID {pid} not alive) — removing")
-            try:
+            with contextlib.suppress(OSError):
                 self._pid_file().unlink()
-            except OSError:
-                pass
             return
         if "smartrim.monitor" not in self._proc_cmdline(pid):
             self._log(f"[{label}] PID {pid} is not a SmartRim monitor — refusing to kill")
@@ -112,10 +111,8 @@ class WorkflowScreen(ScrollableContainer):
             except Exception:
                 cur = None
             if cur == pid:
-                try:
+                with contextlib.suppress(OSError):
                     self._pid_file().unlink()
-                except OSError:
-                    pass
         except Exception as e:
             self._log(f"[{label}] Error stopping monitor: {e}")
 
@@ -191,14 +188,23 @@ class WorkflowScreen(ScrollableContainer):
             self._stop_ollama_cmd("Stop Ollama")
             return
         if bid == "wf-bundle":
-            self.run_cmd("Create Bundle", [sys.executable, "-m", "smartrim.debrief_bundle", RUN_ID])
+            self._run_for_active_run("Create Bundle", lambda rid: [sys.executable, "-m", "smartrim.debrief_bundle", rid])
             return
         if bid == "wf-debrief":
-            self.run_cmd("Debrief", [sys.executable, "-m", "smartrim.debrief_llm", "--run", RUN_ID])
+            self._run_for_active_run("Debrief", lambda rid: [sys.executable, "-m", "smartrim.debrief_llm", "--run", rid])
             return
         if bid == "wf-lessons":
             self.run_cmd("Add Lessons", [sys.executable, "-m", "smartrim.debrief", "add-lessons"])
             return
+
+    @work(thread=True)
+    def _run_for_active_run(self, label: str, build_cmd) -> None:
+        """Run a per-run command only when a concrete run id exists."""
+        rid = resolve_run_id()
+        if not rid:
+            self.app.call_from_thread(self._log, f"[{label}] No active run — start the monitor first")
+            return
+        self.run_cmd(label, build_cmd(rid))
 
     @work(thread=True)
     def _stop_monitor_cmd(self, label: str) -> None:

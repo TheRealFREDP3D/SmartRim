@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import os
 from typing import ClassVar
 
@@ -93,10 +94,8 @@ class SmartRimApp(App):
             pass
 
     def action_help(self) -> None:
-        try:
+        with contextlib.suppress(Exception):
             self.push_screen(HelpScreen())
-        except Exception:
-            pass
 
 
 def main() -> int:

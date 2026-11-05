@@ -31,15 +31,15 @@ class MockCounselor:
 
 ## CLI
 ```bash
-python -m smartrim.replay memory/snapshots/run-005
-python -m smartrim.replay --actions memory/reflex_actions.yaml memory/snapshots/run-005
+python -m smartrim.replay runtime/<run>/snapshots/run-005
+python -m smartrim.replay --actions memory/reflex_actions.yaml runtime/<run>/snapshots/run-005
 ```
 
 ## Output
 - Per-snapshot reflex decisions
 - Actions that would have fired
 - Precondition pass/fail
-- Comparison with actual `memory/actions.jsonl`
+- Comparison with actual `runtime/<run>/actions.jsonl`
 
 ## Notes
 - 231 lines

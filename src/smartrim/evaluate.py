@@ -5,7 +5,7 @@ summary row per run. Comparison is descriptive only (medians and ranges).
 With n=3 per arm this is a first signal, not a significance test.
 
 Usage:
-    evaluate.py summarize [--runs-dir memory/runs] [--write memory/eval-YYYY-MM-DD.md]
+    evaluate.py summarize [--runs-dir runtime] [--write runtime/eval-YYYY-MM-DD.md]
     evaluate.py compare  --runs <id> <id> ... [--write memory/eval-YYYY-MM-DD.md]
 """
 
@@ -17,8 +17,10 @@ import statistics
 from datetime import date
 
 try:
+    from smartrim import config
     from smartrim.config import BASE_DIR
 except ImportError:
+    config = None
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 SUMMARY_KEYS = [
@@ -50,10 +52,14 @@ def _load_json(path):
 
 
 def _load_end_marker(runs_dir, run_id):
-    path = os.path.join(runs_dir, f"{run_id}.end.json")
-    if not os.path.exists(path):
-        return None
-    return _load_json(path)
+    """Run-end marker: runtime/<id>/end.json (new) or <id>.end.json (legacy)."""
+    for path in (
+        os.path.join(runs_dir, run_id, "end.json"),
+        os.path.join(runs_dir, f"{run_id}.end.json"),
+    ):
+        if os.path.exists(path):
+            return _load_json(path)
+    return None
 
 
 def _load_advice(advice_file, run_id):
@@ -75,12 +81,16 @@ def _load_advice(advice_file, run_id):
 
 
 def resolve_snapshots_dir(run_id, marker=None, snapshots_root=None):
-    """Prefer the directory recorded on the end marker, then the per-run folder."""
+    """Prefer the directory recorded on the end marker, then the run's snapshots."""
     if marker and marker.get("snapshots_dir") and os.path.isdir(marker["snapshots_dir"]):
         return marker["snapshots_dir"]
-    root = snapshots_root or os.path.join(BASE_DIR, "memory", "snapshots")
-    nested = os.path.join(root, str(run_id)) if run_id else root
-    if os.path.isdir(nested) and glob.glob(os.path.join(nested, "day-*.json")):
+    if snapshots_root:
+        nested = os.path.join(snapshots_root, str(run_id)) if run_id else snapshots_root
+    elif config is not None:
+        nested = config.snapshots_dir(run_id) or ""
+    else:  # pragma: no cover
+        nested = os.path.join(BASE_DIR, "runtime", str(run_id), "snapshots")
+    if nested and os.path.isdir(nested) and glob.glob(os.path.join(nested, "day-*.json")):
         return nested
     final = (marker or {}).get("final_snapshot")
     if final:
@@ -219,6 +229,8 @@ def _arm(marker):
 
 def summarize_run(run_id, runs_dir, advice_file, snapshots_root=None):
     marker = _load_end_marker(runs_dir, run_id)
+    if not advice_file and config is not None:
+        advice_file = config.advice_file(run_id)
     advice = _load_advice(advice_file, run_id)
     snaps = _load_snapshots(resolve_snapshots_dir(run_id, marker, snapshots_root))
 
@@ -408,7 +420,13 @@ def _rows_from_dir(runs_dir, advice_file, snapshots_root):
     if not os.path.isdir(runs_dir):
         return None
     run_ids = sorted(
-        name[:-len(".end.json")] for name in os.listdir(runs_dir) if name.endswith(".end.json")
+        {name[:-len(".end.json")] for name in os.listdir(runs_dir) if name.endswith(".end.json")}
+        | {
+            name
+            for name in os.listdir(runs_dir)
+            if name != "control"
+            and os.path.exists(os.path.join(runs_dir, name, "end.json"))
+        }
     )
     return [summarize_run(run_id, runs_dir, advice_file, snapshots_root) for run_id in run_ids]
 
@@ -435,9 +453,9 @@ def main():
     parser = argparse.ArgumentParser(description="Phase 2 evaluation harness")
     sub = parser.add_subparsers(dest="cmd", required=True)
 
-    default_runs = os.path.join(BASE_DIR, "memory", "runs")
-    default_advice = os.path.join(BASE_DIR, "memory", "advice", "advice.jsonl")
-    default_snaps = os.path.join(BASE_DIR, "memory", "snapshots")
+    default_runs = config.RUNTIME_DIR if config is not None else os.path.join(BASE_DIR, "runtime")
+    default_advice = None  # auto: the run's own advice.jsonl
+    default_snaps = None   # auto: runtime/<run>/snapshots
 
     summarize = sub.add_parser("summarize")
     summarize.add_argument("--runs-dir", default=default_runs)

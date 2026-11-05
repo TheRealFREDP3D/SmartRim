@@ -56,8 +56,8 @@ game state via a local HTTP API. Get it from: [Steam Workshop](https://steamcomm
    - `python -m smartrim.cli reflex pause` - suspend reflex actions for one in-game day (cleared on day roll)
    - `python -m smartrim.cli reflex resume` - clear the pause early
    - Human actions (`order_pawn`, `build`, `designate` via CLI) are recorded to
-     `memory/last_human_action.json` and defer reflexes for 60 seconds.
-   - Reflex actions are audited to `memory/actions.jsonl` (gitignored) and never touch
+     `runtime/control/last_human_action.json` and defer reflexes for 60 seconds.
+   - Reflex actions are audited to `runtime/<run>/actions.jsonl` (gitignored) and never touch
      `advice_log` or `auto_pauses`.
 
 ## Layout
@@ -65,7 +65,7 @@ game state via a local HTTP API. Get it from: [Steam Workshop](https://steamcomm
 - `src/smartrim/` - Python package (monitor, situation, lessons, outcomes, evaluate, debrief, llm, wiki, reflex_actor, reflex_preconditions, cli, counselor, config, mcp_client, say_daily, quests, replay, advice_log, debrief_llm, debrief_bundle, eval_models, logging_config)
 - `schemas/` - JSON schemas for lessons, advice, snapshots
 - `docs/local_llm/ollama/` - Modelfiles for the tuned Ollama models (`gemma4-e2b-rimworld`, `qwen3-rimworld`)
-- `memory/` - persistent knowledge base (lessons.jsonl, phases, wiki cache, run data)
+- `memory/` - durable knowledge base (lessons.jsonl, wiki cache, phases, rubrics); runtime state lives in `runtime/`
 - `tests/` - pytest suite
 - `*.ps1` / `*.sh` - Cross-platform installer and launcher scripts
 - `scratchpad/` - optional one-off scripts (gitignored; create if needed)
@@ -83,13 +83,31 @@ python -m smartrim.wiki convert   # regenerate memory/wiki/*.md from the raw cac
 
 ## Runtime data
 
-`memory/snapshots/`, `memory/debriefs/`, `memory/alerts/`,
-`memory/monitor.log` are gitignored. Archive completed runs by copying their
-snapshot directory before starting a new run.
+Everything disposable lives under `runtime/` and is gitignored:
 
-The following runtime files are also gitignored and written by the reflex actor:
-`memory/actions.jsonl`, `memory/reflex.lock`, `memory/reflex_pause.json`,
-`memory/last_human_action.json`.
+```
+runtime/
+  control/                  # stable, no run id needed
+    active.json             # {"run_id","pid","arm","started_at"} written at monitor start
+    monitor.pid  monitor.log  monitor.err.log  monitor.startup.lock
+    reflex.lock  reflex_pause.json  last_human_action.json
+    monitor.watchdog.log  monitor.watchdog.stop
+  run-010-adv/              # one directory per run
+    end.json  meta.json
+    snapshots/  timelapse/  debriefs/  candidates/  alerts/
+    advice.jsonl  actions.jsonl  quests.json
+```
+
+`RUN_ID` is allocated by the monitor at startup (`run-NNN-adv` / `run-NNN-obs`)
+and published in `runtime/control/active.json`. Every other process (TUI,
+dashboard, CLI) resolves the active run from that file instead of guessing.
+
+`memory/` keeps only durable knowledge: `lessons.jsonl`, `lessons.sqlite`
+(derived), `wiki/`, `phases.md`, rubrics and `reflex_actions.yaml`.
+
+Deleting `runtime/` is always safe; it rebuilds on the next monitor start.
+Archive a completed run with `python -m smartrim.debrief add-lessons <run-id>`,
+which moves `runtime/<run-id>/` into `runtime/archive/`.
 
 ## Tests
 

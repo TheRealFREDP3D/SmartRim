@@ -9,23 +9,29 @@ __pycache__/
 dist/
 build/
 
+# Disposable runtime state: control/ plus one directory per run.
+# Everything here may be deleted; durable knowledge lives in memory/.
+runtime/
+
+# Legacy runtime locations (pre-runtime/), kept so old trees stay ignored.
 memory/monitor.log
 memory/monitor.err.log
 memory/monitor.pid
 memory/monitor.watchdog.log
 memory/monitor.watchdog.stop
-memory/quests/registry.json
+memory/quests/
 memory/alerts/
 memory/snapshots/
 memory/snapshots_archive*/
 memory/debriefs/
 memory/candidates/
-
-# Reflex actor runtime files
+memory/timelapse/
+memory/runs/
 memory/actions.jsonl
 memory/reflex.lock
 memory/reflex_pause.json
 memory/last_human_action.json
+memory/advice/
 
 # Raw wiki scrapes; the cleaned .md files in memory/wiki/ are the source of truth.
 # Re-scrape into this dir, then re-run the html->md conversion.
@@ -63,8 +69,4 @@ TODO.md
 /.docs
 # Local MCP config (dev-only)
 .mcp.json
-
-# Runtime generated data
-memory/timelapse/
-memory/advice/
 

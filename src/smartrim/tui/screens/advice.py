@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import contextlib
+
 from textual import work
 from textual.app import ComposeResult
 from textual.containers import Horizontal, ScrollableContainer
@@ -33,10 +35,8 @@ class AdviceScreen(ScrollableContainer):
     def on_input_changed(self, event: Input.Changed) -> None:
         # Debounce filter input
         if self._filter_timer is not None:
-            try:
+            with contextlib.suppress(Exception):
                 self._filter_timer.stop()
-            except Exception:
-                pass
         self._filter_timer = self.set_timer(0.3, self._trigger_refresh)
 
     def _trigger_refresh(self) -> None:

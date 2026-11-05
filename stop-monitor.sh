@@ -3,7 +3,7 @@
 
 set -e
 
-pidFile="memory/monitor.pid"
+pidFile="runtime/control/monitor.pid"
 
 if [ ! -f "$pidFile" ]; then
     echo "Monitor is not running (no PID file)"

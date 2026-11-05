@@ -7,8 +7,8 @@
 #   .\watchdog-monitor.ps1            # run in the foreground (Ctrl+C to stop)
 #   .\watchdog-monitor.ps1 -Detached # run in the background
 #
-# Stops when memory\monitor.watchdog.stop exists, or when the run-end marker
-# for the current RUN_ID is written (the run is over, no need to keep polling).
+# Stops when runtime\control\monitor.watchdog.stop exists, or when the run-end
+# marker for the current RUN_ID is written (the run is over, no need to keep polling).
 param(
     [switch]$Detached,
     [int]$CheckIntervalSeconds = 15
@@ -18,8 +18,12 @@ $ErrorActionPreference = "Continue"
 $root = $PSScriptRoot
 Set-Location $root
 
-$stopFile = Join-Path $root "memory\monitor.watchdog.stop"
-$logFile = Join-Path $root "memory\monitor.watchdog.log"
+$controlDir = Join-Path $root "runtime\control"
+if (-not (Test-Path $controlDir)) {
+    New-Item -ItemType Directory -Force -Path $controlDir | Out-Null
+}
+$stopFile = Join-Path $controlDir "monitor.watchdog.stop"
+$logFile = Join-Path $controlDir "monitor.watchdog.log"
 
 function Write-WatchdogLog([string]$Message) {
     $line = "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')  $Message"
@@ -51,8 +55,16 @@ while ($true) {
     }
 
     $runId = $env:RUN_ID
+    if (-not $runId) {
+        # Resume the run recorded by the monitor if it crashed mid-run.
+        $activeFile = Join-Path $controlDir "active.json"
+        if (Test-Path $activeFile) {
+            try { $runId = (Get-Content $activeFile -Raw | ConvertFrom-Json).run_id } catch { }
+        }
+    }
     if (-not $runId) { $runId = "current-run" }
-    $endMarker = Join-Path $root "memory\runs\$runId.end.json"
+    if ($runId -ne "current-run") { $env:RUN_ID = $runId }
+    $endMarker = Join-Path $root "runtime\$runId\end.json"
     if (Test-Path $endMarker) {
         Write-WatchdogLog "Run-end marker present for $runId. Exiting."
         break
@@ -66,8 +78,8 @@ while ($true) {
         $env:PYTHONPATH = Join-Path $root "src"
         Start-Process -FilePath $py `
             -ArgumentList "-u", "-m", "smartrim.monitor" `
-            -RedirectStandardOutput (Join-Path $root "memory\monitor.log") `
-            -RedirectStandardError (Join-Path $root "memory\monitor.err.log") `
+            -RedirectStandardOutput (Join-Path $controlDir "monitor.log") `
+            -RedirectStandardError (Join-Path $controlDir "monitor.err.log") `
             -NoNewWindow | Out-Null
         Start-Sleep -Seconds 5
         $procs = Get-MonitorProcess

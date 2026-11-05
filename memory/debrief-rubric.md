@@ -1,6 +1,6 @@
 # Debrief model comparison rubric
 
-Use this to score each model's answer to the same bundle (`memory/debriefs/<run>.bundle.md`).
+Use this to score each model's answer to the same bundle (`runtime/<run>/debriefs/<run>.bundle.md`).
 Score each criterion 0, 1, or 2. Record the scores in the response file under "Notes on the run".
 
 | # | Criterion | 0 | 1 | 2 |

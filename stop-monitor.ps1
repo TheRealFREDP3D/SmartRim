@@ -1,5 +1,5 @@
 ﻿# SmartRim Sidecar - Stop Reflex Monitor
-$pidFile = "memory\monitor.pid"
+$pidFile = "runtime\control\monitor.pid"
 
 if (Test-Path $pidFile) {
     $monitorPid = [int](Get-Content $pidFile -ErrorAction SilentlyContinue)

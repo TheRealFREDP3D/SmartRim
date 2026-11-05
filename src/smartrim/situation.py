@@ -731,7 +731,7 @@ def main(argv=None):
     elif cmd == "promote":
         if len(argv) < 3:
             print("usage: python -m smartrim.situation promote <candidate-file>")
-            print("  candidate-file: path to JSONL file in memory/candidates/")
+            print("  candidate-file: path to JSONL file in runtime/<run>/candidates/")
             sys.exit(1)
 
         candidate_path = argv[2]

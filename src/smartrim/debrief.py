@@ -18,11 +18,9 @@ except ImportError:
         return []
 
 try:
-    from smartrim.config import CANDIDATES_DIR, DEBRIEFS_DIR, SNAPSHOTS_DIR
+    from smartrim import config
 except ImportError:
-    CANDIDATES_DIR = None
-    DEBRIEFS_DIR = None
-    SNAPSHOTS_DIR = None
+    config = None
 
 
 MONTH_ORDER = {
@@ -138,7 +136,7 @@ def generate_debrief(snapshots_dir, debriefs_dir, run_name=None):
         f.write("\n".join(lines))
 
     # Candidate lessons file (human-reviewed before merging)
-    cand_dir = CANDIDATES_DIR
+    cand_dir = config.candidates_dir(run_name, create=True) if config else None
     if cand_dir:
         os.makedirs(cand_dir, exist_ok=True)
         cand_path = os.path.join(cand_dir, f"{run_name}.md")
@@ -171,70 +169,29 @@ def generate_debrief(snapshots_dir, debriefs_dir, run_name=None):
 
 
 def archive_runtime_artifacts(run_name):
-    base = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # repo root via src/smartrim
-    # Better: use BASE_DIR from config if available
-    try:
-        from smartrim.config import BASE_DIR
-        base = BASE_DIR
-    except Exception:
-        base = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    memory = os.path.join(base, "memory")
-    archive_root = os.path.join(memory, f"snapshots_archive_{run_name}")
-    os.makedirs(archive_root, exist_ok=True)
+    """Move one run's runtime directory into runtime/archive/<run>-<stamp>/."""
+    if config is None:
+        return None
+    src = config.run_dir(run_name)
+    if not os.path.isdir(src):
+        print(f"No runtime data for run {run_name}")
+        return None
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    dest = os.path.join(archive_root, stamp)
-    os.makedirs(dest, exist_ok=True)
-
-    # Runtime artifact directories to archive
-    artifact_dirs = ["snapshots", "timelapse", "alerts", "debriefs", "candidates", "advice"]
-    for d in artifact_dirs:
-        src_dir = os.path.join(memory, d)
-        if not os.path.exists(src_dir):
-            continue
-        # For snapshots, archive nested run dir if present
-        if d == "snapshots":
-            nested = os.path.join(src_dir, run_name)
-            if os.path.exists(nested):
-                shutil.copytree(nested, os.path.join(dest, "snapshots", run_name), dirs_exist_ok=True)
-                shutil.rmtree(nested, ignore_errors=True)
-            # also archive top-level snapshot files
-            for f in glob.glob(os.path.join(src_dir, "*")):
-                if os.path.isfile(f):
-                    os.makedirs(os.path.join(dest, "snapshots"), exist_ok=True)
-                    shutil.move(f, os.path.join(dest, "snapshots", os.path.basename(f)))
-        else:
-            target = os.path.join(dest, d)
-            if os.path.exists(src_dir) and os.listdir(src_dir):
-                shutil.copytree(src_dir, target, dirs_exist_ok=True)
-                # remove contents
-                for entry in os.listdir(src_dir):
-                    p = os.path.join(src_dir, entry)
-                    if os.path.isdir(p) and not os.path.islink(p):
-                        shutil.rmtree(p, ignore_errors=True)
-                    else:
-                        try:
-                            os.remove(p)
-                        except OSError:
-                            pass
-    # runtime files
-    for fn in ["actions.jsonl", "reflex.lock", "reflex_pause.json", "last_human_action.json", "monitor.log"]:
-        p = os.path.join(memory, fn)
-        if os.path.exists(p):
-            shutil.move(p, os.path.join(dest, fn))
+    dest = os.path.join(config.RUNTIME_DIR, "archive", f"{run_name}-{stamp}")
+    os.makedirs(os.path.dirname(dest), exist_ok=True)
+    shutil.move(src, dest)
     print(f"Archived runtime artifacts to {dest}")
     return dest
 
 
 if __name__ == "__main__":
-    from smartrim.config import DEBRIEFS_DIR, SNAPSHOTS_DIR
-
     _usage = (
         "Usage: python -m smartrim.debrief [run_id]\n"
         "       python -m smartrim.debrief add-lessons [run_id]\n"
         "\n"
         "Generates the debrief prompt, candidate-lessons template and v3 bundle for a run.\n"
-        "add-lessons archives all runtime artifacts (including screenshots) for the run.\n"
-        "Omit run_id to use the default snapshot directory (current run)."
+        "add-lessons archives that run's runtime directory.\n"
+        "Omit run_id to use the active run."
     )
 
     _args = sys.argv[1:]
@@ -243,22 +200,28 @@ if __name__ == "__main__":
         raise SystemExit(0)
 
     if _args and _args[0] == "add-lessons":
-        run_name = _args[1] if len(_args) > 1 else "current-run"
+        run_name = _args[1] if len(_args) > 1 else config.resolve_run_id()
+        if not run_name:
+            print("No active run. Pass a run id: python -m smartrim.debrief add-lessons <run-id>")
+            raise SystemExit(1)
         archive_runtime_artifacts(run_name)
         raise SystemExit(0)
 
-    run_name = _args[0] if _args else None
+    run_name = _args[0] if _args else config.resolve_run_id()
     if run_name and (run_name.startswith("-") or "/" in run_name or "\\" in run_name):
         print(f"Invalid run id: {run_name!r}\n\n{_usage}")
         raise SystemExit(2)
+    if not run_name:
+        print("No active run. Pass a run id: python -m smartrim.debrief <run-id>")
+        raise SystemExit(1)
 
-    snap_dir = SNAPSHOTS_DIR
-    if run_name:
-        nested = os.path.join(SNAPSHOTS_DIR, run_name)
-        if glob.glob(os.path.join(nested, "day-*.json")):
-            snap_dir = nested
-    generate_debrief(snap_dir, DEBRIEFS_DIR, run_name)
+    snap_dir = config.snapshots_dir(run_name)
+    if not snap_dir or not glob.glob(os.path.join(snap_dir, "day-*.json")):
+        print(f"No snapshots for run {run_name}")
+        raise SystemExit(1)
+    debrief_dir = config.debriefs_dir(run_name, create=True)
+    generate_debrief(snap_dir, debrief_dir, run_name)
     from smartrim.advice_log import read_advice
     from smartrim.debrief_bundle import build_bundle
-    rid = run_name or "current-run"
-    print("bundle:", build_bundle(snap_dir, DEBRIEFS_DIR, rid, read_advice(run_id=rid)))
+    rid = run_name
+    print("bundle:", build_bundle(snap_dir, debrief_dir, rid, read_advice(run_id=rid)))

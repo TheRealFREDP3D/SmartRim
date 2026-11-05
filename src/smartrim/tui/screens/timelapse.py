@@ -9,7 +9,7 @@ from textual.app import ComposeResult
 from textual.containers import ScrollableContainer
 from textual.widgets import Button, Static
 
-from smartrim.config import RUN_ID
+from smartrim.config import resolve_run_id
 
 
 class TimelapseScreen(ScrollableContainer):
@@ -31,14 +31,19 @@ class TimelapseScreen(ScrollableContainer):
         try:
             from smartrim.timelapse import list_captures
 
-            data = list_captures(RUN_ID)
+            data = list_captures(resolve_run_id())
             files = data.get("files", [])
-            d = data.get("dir", "")
-            info = f"Run: {data.get('run_id','?')}  Captures: {len(files)}  Dir: {d}"
-            frames = "\n".join(files[-10:]) if files else "No captures yet."
-            gif_path = os.path.join(d, "timelapse.gif") if d else ""
-            if gif_path and os.path.exists(gif_path):
-                frames += f"\nGIF: {gif_path}"
+            d = data.get("dir") or ""
+            run_id = data.get("run_id")
+            if run_id is None:
+                info = "No active run — no captures yet."
+                frames = "Start the monitor to begin a session."
+            else:
+                info = f"Run: {run_id}  Captures: {len(files)}  Dir: {d}"
+                frames = "\n".join(files[-10:]) if files else "No captures yet."
+                gif_path = os.path.join(d, "timelapse.gif") if d else ""
+                if gif_path and os.path.exists(gif_path):
+                    frames += f"\nGIF: {gif_path}"
         except Exception as e:
             info = f"[red]Timelapse unavailable: {e}[/red]"
             frames = ""

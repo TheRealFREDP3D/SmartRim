@@ -6,7 +6,14 @@ import shutil
 import tempfile
 import unittest
 
-from smartrim.debrief_llm import _normalize_trigger, _write_candidate_lessons
+from pydantic import ValidationError
+
+from smartrim.debrief_llm import (
+    LessonCandidate,
+    TriggerCandidate,
+    _normalize_trigger,
+    _write_candidate_lessons,
+)
 
 
 class TestNormalizeTrigger(unittest.TestCase):
@@ -142,6 +149,57 @@ class TestWriteCandidateLessons(unittest.TestCase):
 
         path = _write_candidate_lessons("test-run", candidates, candidates_dir=None)
         self.assertIsNone(path)
+
+
+class TestTriggerCoercion(unittest.TestCase):
+    """Scalar scope fields must be wrapped, not rejected (benchmark finding)."""
+
+    def test_scalar_phases_threats_resources_become_lists(self):
+        trig = TriggerCandidate(
+            phases="stabilization",
+            threats="low_food",
+            resources="food_under_2_days",
+        )
+        self.assertEqual(trig.phases, ["stabilization"])
+        self.assertEqual(trig.threats, ["low_food"])
+        self.assertEqual(trig.resources, ["food_under_2_days"])
+
+    def test_none_becomes_empty_list(self):
+        trig = TriggerCandidate(phases=None, threats=None, resources=None)
+        self.assertEqual(trig.phases, [])
+        self.assertEqual(trig.threats, [])
+        self.assertEqual(trig.resources, [])
+
+    def test_any_scalar_is_kept_as_any(self):
+        trig = TriggerCandidate(phases="any", threats="any", resources="any")
+        self.assertEqual(trig.phases, ["any"])
+
+    def test_invalid_vocabulary_still_fails(self):
+        with self.assertRaises(ValidationError):
+            TriggerCandidate(phases=["stabilization"], threats=["injury"], resources=[])
+
+    def test_full_candidate_with_scalars_validates(self):
+        candidate = LessonCandidate(
+            title="Food buffer",
+            cause_chain=["Low food", "No freezer"],
+            trigger={
+                "phases": "early_survival",
+                "threats": "low_food",
+                "resources": "food_under_2_days",
+                "difficulty": "Adventure story",
+                "storyteller": "Cassandra Classic",
+                "biome": "unknown",
+            },
+            recommendation="Build a freezer",
+            rationale="Food rotted",
+            source=["Day 6, 12th of Septober"],
+            wiki_pages_used=["wiki:Food"],
+            unverified_claims=[],
+            confidence=0.5,
+        )
+        dumped = candidate.model_dump()
+        self.assertEqual(dumped["trigger"]["phases"], ["early_survival"])
+        self.assertEqual(dumped["trigger"]["threats"], ["low_food"])
 
 
 if __name__ == "__main__":

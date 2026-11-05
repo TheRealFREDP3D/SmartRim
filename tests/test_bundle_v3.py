@@ -7,7 +7,7 @@ from datetime import datetime
 
 SIDECAR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "sidecar")
 
-from smartrim import advice_log, monitor, quests
+from smartrim import advice_log, config, monitor, quests
 from smartrim.debrief_bundle import build_bundle
 from smartrim.mcp_client import McpError
 
@@ -279,12 +279,9 @@ class TestBundleV3(unittest.TestCase):
 class TestReflexSnapshots(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.mkdtemp()
-        self._old = monitor.SNAPSHOTS_DIR
-        monitor.SNAPSHOTS_DIR = self.tmp
         self.reg = os.path.join(self.tmp, "registry.json")
 
     def tearDown(self):
-        monitor.SNAPSHOTS_DIR = self._old
         shutil.rmtree(self.tmp, ignore_errors=True)
 
     def test_name_is_sortable_and_filesystem_safe(self):
@@ -307,7 +304,8 @@ class TestReflexSnapshots(unittest.TestCase):
             monitor.write_reflex_snapshot(client, run_id="t-cap", limit=2, quest_registry_path=self.reg)
         self.assertIsNone(monitor.write_reflex_snapshot(client, run_id="t-cap", limit=2,
                                                        quest_registry_path=self.reg))
-        files = [f for f in os.listdir(os.path.join(self.tmp, "t-cap")) if f.startswith("reflex-")]
+        snap_dir = config.snapshots_dir("t-cap")
+        files = [f for f in os.listdir(snap_dir) if f.startswith("reflex-")]
         self.assertEqual(len(files), 2)
 
 

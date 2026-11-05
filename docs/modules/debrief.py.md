@@ -13,7 +13,7 @@ def generate_debrief(run_id: str, snapshots_dir: str, advice_log_path: str, outp
 2. Load advice log entries
 3. Build timeline with day-by-day summary
 4. Include: alerts, resources, colonists, advice given
-5. Write markdown to `memory/debriefs/{run_id}.md`
+5. Write markdown to `runtime/<run>/debriefs/{run_id}.md`
 
 ## Output Sections
 - Run metadata (difficulty, storyteller, days)

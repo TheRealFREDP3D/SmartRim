@@ -27,5 +27,5 @@ This directory maintains a growing knowledge base from web research and gameplay
 - Cross-reference between files with `see [filename](#section)`
 
 ## Run data (gitignored)
-- `memory/snapshots/` and `memory/debriefs/` are gitignored (runtime data).
+- `runtime/<run>/snapshots/` and `runtime/<run>/debriefs/` are gitignored (runtime data).
 - Archive a completed run by copying its snapshots + debrief into `memory/session-logs/` or a dated folder before starting the next colony, so the survival baseline is preserved.

@@ -7,13 +7,17 @@
 set -e
 
 # (module launched via -m smartrim.monitor)
-logFile="memory/monitor.log"
+controlDir="runtime/control"
+logFile="$controlDir/monitor.log"
+
+# Control dir holds PID/log/lock files and the active-run pointer.
+mkdir -p "$controlDir"
 
 # Rotate oversized log files to keep them manageable
 if [ -f "$logFile" ]; then
     size=$(stat -f%z "$logFile" 2>/dev/null || stat -c%s "$logFile" 2>/dev/null)
     if [ "$size" -gt 5242880 ]; then  # 5MB
-        archive="memory/monitor.$(date +%Y%m%d-%H%M%S).log"
+        archive="$controlDir/monitor.$(date +%Y%m%d-%H%M%S).log"
         mv "$logFile" "$archive"
         echo "Rotated oversized log to $archive"
     fi
@@ -29,8 +33,8 @@ else
 fi
 
 # Atomic startup lock to prevent concurrent launches
-startupLock="memory/monitor.startup.lock"
-pidFile="memory/monitor.pid"
+startupLock="$controlDir/monitor.startup.lock"
+pidFile="$controlDir/monitor.pid"
 
 # Acquire startup lock using mkdir (atomic operation)
 if ! mkdir "$startupLock" 2>/dev/null; then
@@ -120,7 +124,7 @@ else
     echo "Starting reflex monitor (adviser ON)..."
 fi
 
-nohup $pythonExe "${pyArgs[@]}" > "$logFile" 2> "memory/monitor.err.log" &
+nohup $pythonExe "${pyArgs[@]}" > "$logFile" 2> "$controlDir/monitor.err.log" &
 child_pid=$!
 echo $child_pid > "$pidFile"
 
@@ -134,6 +138,6 @@ if ! kill -0 "$child_pid" 2>/dev/null; then
     exit 1
 fi
 
-echo "Monitor started (PID $child_pid). Alerts: memory/alerts/current.json"
+echo "Monitor started (PID $child_pid). Runtime: runtime/<run-id>/"
 echo "Log: $logFile"
 echo "Stop with: ./stop-monitor.sh"

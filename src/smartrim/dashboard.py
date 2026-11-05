@@ -10,7 +10,7 @@ from smartrim import data as _data
 from smartrim.config import (
     MCP_DELAY,
     MCP_URL,
-    RUN_ID,
+    resolve_run_id,
 )
 
 # Initialize session state for theme
@@ -299,7 +299,7 @@ def command_center_body():
     resources = (res_data or {}).get("resources", []) if isinstance(res_data, dict) else []
 
     # Load historical resource data for trend calculation
-    snapshots = load_run_snapshots(RUN_ID)
+    snapshots = load_run_snapshots(resolve_run_id() or "")
     resource_history = {}
     if snapshots and len(snapshots) >= 2:
         for snap in snapshots[-5:]:  # Last 5 snapshots
@@ -426,7 +426,7 @@ def command_center_body():
 
     # ---------- Trends (full width) ----------
     st.subheader("📈 Trends")
-    snapshots = load_run_snapshots(RUN_ID)
+    snapshots = load_run_snapshots(resolve_run_id() or "")
     if snapshots:
         tdata = []
         for snap in snapshots:
@@ -553,7 +553,7 @@ def live_monitor_tab():
 
     if game_state:
         game_connected.success("✅ Game Connected")
-        run_id_display.info(f"Run ID: {RUN_ID}")
+        run_id_display.info(f"Run ID: {resolve_run_id() or 'no active run'}")
 
         col1, col2, col3, col4 = st.columns(4)
         with col1:
@@ -610,7 +610,7 @@ def live_monitor_tab():
             st.warning(f"Could not load resource data: {e}")
     else:
         game_connected.error("❌ Game Not Connected")
-        run_id_display.info(f"Run ID: {RUN_ID}")
+        run_id_display.info(f"Run ID: {resolve_run_id() or 'no active run'}")
         st.warning("Unable to connect to RimWorld MCP server. Make sure RimWorld is running with the RimMolt mod.")
 
 
@@ -804,17 +804,21 @@ def timelapse_tab():
     except Exception as e:
         st.error(f"Timelapse module unavailable: {e}")
         return
-    data = list_captures(RUN_ID)
+    run_id = resolve_run_id()
+    data = list_captures(run_id)
+    if data["run_id"] is None:
+        st.info("No active run — no captures yet. Start the monitor to begin a session.")
+        return
     st.write(f"Run: {data['run_id']}  |  Captures: {len(data['files'])}")
     c1, c2 = st.columns(2)
     with c1:
         if st.button("📸 Capture now", width='stretch'):
-            r = capture(RUN_ID)
+            r = capture(data['run_id'])
             st.write(r)
             st.cache_data.clear()
     with c2:
         if st.button("🎞 Build GIF", width='stretch'):
-            r = build_gif(RUN_ID)
+            r = build_gif(data['run_id'])
             st.write(r)
             st.cache_data.clear()
     files = data["files"]
@@ -885,7 +889,7 @@ def main():
                                help="0 disables auto-refresh")
         run_every = None if refresh == 0 else refresh
         st.divider()
-        st.caption(f"Run: {RUN_ID} · {datetime.now().strftime('%H:%M:%S')}")
+        st.caption(f"Run: {resolve_run_id() or 'no active run'} · {datetime.now().strftime('%H:%M:%S')}")
 
     if mode == "🎯 Command Center":
         # Define fragment with chosen interval

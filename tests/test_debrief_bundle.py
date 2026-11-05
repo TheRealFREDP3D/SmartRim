@@ -92,20 +92,16 @@ class TestDebriefBundle(unittest.TestCase):
         self.assertLess(apr15, jug1)
 
     def test_outcome_and_biome_come_from_run_meta(self):
-        import smartrim.debrief_bundle as db
+        from smartrim import config
 
-        old_base = db.BASE_DIR
-        try:
-            db.BASE_DIR = self.tmp
-            os.makedirs(os.path.join(self.tmp, "memory", "runs"))
-            with open(os.path.join(self.tmp, "memory", "runs", "t-meta.meta.json"), "w") as f:
-                json.dump({"biome": "temperate forest (flat)"}, f)
-            bundle, _ = build_bundle(self.snaps, self.debs, "t-meta", advice_records=[])
-            text = open(bundle, encoding="utf-8").read()
-            self.assertIn("temperate forest (flat)", text)
-            self.assertNotIn("outcome: not stated by the user", text)
-        finally:
-            db.BASE_DIR = old_base
+        run_dir = config.run_dir("t-meta")
+        os.makedirs(run_dir, exist_ok=True)
+        with open(os.path.join(run_dir, "meta.json"), "w") as f:
+            json.dump({"biome": "temperate forest (flat)"}, f)
+        bundle, _ = build_bundle(self.snaps, self.debs, "t-meta", advice_records=[])
+        text = open(bundle, encoding="utf-8").read()
+        self.assertIn("temperate forest (flat)", text)
+        self.assertNotIn("outcome: not stated by the user", text)
 
     def test_event_digest_reports_transitions_and_urgent_advice(self):
         snaps = os.path.join(self.tmp, "events")

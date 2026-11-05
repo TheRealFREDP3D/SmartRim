@@ -37,7 +37,7 @@ echo "Installing dependencies..."
 $pythonExe -m pip install -e ".[dev]"
 
 # Ensure directories exist
-dirs=("memory/alerts" "memory/snapshots" "memory/debriefs")
+dirs=("runtime/control")
 for dir in "${dirs[@]}"; do
     if [ ! -d "$dir" ]; then
         mkdir -p "$dir"

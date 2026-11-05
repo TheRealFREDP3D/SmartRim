@@ -1,5 +1,7 @@
 import json
 import os
+import shutil
+import tempfile
 import unittest
 from unittest import mock
 
@@ -90,6 +92,21 @@ class TestNormalizeSnapshot(unittest.TestCase):
 
 
 class TestPollOnce(unittest.TestCase):
+    """poll_once writes only into runtime/<run>/ (isolated by conftest)."""
+
+    def setUp(self):
+        self._old_run_id = monitor.RUN_ID
+        self._old_observe = monitor.OBSERVE_ONLY
+        monitor.RUN_ID = "test-poll"
+        monitor.OBSERVE_ONLY = True  # no advice logging, no reflex writes
+
+    def tearDown(self):
+        monitor.RUN_ID = self._old_run_id
+        monitor.OBSERVE_ONLY = self._old_observe
+
+    def _client(self, snapshot):
+        return FakeClient(snapshot)
+
     def _client(self, snapshot):
         return FakeClient(snapshot)
 
@@ -140,8 +157,6 @@ class TestPollOnce(unittest.TestCase):
 
 class TestDebrief(unittest.TestCase):
     def test_generate_debrief_with_fixture(self):
-        import shutil
-        import tempfile
         d = tempfile.mkdtemp()
         sdir = os.path.join(d, "snapshots")
         ddir = os.path.join(d, "debriefs")
