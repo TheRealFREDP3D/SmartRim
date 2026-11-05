@@ -257,14 +257,19 @@ def _dir_has_run_data(path: str) -> bool:
 
 
 def latest_run_id() -> str | None:
-    """Newest run with real data on disk; None on a fresh checkout."""
+    """Newest run with real data on disk; None on a fresh checkout.
+
+    Run ids are allocated monotonically (run-NNN), so the highest number wins.
+    Directory mtime is only a tie-breaker: Windows directory timestamps are not
+    reliable enough to order runs on their own.
+    """
     try:
         names = os.listdir(RUNTIME_DIR)
     except OSError:
         return None
-    best: tuple[str, float] | None = None
+    candidates: list[tuple[int, float, str]] = []
     for name in names:
-        if name == "control" or name == UNSET_RUN_ID:
+        if name in ("control", "archive") or name == UNSET_RUN_ID:
             continue
         path = os.path.join(RUNTIME_DIR, name)
         if not os.path.isdir(path) or not _dir_has_run_data(path):
@@ -273,9 +278,14 @@ def latest_run_id() -> str | None:
             mtime = os.path.getmtime(path)
         except OSError:
             continue
-        if best is None or mtime > best[1]:
-            best = (name, mtime)
-    return best[0] if best else None
+        match = re.match(r"run-(\d+)", name)
+        candidates.append((int(match.group(1)) if match else -1, mtime, name))
+    if not candidates:
+        return None
+    highest = max(c[0] for c in candidates)
+    if highest >= 0:
+        return max((c for c in candidates if c[0] == highest), key=lambda c: c[1])[2]
+    return max(candidates, key=lambda c: c[1])[2]
 
 
 def _live_run_from_active() -> str | None:

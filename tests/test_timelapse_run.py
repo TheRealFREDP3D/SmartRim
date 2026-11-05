@@ -33,8 +33,9 @@ class TestLatestRunId(unittest.TestCase):
         import time
 
         now = time.time()
-        self._snapshot_run("run-001-adv", mtime=now - 3600)
-        self._snapshot_run("run-002-adv", mtime=now - 60)
+        self._snapshot_run("run-001-adv", mtime=now - 60)
+        self._snapshot_run("run-002-adv", mtime=now - 3600)
+        # Run ids are monotonic, so the number decides, not mtime.
         self.assertEqual(config.latest_run_id(), "run-002-adv")
 
     def test_env_run_id_wins(self):
