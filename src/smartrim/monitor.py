@@ -24,6 +24,7 @@ from smartrim.config import (
     SAY_DAILY_USE_LLM,
     SNAPSHOTS_DIR,
     URGENT_KEYWORDS,
+    allocate_run_id,
 )
 from smartrim.logging_config import get_logger, setup_logging
 from smartrim.mcp_client import McpClient, McpError
@@ -835,6 +836,11 @@ def main() -> None:
     setup_logging(logging.INFO)
     OBSERVE_ONLY = configure_observe_only()
     ensure_dirs()
+    global RUN_ID
+    if RUN_ID == "current-run":
+        RUN_ID = allocate_run_id("obs" if OBSERVE_ONLY else "adv")
+        import smartrim.config as _cfg
+        _cfg.RUN_ID = RUN_ID
     if not _acquire_lock():
         return
     client = McpClient(MCP_URL, delay=MCP_DELAY)

@@ -29,6 +29,12 @@ game state via a local HTTP API. Get it from: [Steam Workshop](https://steamcomm
    - First install dashboard dependencies: `pip install -e ".[dashboard]"`
    - **Windows**: `.\start-dashboard.ps1` or `streamlit run src/smartrim/dashboard.py`
    - **Linux/macOS**: `./start-dashboard.sh` or `streamlit run src/smartrim/dashboard.py`
+
+12. (Optional) Start the terminal UI (TUI):
+   - First install TUI dependencies: `pip install -e ".[tui]"` (or `pip install textual`)
+   - **Windows**: `.\start-tui.ps1` or `python -m smartrim.tui`
+   - **Linux/macOS**: `./start-tui.sh` or `python -m smartrim.tui`
+   - Keyboard-driven, 7 views (Command Center, Live Monitor, Advice, Lessons, Runs, Debriefs, Timelapse), auto-refreshes every 10s (configurable via `TUI_REFRESH`).
    - The Command Center auto-refreshes (configurable in the sidebar) and is designed to
      sit on a second monitor next to the game: alert banner, vitals, colonist cards,
      resources, current advice, reflex log, and quick actions.

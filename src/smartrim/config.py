@@ -1,4 +1,18 @@
+import glob
 import os
+import re
+
+
+def allocate_run_id(arm="adv"):
+    runs_dir = os.path.join(BASE_DIR, "memory", "runs")
+    nums = []
+    if os.path.exists(runs_dir):
+        for f in glob.glob(os.path.join(runs_dir, "*.end.json")):
+            m = re.search(r"run-(\d+)", os.path.basename(f))
+            if m:
+                nums.append(int(m.group(1)))
+    n = (max(nums) + 1) if nums else 1
+    return f"run-{n:03d}-{arm}"
 
 try:
     from dotenv import load_dotenv

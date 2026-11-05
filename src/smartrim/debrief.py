@@ -2,6 +2,7 @@ import glob
 import json
 import os
 import re
+import shutil
 import sys
 from datetime import datetime
 
@@ -169,19 +170,81 @@ def generate_debrief(snapshots_dir, debriefs_dir, run_name=None):
     return path
 
 
+def archive_runtime_artifacts(run_name):
+    base = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # repo root via src/smartrim
+    # Better: use BASE_DIR from config if available
+    try:
+        from smartrim.config import BASE_DIR
+        base = BASE_DIR
+    except Exception:
+        base = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    memory = os.path.join(base, "memory")
+    archive_root = os.path.join(memory, f"snapshots_archive_{run_name}")
+    os.makedirs(archive_root, exist_ok=True)
+    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    dest = os.path.join(archive_root, stamp)
+    os.makedirs(dest, exist_ok=True)
+
+    # Runtime artifact directories to archive
+    artifact_dirs = ["snapshots", "timelapse", "alerts", "debriefs", "candidates", "advice"]
+    for d in artifact_dirs:
+        src_dir = os.path.join(memory, d)
+        if not os.path.exists(src_dir):
+            continue
+        # For snapshots, archive nested run dir if present
+        if d == "snapshots":
+            nested = os.path.join(src_dir, run_name)
+            if os.path.exists(nested):
+                shutil.copytree(nested, os.path.join(dest, "snapshots", run_name), dirs_exist_ok=True)
+                shutil.rmtree(nested, ignore_errors=True)
+            # also archive top-level snapshot files
+            for f in glob.glob(os.path.join(src_dir, "*")):
+                if os.path.isfile(f):
+                    os.makedirs(os.path.join(dest, "snapshots"), exist_ok=True)
+                    shutil.move(f, os.path.join(dest, "snapshots", os.path.basename(f)))
+        else:
+            target = os.path.join(dest, d)
+            if os.path.exists(src_dir) and os.listdir(src_dir):
+                shutil.copytree(src_dir, target, dirs_exist_ok=True)
+                # remove contents
+                for entry in os.listdir(src_dir):
+                    p = os.path.join(src_dir, entry)
+                    if os.path.isdir(p) and not os.path.islink(p):
+                        shutil.rmtree(p, ignore_errors=True)
+                    else:
+                        try:
+                            os.remove(p)
+                        except OSError:
+                            pass
+    # runtime files
+    for fn in ["actions.jsonl", "reflex.lock", "reflex_pause.json", "last_human_action.json", "monitor.log"]:
+        p = os.path.join(memory, fn)
+        if os.path.exists(p):
+            shutil.move(p, os.path.join(dest, fn))
+    print(f"Archived runtime artifacts to {dest}")
+    return dest
+
+
 if __name__ == "__main__":
     from smartrim.config import DEBRIEFS_DIR, SNAPSHOTS_DIR
 
     _usage = (
         "Usage: python -m smartrim.debrief [run_id]\n"
+        "       python -m smartrim.debrief add-lessons [run_id]\n"
         "\n"
         "Generates the debrief prompt, candidate-lessons template and v3 bundle for a run.\n"
+        "add-lessons archives all runtime artifacts (including screenshots) for the run.\n"
         "Omit run_id to use the default snapshot directory (current run)."
     )
 
     _args = sys.argv[1:]
     if _args and _args[0] in ("-h", "--help"):
         print(_usage)
+        raise SystemExit(0)
+
+    if _args and _args[0] == "add-lessons":
+        run_name = _args[1] if len(_args) > 1 else "current-run"
+        archive_runtime_artifacts(run_name)
         raise SystemExit(0)
 
     run_name = _args[0] if _args else None
