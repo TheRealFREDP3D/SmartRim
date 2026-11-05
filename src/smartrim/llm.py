@@ -20,6 +20,9 @@ try:
         LLM_MODEL_DAILY,
         LLM_MODEL_DEBRIEF,
         LLM_PROVIDER,
+        NVIDIA_API_KEY,
+        NVIDIA_BASE_URL,
+        NVIDIA_MODEL,
         OLLAMA_BASE_URL,
     )
 except ImportError:
@@ -30,6 +33,9 @@ except ImportError:
     LLM_MODEL_CHAT = os.getenv("LLM_MODEL_CHAT", "qwen3-rimworld")
     LLM_API_KEY = os.getenv("LLM_API_KEY")
     OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+    NVIDIA_BASE_URL = os.getenv("NVIDIA_BASE_URL", "https://integrate.api.nvidia.com/v1")
+    NVIDIA_API_KEY = os.getenv("NVIDIA_API_KEY")
+    NVIDIA_MODEL = os.getenv("NVIDIA_MODEL", "nvidia/nemotron-3.5-super-vl-120b-a12b")
 
 
 def _ollama_generate(prompt, model, base_url, system=None, temperature=0.2, num_ctx=8192, think=False):
@@ -84,9 +90,10 @@ class OllamaClient:
 
 
 class OpenAIClient:
-    def __init__(self, model: str, api_key: str | None = None):
+    def __init__(self, model: str, api_key: str | None = None, base_url: str | None = None):
         self.model = model
         self.api_key = api_key or os.getenv("OPENAI_API_KEY") or os.getenv("LLM_API_KEY")
+        self.base_url = base_url
 
     def generate(
         self,
@@ -102,7 +109,7 @@ class OpenAIClient:
             import openai
         except ImportError as e:
             raise ImportError("openai SDK not installed. pip install openai") from e
-        client = openai.OpenAI(api_key=self.api_key)
+        client = openai.OpenAI(api_key=self.api_key, base_url=self.base_url)
         messages = []
         if system:
             messages.append({"role": "system", "content": system})
@@ -164,25 +171,47 @@ def get_client(provider: str | None = None, model: str | None = None, task: str 
         return OllamaClient(model=model, base_url=OLLAMA_BASE_URL)
     if provider == "openai":
         return OpenAIClient(model=model)
+    if provider == "nvidia":
+        return OpenAIClient(model=model, api_key=NVIDIA_API_KEY, base_url=NVIDIA_BASE_URL)
     if provider == "anthropic":
         return AnthropicClient(model=model)
     raise ValueError(f"Unknown provider: {provider}")
 
 
+_TASK_MODEL_ENV = {
+    "daily_advice": "LLM_MODEL_DAILY",
+    "debrief": "LLM_MODEL_DEBRIEF",
+    "chat": "LLM_MODEL_CHAT",
+}
+
+
 def resolve_model(task=None, model=None, provider=None):
-    """Resolve (provider, model) from explicit args, task registry, or config fallback."""
-    if task is not None and task in MODEL_REGISTRY:
-        reg = MODEL_REGISTRY[task]
-        if provider is None:
-            provider = reg.provider
-        if model is None:
-            model = reg.model
+    """Resolve (provider, model) from explicit args, task registry, or config fallback.
+
+    An explicit LLM_PROVIDER in the environment wins over the task registry so one
+    switch (e.g. ``LLM_PROVIDER=nvidia``) moves every task to that provider. For
+    NVIDIA the model comes from the task's env override when set
+    (``LLM_MODEL_DEBRIEF`` / ``LLM_MODEL_CHAT`` / ``LLM_MODEL_DAILY``), otherwise
+    from ``NVIDIA_MODEL``; registry names are local Ollama tags and would 404.
+    """
+    reg = MODEL_REGISTRY.get(task) if task is not None else None
+    env_provider = (os.getenv("LLM_PROVIDER") or "").strip().lower()
     if provider is None:
-        provider = LLM_PROVIDER or "ollama"
+        provider = env_provider or (reg.provider if reg else (LLM_PROVIDER or "ollama"))
+    provider = provider.lower()
+
     if model is None:
-        model = LLM_MODEL
-    if model is None:
-        model = LLM_MODEL_DEBRIEF
+        if provider == "nvidia":
+            env_model = os.getenv(_TASK_MODEL_ENV.get(task, ""), "").strip()
+            model = env_model or NVIDIA_MODEL
+        elif reg is not None and provider == reg.provider:
+            model = reg.model
+        elif LLM_MODEL:
+            model = LLM_MODEL
+        elif reg is not None:
+            model = reg.model
+        else:
+            model = LLM_MODEL_DEBRIEF
     return provider, model
 
 

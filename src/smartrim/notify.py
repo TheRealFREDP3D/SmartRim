@@ -1,8 +1,8 @@
 """Desktop notifier for SmartRim urgent alerts.
 
-Polls memory/alerts/current.json and pops a small always-on-top window (plus a
-beep) whenever a *new* urgent signature appears, so the player is alerted even
-when not looking at the second screen.
+Polls the active run's alerts/current.json and pops a small always-on-top window
+(plus a beep) whenever a *new* urgent signature appears, so the player is alerted
+even when not looking at the second screen.
 
 Usage:
     python -m smartrim.notify            # loop (default 5s)
@@ -17,17 +17,26 @@ import sys
 import time
 from datetime import datetime
 
-try:
-    from smartrim.config import ALERTS_DIR, BASE_DIR
-except ImportError:
-    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    ALERTS_DIR = os.path.join(BASE_DIR, "memory", "alerts")
+from smartrim import config
 
-NOTIFIED_FILE = os.path.join(ALERTS_DIR, "last_notified.json")
+# Optional override for tests/tooling; None means the active run's alerts dir.
+ALERTS_DIR: str | None = None
+
+
+def _alerts_dir() -> str | None:
+    return ALERTS_DIR or config.alerts_dir()
+
+
+def _notified_file() -> str | None:
+    d = _alerts_dir()
+    return os.path.join(d, "last_notified.json") if d else None
 
 
 def _load_alerts():
-    path = os.path.join(ALERTS_DIR, "current.json")
+    d = _alerts_dir()
+    if not d:
+        return []
+    path = os.path.join(d, "current.json")
     if not os.path.exists(path):
         return []
     try:
@@ -44,18 +53,22 @@ def _signature(alerts):
 
 
 def _load_last_notified():
-    if not os.path.exists(NOTIFIED_FILE):
+    path = _notified_file()
+    if not path or not os.path.exists(path):
         return None
     try:
-        with open(NOTIFIED_FILE, encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             return json.load(f).get("signature")
     except (OSError, json.JSONDecodeError, AttributeError):
         return None
 
 
 def _save_last_notified(sig):
-    os.makedirs(ALERTS_DIR, exist_ok=True)
-    with open(NOTIFIED_FILE, "w", encoding="utf-8") as f:
+    path = _notified_file()
+    if not path:
+        return
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
         json.dump({"signature": sig, "timestamp": datetime.now().isoformat()}, f)
 
 

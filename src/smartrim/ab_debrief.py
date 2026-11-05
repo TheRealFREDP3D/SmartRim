@@ -1,6 +1,6 @@
 """A/B harness: run the same debrief bundle against two models.
 
-Writes both responses to memory/debriefs/<run>.<model>.response.md for rubric scoring.
+Writes both responses to runtime/<run>/debriefs/<run>.<model>.response.md for rubric scoring.
 Usage:
     python -m smartrim.ab_debrief --run run-006-obs-cassandra --models gemma4-e2b-rimworld qwen3-rimworld
 """
@@ -8,8 +8,7 @@ import argparse
 import os
 import sys
 
-from smartrim import debrief_llm
-from smartrim.config import DEBRIEFS_DIR
+from smartrim import config, debrief_llm
 
 
 def main():
@@ -33,8 +32,8 @@ def main():
                                              system=debrief_llm.BUNDLE_SYSTEM if is_bundle else None)
         # Write response file named <run>.<model>.response.md
         safe_model = model.replace(":", "_").replace("/", "_")
-        out_path = os.path.join(DEBRIEFS_DIR, f"{args.run}.{safe_model}.response.md")
-        os.makedirs(DEBRIEFS_DIR, exist_ok=True)
+        debrief_dir = config.debriefs_dir(args.run, create=True)
+        out_path = os.path.join(debrief_dir, f"{args.run}.{safe_model}.response.md")
         with open(out_path, "w", encoding="utf-8") as f:
             if isinstance(analysis, dict) and "raw" in analysis:
                 f.write(analysis["raw"])

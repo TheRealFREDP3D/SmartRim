@@ -4,7 +4,7 @@ Consumes alerts (from ``monitor.run_reflex_checks``), a situation
 (``situation.build_situation``) and game state (``counselor.game_state``), and
 issues whitelisted state changes via ``counselor``. Ships in
 ``dry_run: true`` by default: no MCP write calls, audit records written to
-``memory/actions.jsonl``, intent logged via ``counselor.say``.
+``runtime/<run>/actions.jsonl``, intent logged via ``counselor.say``.
 
 Safety order per action:
 REFLEX_KILL -> REFLEX_PAUSE (one in-game day) -> REFLEX_LOCK (PID file) ->
@@ -18,8 +18,8 @@ import os
 from contextlib import suppress
 from datetime import datetime
 
-from smartrim import counselor
-from smartrim.config import BASE_DIR
+from smartrim import config, counselor
+from smartrim.config import UNSET_RUN_ID
 from smartrim.logging_config import get_logger
 from smartrim.reflex_preconditions import PRECONDITIONS
 
@@ -35,11 +35,29 @@ except ImportError:  # pragma: no cover - monitor always present in this repo
 
 logger = get_logger(__name__)
 
-ACTIONS_FILE = os.path.join(BASE_DIR, "memory", "actions.jsonl")
-HUMAN_ACTION_FILE = os.path.join(BASE_DIR, "memory", "last_human_action.json")
-REFLEX_LOCK_FILE = os.path.join(BASE_DIR, "memory", "reflex.lock")
-REFLEX_PAUSE_FILE = os.path.join(BASE_DIR, "memory", "reflex_pause.json")
-REFLEX_ACTIONS_FILE = os.path.join(BASE_DIR, "memory", "reflex_actions.yaml")
+# Control files live in runtime/control so the CLI can find them without a run id.
+# Per-run audit ledgers live in runtime/<run_id>/. None means "resolve from config".
+ACTIONS_FILE: str | None = None
+HUMAN_ACTION_FILE: str | None = None
+REFLEX_LOCK_FILE: str | None = None
+REFLEX_PAUSE_FILE: str | None = None
+REFLEX_ACTIONS_FILE: str = config.REFLEX_ACTIONS_FILE
+
+
+def _actions_file() -> str | None:
+    return ACTIONS_FILE or config.actions_file(create=True)
+
+
+def _human_action_file() -> str | None:
+    return HUMAN_ACTION_FILE or config.HUMAN_ACTION_FILE
+
+
+def _lock_file() -> str:
+    return REFLEX_LOCK_FILE or config.REFLEX_LOCK_FILE
+
+
+def _pause_file() -> str:
+    return REFLEX_PAUSE_FILE or config.REFLEX_PAUSE_FILE
 
 ENV_KILL = "REFLEX_KILL"
 ENV_DRY_RUN = "REFLEX_DRY_RUN"
@@ -228,7 +246,7 @@ def load_reflex_actions(path=REFLEX_ACTIONS_FILE):
 
 
 def _read_jsonl(path):
-    if not os.path.exists(path):
+    if not path or not os.path.exists(path):
         return []
     out = []
     with open(path, encoding="utf-8") as f:
@@ -250,6 +268,8 @@ def _write_jsonl(path, records):
 
 
 def _append_jsonl(path, record):
+    if not path:
+        return
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "a", encoding="utf-8") as f:
         f.write(json.dumps(record, default=str) + "\n")
@@ -264,16 +284,16 @@ def _alert_id(alert):
 class ReflexActor:
     """Evaluate and execute whitelisted reflex actions."""
 
-    def __init__(self, run_id=None, actions_path=REFLEX_ACTIONS_FILE,
-                 actions_file=ACTIONS_FILE, human_action_file=HUMAN_ACTION_FILE,
-                 lock_file=REFLEX_LOCK_FILE, pause_file=REFLEX_PAUSE_FILE,
+    def __init__(self, run_id=None, actions_path=None,
+                 actions_file=None, human_action_file=None,
+                 lock_file=None, pause_file=None,
                  counselor_mod=None):
-        self.run_id = run_id or os.getenv("RUN_ID", "current-run")
-        self.actions_path = actions_path
-        self.actions_file = actions_file
-        self.human_action_file = human_action_file
-        self.lock_file = lock_file
-        self.pause_file = pause_file
+        self.run_id = run_id or os.getenv("RUN_ID", UNSET_RUN_ID)
+        self.actions_path = actions_path or REFLEX_ACTIONS_FILE
+        self.actions_file = actions_file or _actions_file()
+        self.human_action_file = human_action_file or _human_action_file()
+        self.lock_file = lock_file or _lock_file()
+        self.pause_file = pause_file or _pause_file()
         self.counselor = counselor_mod or counselor
         self.actions = load_reflex_actions(self.actions_path)
 
@@ -528,14 +548,17 @@ class ReflexActor:
         return results
 
 
-def close_action_outcomes(snapshot_summary, run_id=None, actions_file=ACTIONS_FILE):
+def close_action_outcomes(snapshot_summary, run_id=None, actions_file=None):
     """Close executed action records by reusing outcomes._close_advice.
 
     Mirrors monitor.close_outcomes for the actions audit log. Idempotent.
     """
     if outcomes is None:
         return False
-    run_id = run_id or os.getenv("RUN_ID", "current-run")
+    run_id = run_id or os.getenv("RUN_ID", UNSET_RUN_ID)
+    actions_file = actions_file or _actions_file()
+    if not actions_file or not os.path.exists(actions_file):
+        return False
     records = _read_jsonl(actions_file)
     changed = False
     check_at = _now()

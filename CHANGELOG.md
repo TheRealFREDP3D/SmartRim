@@ -7,8 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Runtime state moved to `runtime/`.** Per-run artifacts (snapshots, timelapse,
+  debriefs, candidates, alerts, advice, actions, quests, run markers) now live in
+  `runtime/<run-id>/`; process files (pid, logs, locks, active-run pointer) live in
+  `runtime/control/`. `memory/` keeps only durable knowledge (lessons, wiki, docs).
+- `RUN_ID` is allocated by the monitor at startup and published to
+  `runtime/control/active.json`; `config.resolve_run_id()` replaces the
+  `current-run` placeholder as the cross-process run lookup.
+- `current-run` is now an explicit `UNSET_RUN_ID` sentinel and can never name a
+  directory.
+- Start/stop/watchdog scripts and the TUI/dashboard read the new control paths;
+  the watchdog resumes the run recorded in `active.json` after a crash.
+- `tests/conftest.py` isolates `runtime/` per test, so the suite cannot write into
+  the repo (this leak previously produced phantom `current-run` snapshots).
+
 ### Added
 
+- NVIDIA NIM provider (`LLM_PROVIDER=nvidia`, `NVIDIA_BASE_URL`, `NVIDIA_API_KEY`, `NVIDIA_MODEL`):
+  OpenAI-compatible client, env provider overrides the task registry, and the model comes
+  from `NVIDIA_MODEL` rather than a local Ollama tag
 - Desktop notifier for urgent alerts (`python -m smartrim.notify` + start/stop scripts): pop-up + beep when a *new* urgent signature appears
 - Dashboard resource icons (`src/smartrim/assets/icons/`)
 - Stale-advice sweeper `advice_log.expire_stale()` — open records older than 3 days auto-expire before each debrief (wired into `outcomes.close_outcomes`, plus CLI `python -m smartrim.advice_log expire [days]`)

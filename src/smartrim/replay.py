@@ -83,9 +83,15 @@ def _snapshot_sort_key(path):
 
 
 def _load_snapshots(run_id, snapshots_root):
-    root = snapshots_root or os.path.join(BASE_DIR, "memory", "snapshots")
-    dest = os.path.join(root, str(run_id))
-    if not os.path.isdir(dest):
+    if snapshots_root:
+        dest = os.path.join(snapshots_root, str(run_id))
+    else:
+        try:
+            from smartrim import config
+            dest = config.snapshots_dir(run_id) or ""
+        except ImportError:  # pragma: no cover
+            dest = os.path.join(BASE_DIR, "runtime", str(run_id), "snapshots")
+    if not dest or not os.path.isdir(dest):
         return []
     paths = []
     for pattern in ("day-*.json", "reflex-*.json"):

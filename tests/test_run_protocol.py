@@ -1,10 +1,6 @@
 import json
 import os
-import shutil
-import tempfile
 import unittest
-
-SIDECAR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "sidecar")
 
 from smartrim import monitor
 from smartrim.monitor import run_length_reached
@@ -61,24 +57,13 @@ class TestRunLength(unittest.TestCase):
 
 
 class TestRunEndMarker(unittest.TestCase):
-    def setUp(self):
-        self.tmp = tempfile.mkdtemp()
-        self.orig_alerts = monitor.ALERTS_DIR
-        self.orig_snaps = monitor.SNAPSHOTS_DIR
-        monitor.ALERTS_DIR = os.path.join(self.tmp, "memory", "alerts")
-        monitor.SNAPSHOTS_DIR = os.path.join(self.tmp, "memory", "snapshots")
-        os.makedirs(monitor.ALERTS_DIR)
-        os.makedirs(monitor.SNAPSHOTS_DIR)
-
-    def tearDown(self):
-        monitor.ALERTS_DIR = self.orig_alerts
-        monitor.SNAPSHOTS_DIR = self.orig_snaps
-        shutil.rmtree(self.tmp, ignore_errors=True)
+    """Runtime paths come from config, which conftest points at a tmp dir."""
 
     def test_marker_written_and_game_paused(self):
         client = FakeClient()
         marker = monitor.write_run_end(client, "test-run", 10)
         self.assertTrue(os.path.exists(marker))
+        self.assertEqual(os.path.basename(marker), "end.json")
         data = json.load(open(marker, encoding="utf-8"))
         self.assertEqual(data["run_id"], "test-run")
         self.assertEqual(data["days_passed"], 10)

@@ -5,14 +5,14 @@
 The LLM → lesson pipeline has been streamlined to reduce manual friction. Previously, a human had to read the LLM analysis, manually write a JSONL lesson, and run `lessons.py validate` to merge it. Now, the pipeline is automated:
 
 1. LLM generates candidate lessons from debrief bundle
-2. Candidates are written to `memory/candidates/<run>-<timestamp>.jsonl`
+2. Candidates are written to `runtime/<run>/candidates/<run>-<timestamp>.jsonl`
 3. Human reviews and promotes with `lessons.py promote <candidate-file>`
 4. Promoted lessons are assigned L-XXXX IDs and merged into `lessons.jsonl`
 
 ## What Changed
 
 ### Before (Manual Copy-Paste-Edit)
-1. `debrief_llm.write_analysis()` writes analysis to `memory/debriefs/<run>-llm.md`
+1. `debrief_llm.write_analysis()` writes analysis to `runtime/<run>/debriefs/<run>-llm.md`
 2. Human reads analysis, manually writes JSONL lesson
 3. Human runs `lessons.py validate` to check schema
 4. Human appends to `lessons.jsonl`
@@ -20,8 +20,8 @@ The LLM → lesson pipeline has been streamlined to reduce manual friction. Prev
 
 ### After (Automated Pipeline)
 1. `debrief_llm.write_analysis()` writes:
-   - Analysis to `memory/debriefs/<run>-llm.md` (unchanged)
-   - Candidates to `memory/candidates/<run>-<timestamp>.jsonl` (new)
+   - Analysis to `runtime/<run>/debriefs/<run>-llm.md` (unchanged)
+   - Candidates to `runtime/<run>/candidates/<run>-<timestamp>.jsonl` (new)
 2. Human runs `lessons.py promote <candidate-file>`
 3. Interactive review: select lessons, edit status/confidence
 4. Promoted lessons get L-XXXX IDs and are appended to `lessons.jsonl`
@@ -68,12 +68,12 @@ python -c "import sys; sys.path.insert(0, 'src'); from smartrim.debrief_llm impo
 ```
 
 This creates:
-- `memory/debriefs/run-005-llm.md` (analysis)
-- `memory/candidates/run-005-20261025-123456.jsonl` (candidate lessons)
+- `runtime/<run>/debriefs/run-005-llm.md` (analysis)
+- `runtime/<run>/candidates/run-005-20261025-123456.jsonl` (candidate lessons)
 
 ### Promote candidates to lessons
 ```bash
-python -c "import sys; sys.path.insert(0, 'src'); from smartrim.situation import main; main(['lessons.py', 'promote', 'memory/candidates/run-005-20261025-123456.jsonl'])"
+python -c "import sys; sys.path.insert(0, 'src'); from smartrim.situation import main; main(['lessons.py', 'promote', 'runtime/<run>/candidates/run-005-20261025-123456.jsonl'])"
 ```
 
 Interactive flow:

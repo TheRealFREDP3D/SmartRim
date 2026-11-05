@@ -16,15 +16,27 @@ import re
 from datetime import datetime
 
 try:
-    from smartrim.config import BASE_DIR
+    from smartrim import config
 except ImportError:
-    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    config = None
+
+# Optional override for tests/tooling; None means runtime/<run_id>/quests.json.
+DEFAULT_REGISTRY = None
 
 try:
     from smartrim.mcp_client import McpError
 except ImportError:
     McpError = Exception
-DEFAULT_REGISTRY = os.path.join(BASE_DIR, "memory", "quests", "registry.json")
+
+
+def _registry_path(path=None, create=False):
+    if path:
+        return path
+    if DEFAULT_REGISTRY:
+        return DEFAULT_REGISTRY
+    if config is None:
+        return None
+    return config.quests_file(create=create)
 
 TAG_RE = re.compile(r"<[^>]+>")
 SPACE_RE = re.compile(r"\s+")
@@ -41,7 +53,9 @@ def clean_text(value):
 
 
 def load_registry(path=None):
-    path = path or DEFAULT_REGISTRY
+    path = _registry_path(path)
+    if not path:
+        return {}
     try:
         with open(path, encoding="utf-8") as f:
             data = json.load(f)
@@ -52,7 +66,9 @@ def load_registry(path=None):
 
 
 def save_registry(registry, path=None):
-    path = path or DEFAULT_REGISTRY
+    path = _registry_path(path, create=True)
+    if not path:
+        return
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
         json.dump({"quests": registry}, f, indent=2, sort_keys=True)

@@ -1,11 +1,12 @@
 """AI-ready debrief bundle (template-only, no API calls).
 
 Writes one self-contained markdown file per run that can be pasted into any chat model:
-  memory/debriefs/<run>.bundle.md          the prompt + data
-  memory/debriefs/<run>.response.md        empty template for the model's answer
+  runtime/<run>/debriefs/<run>.bundle.md          the prompt + data
+  runtime/<run>/debriefs/<run>.response.md        empty template for the model's answer
 The wiki facts block is loaded from memory/wiki_facts.yaml (single source of truth).
 """
 
+import contextlib
 import glob
 import json
 import logging
@@ -16,11 +17,15 @@ from datetime import datetime
 logger = logging.getLogger(__name__)
 
 try:
-    from smartrim.config import BASE_DIR
+    from smartrim import config
 except ImportError:
+    config = None
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-WIKI_FACTS_PATH = os.path.join(BASE_DIR, "memory", "wiki_facts.yaml")
+WIKI_FACTS_PATH = (
+    config.WIKI_FACTS_FILE if config else os.path.join(BASE_DIR, "memory", "wiki_facts.yaml")
+)
+WIKI_DIR = config.WIKI_DIR if config else os.path.join(BASE_DIR, "memory", "wiki")
 
 
 def _load_wiki_facts():
@@ -106,7 +111,268 @@ PHASE_NOTE = (
 )
 
 # Bump when the bundle's shape changes: scores are only comparable within one version.
-BUNDLE_VERSION = "v3 (quests, event causes, incident snapshots)"
+BUNDLE_VERSION = "v3.1 (wiki excerpts, quests, event causes, incident snapshots)"
+
+# Wiki pages that tend to matter for each phase and threat. Used to pick the
+# 3-5 excerpts pasted into section 3, so the model gets grounded facts instead
+# of an empty "source of truth" block.
+PHASE_PAGES = {
+    "early_survival": ["Basics", "Quickstart_Guides", "Food", "Temperature", "Growing", "Raid", "Medicine"],
+    "stabilization": ["Base", "Room_roles", "Mood", "Recreation", "Research", "Defense"],
+    "raid_prep": ["Raid", "Defense", "Cover", "Turret", "Sandbags", "Shooting"],
+    "expansion": ["Wealth", "Research", "Power", "Trade", "Base"],
+    "crisis": ["Mental_break", "Raid", "Firefighting", "Injury", "Medicine"],
+}
+
+THREAT_PAGES = {
+    "low_food": ["Food", "Meals", "Farming", "Growing", "Cooking", "Cooler", "Stockpile"],
+    "medical_untreated": ["Medicine", "Injury", "Infection", "Doctoring", "Hospital"],
+    "colonist_injured": ["Injury", "Medicine", "Doctoring", "Pain"],
+    "mood_break_risk": ["Mood", "Mental_break", "Recreation", "Thoughts", "Joy"],
+    "raid_incoming": ["Raid", "Defense", "Cover", "Sandbags", "Turret"],
+    "predator_near_worker": ["Animals", "Taming", "Shooting", "Melee"],
+    "danger_high": ["Defense", "Raid", "Cover", "Turret"],
+    "threat_response": ["Firefighting", "Raid", "Defense"],
+    "idle_colonists": ["Schedule", "Skills", "Work"],
+    "colonist_downed": ["Injury", "Medicine", "Hospital"],
+    "colony_death": ["Mental_break", "Injury", "Raid"],
+}
+
+FALLBACK_PAGES = ["Basics", "Food", "Mood"]
+
+# Lines that are navigation chrome or maintenance banners rather than wiki prose.
+_NAV_PREFIXES = (
+    "jump to",
+    "contents",
+    "from rimworld wiki",
+    "see also",
+    "navigation",
+    "retrieved from",
+    "categories:",
+)
+
+_BOILERPLATE_MARKERS = (
+    "suggested to be rewritten",
+    "you can help the rimworld wiki",
+    "this article is a stub",
+    "candidate for deletion",
+    "needs citation",
+)
+
+# Snapshot alerts are raw game alerts and carry no monitor category, so map
+# their labels to the threat vocabulary used by lessons and page selection.
+LABEL_THREATS = (
+    ("combatant unarmed", "danger_high"),
+    ("need defenses", "danger_high"),
+    ("low medicine", "medical_untreated"),
+    ("medicine stock low", "medical_untreated"),
+    ("medical treatment", "medical_untreated"),
+    ("injur", "colonist_injured"),
+    ("break risk", "mood_break_risk"),
+    ("low food", "low_food"),
+    ("food stock low", "low_food"),
+    ("meal source", "low_food"),
+    ("starv", "low_food"),
+    ("predator", "predator_near_worker"),
+    ("raid", "raid_incoming"),
+    ("hostile", "raid_incoming"),
+    ("fire", "threat_response"),
+)
+
+
+def _wiki_dir():
+    return globals().get("WIKI_DIR") or (config.WIKI_DIR if config else "")
+
+
+def _clean_wiki_text(text):
+    text = re.sub(r"&#\d+;", " ", str(text or ""))
+    text = re.sub(r"<[^>]+>", " ", text)
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def _is_prose(paragraph):
+    low = paragraph.lower()
+    if len(paragraph) < 80:
+        return False
+    if any(low.startswith(prefix) for prefix in _NAV_PREFIXES):
+        return False
+    if any(marker in low for marker in _BOILERPLATE_MARKERS):
+        return False
+    return "." in paragraph
+
+
+def _wiki_excerpt(page, keywords, max_chars=420):
+    """Best short paragraph from a wiki page for the run's keywords."""
+    path = os.path.join(_wiki_dir(), f"{page}.md")
+    try:
+        with open(path, encoding="utf-8") as f:
+            raw = f.read()
+    except OSError:
+        return None
+    paragraphs = []
+    for block in re.split(r"\n\s*\n", raw):
+        cleaned = _clean_wiki_text(block)
+        if _is_prose(cleaned):
+            paragraphs.append(cleaned)
+    if not paragraphs:
+        return None
+    low_keywords = [k.lower() for k in keywords if k and len(k) > 3]
+
+    def score(paragraph):
+        low = paragraph.lower()
+        return sum(low.count(k) for k in low_keywords)
+
+    best = max(paragraphs, key=score)
+    if score(best) == 0:
+        best = paragraphs[0]
+    if len(best) > max_chars:
+        cut = best[:max_chars]
+        dot = cut.rfind(". ")
+        best = cut[: dot + 1] if dot > max_chars // 2 else cut.rstrip() + "..."
+    return best
+
+
+def _select_wiki_pages(phase, threats, keywords, limit=5):
+    """Rank cached wiki pages for this run and return at most ``limit`` names.
+
+    One page per threat first, so a medical-heavy run does not return five
+    medicine pages and nothing about mood or defense.
+    """
+    available = set()
+    with contextlib.suppress(OSError):
+        available = {name[:-3] for name in os.listdir(_wiki_dir()) if name.endswith(".md")}
+    scores = {}
+    for page in PHASE_PAGES.get(phase, []):
+        scores[page] = scores.get(page, 0) + 3
+    for threat in threats or ():
+        for page in THREAT_PAGES.get(threat, []):
+            scores[page] = scores.get(page, 0) + 4
+    text = " ".join(keywords or ()).lower()
+    for page in list(scores):
+        if page.replace("_", " ").lower() in text:
+            scores[page] += 2
+
+    def usable(page):
+        return not available or page in available
+
+    picked = []
+    for threat in sorted(threats or ()):
+        candidates = [p for p in THREAT_PAGES.get(threat, []) if p in scores and usable(p)]
+        if candidates:
+            best = max(candidates, key=lambda p: (scores[p], p))
+            if best not in picked:
+                picked.append(best)
+        if len(picked) >= limit:
+            return picked[:limit]
+
+    for page in PHASE_PAGES.get(phase, []):
+        if len(picked) >= limit:
+            return picked[:limit]
+        if page not in picked and usable(page):
+            picked.append(page)
+
+    ranked = sorted(scores, key=lambda p: (-scores[p], p))
+    for page in ranked:
+        if len(picked) >= limit:
+            return picked[:limit]
+        if page not in picked and usable(page):
+            picked.append(page)
+
+    if len(picked) < 3:
+        for page in FALLBACK_PAGES:
+            if page not in picked and usable(page):
+                picked.append(page)
+            if len(picked) >= 3:
+                break
+    return picked[:limit]
+
+
+def _threats_from_labels(alerts):
+    """Map raw game-alert labels to the threat vocabulary."""
+    found = set()
+    for alert in alerts or ():
+        label = str(alert.get("label") or alert.get("message") or "").lower()
+        for needle, threat in LABEL_THREATS:
+            if needle in label:
+                found.add(threat)
+    return found
+
+
+def _run_wiki_context(snapshots, advice_records, meta):
+    """Phase, threats and keyword text for choosing wiki excerpts.
+
+    Threats are unioned across every snapshot (and the advice log), not just the
+    last one: a food crisis or an unarmed-colonist warning that resolved before
+    the final day still shaped the run and should inform the excerpts.
+    """
+    phase = "early_survival"
+    threats = set()
+    keywords = []
+    try:
+        from smartrim import situation as _situation
+    except ImportError:
+        _situation = None
+
+    for snap in snapshots or ():
+        alerts = (snap.get("alerts") or {}).get("activeAlerts") or []
+        if _situation is not None:
+            with contextlib.suppress(KeyError, TypeError, ValueError):
+                threats |= _situation.build_threats(alerts)
+        threats |= _threats_from_labels(alerts)
+        for alert in alerts:
+            label = alert.get("label") or alert.get("message")
+            if label:
+                keywords.append(str(label))
+
+    last = snapshots[-1] if snapshots else {}
+    summary = last.get("summary") or {}
+    last_alerts = (last.get("alerts") or {}).get("activeAlerts") or []
+    if _situation is not None:
+        with contextlib.suppress(KeyError, TypeError, ValueError):
+            phase = _situation.classify_phase(summary, last_alerts)
+
+    for rec in advice_records or []:
+        text = rec.get("situation")
+        if text:
+            keywords.append(str(text))
+        for risk in rec.get("risks") or []:
+            if isinstance(risk, dict) and risk.get("label"):
+                label = str(risk["label"])
+                keywords.append(label)
+                threats |= _threats_from_labels([{"label": label}])
+    keywords.append(str((meta or {}).get("biome") or ""))
+    keywords.append(str((meta or {}).get("storyteller") or ""))
+    return phase, threats, keywords
+
+
+def _wiki_section_lines(snapshots, advice_records, meta):
+    """Section 3 body: curated facts when present, else selected wiki excerpts."""
+    if WIKI_FACTS:
+        return [f"- {fact}" for fact in WIKI_FACTS]
+    phase, threats, keywords = _run_wiki_context(snapshots, advice_records, meta)
+    selected = _select_wiki_pages(phase, threats, keywords)
+
+    # Some pages are stubs with no prose (Defense is one), so fall back to the
+    # next page for the same threat rather than leaving a slot empty.
+    alternates = []
+    for threat in sorted(threats or ()):
+        alternates.extend(THREAT_PAGES.get(threat, []))
+    alternates.extend(PHASE_PAGES.get(phase, []))
+    alternates.extend(FALLBACK_PAGES)
+
+    lines = []
+    seen = set()
+    for page in list(selected) + alternates:
+        if page in seen or len(lines) >= 5:
+            continue
+        seen.add(page)
+        excerpt = _wiki_excerpt(page, keywords)
+        if excerpt:
+            lines.append(f"- **{page.replace('_', ' ')}** (wiki:{page}): {excerpt}")
+    if not lines:
+        lines.append("- (no wiki pages matched this run; do not assume wiki facts)")
+    return lines
+
 
 
 def _parse_day(day_str):
@@ -348,10 +614,12 @@ def _event_digest(snapshots, advice_records, reflex_snapshots=None):
 
 
 def _load_run_marker(run_id):
-    """Read memory/runs/<run_id>.end.json (monitor) and <run_id>.meta.json (human/agent notes)."""
+    """Read runtime/<run_id>/end.json (monitor) and meta.json (human/agent notes)."""
     out = {}
-    for suffix in (".meta.json", ".end.json"):
-        path = os.path.join(BASE_DIR, "memory", "runs", f"{run_id}{suffix}")
+    for name in ("meta.json", "end.json"):
+        path = config.run_file(name, run_id) if config else None
+        if not path:
+            continue
         try:
             with open(path, encoding="utf-8") as f:
                 data = json.load(f)
@@ -495,13 +763,15 @@ def build_bundle(snapshots_dir, debriefs_dir, run_id, advice_records=None, meta=
     lines.append("")
     lines.append("## 3. Wiki facts (source of truth, verified)")
     lines.append("")
-    for f in WIKI_FACTS:
-        lines.append(f"- {f}")
+    lines.extend(_wiki_section_lines(snapshots, advice_records or [], meta))
     lines.append("")
     lines.append("## 4. Claims that are NOT verified (do not treat as facts)")
     lines.append("")
-    for u in UNVERIFIED:
-        lines.append(f"- {u}")
+    if UNVERIFIED:
+        for u in UNVERIFIED:
+            lines.append(f"- {u}")
+    else:
+        lines.append("- (none recorded for this run)")
     lines.append("")
     lines.append("## 5. Colony timeline")
     lines.append("")
@@ -552,13 +822,16 @@ if __name__ == "__main__":
     import sys
 
     from smartrim.advice_log import read_advice
-    from smartrim.config import DEBRIEFS_DIR, SNAPSHOTS_DIR
 
-    run = sys.argv[1] if len(sys.argv) > 1 else "current-run"
-    snap_dir = SNAPSHOTS_DIR
-    nested = os.path.join(SNAPSHOTS_DIR, run)
-    if glob.glob(os.path.join(nested, "day-*.json")):
-        snap_dir = nested
-    b, r = build_bundle(snap_dir, DEBRIEFS_DIR, run, read_advice(run_id=run))
+    run = sys.argv[1] if len(sys.argv) > 1 else config.resolve_run_id()
+    if not run:
+        print("No active run. Pass a run id: python -m smartrim.debrief_bundle <run-id>")
+        raise SystemExit(1)
+    snap_dir = config.snapshots_dir(run)
+    if not snap_dir:
+        print(f"No snapshots for run {run}")
+        raise SystemExit(1)
+    debrief_dir = config.debriefs_dir(run, create=True)
+    b, r = build_bundle(snap_dir, debrief_dir, run, read_advice(run_id=run))
     print("bundle:", b)
     print("response template:", r)

@@ -9,8 +9,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
+from smartrim import config
 from smartrim.config import (
-    ALERTS_DIR,
     HEALTH_THRESHOLD,
     MCP_DELAY,
     MCP_URL,
@@ -22,8 +22,11 @@ from smartrim.config import (
     RUN_ID,
     SAY_DAILY_HOURS,
     SAY_DAILY_USE_LLM,
-    SNAPSHOTS_DIR,
+    UNSET_RUN_ID,
     URGENT_KEYWORDS,
+    allocate_run_id,
+    clear_active_run,
+    write_active_run,
 )
 from smartrim.logging_config import get_logger, setup_logging
 from smartrim.mcp_client import McpClient, McpError
@@ -66,17 +69,26 @@ REFLEX_SNAPSHOT_LIMIT = 40
 
 
 def ensure_dirs() -> None:
-    os.makedirs(ALERTS_DIR, exist_ok=True)
-    os.makedirs(SNAPSHOTS_DIR, exist_ok=True)
+    os.makedirs(config.CONTROL_DIR, exist_ok=True)
+    run_id = config.resolve_run_id()
+    if run_id:
+        config.alerts_dir(run_id, create=True)
+        config.snapshots_dir(run_id, create=True)
 
 
-SIG_FILE = os.path.join(ALERTS_DIR, "last_signature.json")
+def _sig_file(run_id=None) -> str | None:
+    """Per-run alert signature file, used to avoid re-logging a restart."""
+    alert_dir = config.alerts_dir(run_id or RUN_ID, create=True)
+    return os.path.join(alert_dir, "last_signature.json") if alert_dir else None
 
 
 def _load_last_sig() -> dict[str, Any] | None:
     """Load the last alert signature so a monitor restart does not re-log the same urgent set."""
+    path = _sig_file()
+    if not path:
+        return None
     try:
-        with open(SIG_FILE, encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             data = json.load(f)
         if data.get("run_id") == RUN_ID and isinstance(data.get("sig"), list):
             return tuple(tuple(x) for x in data["sig"])
@@ -86,9 +98,12 @@ def _load_last_sig() -> dict[str, Any] | None:
 
 
 def _save_last_sig(sig: dict[str, Any]) -> None:
+    path = _sig_file()
+    if not path:
+        return
     try:
-        os.makedirs(ALERTS_DIR, exist_ok=True)
-        with open(SIG_FILE, "w", encoding="utf-8") as f:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as f:
             json.dump({"run_id": RUN_ID, "sig": [list(x) for x in (sig or ())]}, f, indent=2)
     except (OSError, TypeError, ValueError) as e:
         logger.debug("sig save failed: %s", e)
@@ -285,15 +300,15 @@ def normalize_snapshot(snapshot: dict[str, Any]) -> dict[str, Any]:
         if isinstance(snapshot.get("summary"), dict) and "error" not in snapshot["summary"]:
             rid = snapshot.get("run_id")
             if rid:
-                meta_path = os.path.join(os.path.dirname(ALERTS_DIR), "runs", f"{rid}.meta.json")
-                if os.path.exists(meta_path):
+                meta_path = config.run_file("meta.json", rid)
+                if meta_path and os.path.exists(meta_path):
                     with open(meta_path, encoding="utf-8") as _f:
                         _meta = json.load(_f)
                     if isinstance(_meta, dict) and _meta.get("biome"):
                         snapshot["summary"]["biome"] = _meta.get("biome")
                 else:
-                    end_path = os.path.join(os.path.dirname(ALERTS_DIR), "runs", f"{rid}.end.json")
-                    if os.path.exists(end_path):
+                    end_path = config.run_file("end.json", rid)
+                    if end_path and os.path.exists(end_path):
                         with open(end_path, encoding="utf-8") as _f:
                             _end = json.load(_f)
                         if isinstance(_end, dict) and _end.get("biome"):
@@ -304,11 +319,12 @@ def normalize_snapshot(snapshot: dict[str, Any]) -> dict[str, Any]:
 
 
 def snapshot_dir_for(run_id, root=None):
-    """Per-run snapshot directory. Empty run_id stays on the shared root (legacy)."""
-    root = root or SNAPSHOTS_DIR
+    """Per-run snapshot directory: runtime/<run_id>/snapshots."""
+    if root:
+        return os.path.join(root, str(run_id))
     if not run_id:
-        return root
-    return os.path.join(root, str(run_id))
+        return ""
+    return config.snapshots_dir(run_id) or ""
 
 
 def write_snapshot(client: McpClient, day_label: str, run_id: str | None = None, prefix: str = "day", quest_registry_path: str | None = None,
@@ -349,6 +365,8 @@ def write_snapshot(client: McpClient, day_label: str, run_id: str | None = None,
 
     safe = str(effective_day).replace("/", "-").replace("\\", "-")
     dest = snapshot_dir_for(run_id)
+    if not dest:
+        return None
     os.makedirs(dest, exist_ok=True)
     stem = filename_stem or f"{prefix}-{safe}"
     path = os.path.join(dest, f"{stem}.json")
@@ -396,7 +414,7 @@ def configure_observe_only(argv=None):
     return os.getenv("OBSERVE_ONLY", "0") == "1"
 
 
-PID_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "memory", "monitor.pid")
+PID_FILE = config.MONITOR_PID_FILE
 
 
 def _pid_alive(pid):
@@ -432,7 +450,8 @@ def _pid_alive(pid):
         return False
 
 
-def _acquire_lock(path=PID_FILE) -> bool:
+def _acquire_lock(path=None) -> bool:
+    path = path or config.MONITOR_PID_FILE
     if os.path.exists(path):
         try:
             with open(path) as f:
@@ -453,7 +472,8 @@ def _acquire_lock(path=PID_FILE) -> bool:
     return True
 
 
-def _release_lock(path=PID_FILE):
+def _release_lock(path=None):
+    path = path or config.MONITOR_PID_FILE
     try:
         if os.path.exists(path):
             with open(path) as f:
@@ -483,14 +503,15 @@ def write_run_end(client: McpClient, run_id: str, days_passed: int, observe_only
     final_day = f"end-day-{days_passed}"
     path = write_snapshot(client, final_day, run_id=run_id)
     status = {}
-    try:
-        with open(path, encoding="utf-8") as fh:
-            status = (json.load(fh).get("status") or {})
-    except (OSError, json.JSONDecodeError):
-        status = {}
-    runs_dir = os.path.join(os.path.dirname(ALERTS_DIR), "runs")
-    os.makedirs(runs_dir, exist_ok=True)
-    marker = os.path.join(runs_dir, f"{run_id}.end.json")
+    if path:
+        try:
+            with open(path, encoding="utf-8") as fh:
+                status = (json.load(fh).get("status") or {})
+        except (OSError, json.JSONDecodeError):
+            status = {}
+    marker = config.run_file("end.json", run_id, create=True)
+    if not marker:
+        return None
     with open(marker, "w", encoding="utf-8") as f:
         json.dump({
             "run_id": run_id,
@@ -677,16 +698,17 @@ class PollResult:
 def poll_once(client: McpClient, state: PollResult) -> PollResult:
     """Perform one monitoring iteration. Mutates and returns ``state``."""
     # Ensure runtime directories exist so alert/snapshot writes never fail
-    # on a fresh checkout (memory/alerts and memory/snapshots are gitignored).
+    # on a fresh checkout (everything under runtime/ is disposable).
     ensure_dirs()
     try:
         conditions = client.call_tool("get_conditions")
         if not conditions or not isinstance(conditions, dict) or conditions.get("error"):
             state.consecutive_errors += 1
             if state.consecutive_errors >= 5:
-                alert_path = os.path.join(ALERTS_DIR, "current.json")
-                with open(alert_path, "w") as f:
-                    json.dump([{"type": "urgent", "category": "system", "message": f"MCP unreachable for {state.consecutive_errors} polls", "timestamp": datetime.now().isoformat()}], f, indent=2)
+                alert_dir = config.alerts_dir(RUN_ID, create=True)
+                if alert_dir:
+                    with open(os.path.join(alert_dir, "current.json"), "w") as f:
+                        json.dump([{"type": "urgent", "category": "system", "message": f"MCP unreachable for {state.consecutive_errors} polls", "timestamp": datetime.now().isoformat()}], f, indent=2)
             return state
 
         state.consecutive_errors = 0
@@ -743,9 +765,10 @@ def poll_once(client: McpClient, state: PollResult) -> PollResult:
 
         state.poll_count += 1
         alerts = run_reflex_checks(client)
-        alert_path = os.path.join(ALERTS_DIR, "current.json")
-        with open(alert_path, "w") as f:
-            json.dump(alerts, f, indent=2)
+        alert_dir = config.alerts_dir(RUN_ID, create=True)
+        if alert_dir:
+            with open(os.path.join(alert_dir, "current.json"), "w") as f:
+                json.dump(alerts, f, indent=2)
 
         if day_rolled and adviser_acts(OBSERVE_ONLY):
             try:
@@ -821,28 +844,37 @@ def poll_once(client: McpClient, state: PollResult) -> PollResult:
         state.consecutive_errors += 1
         logger.error(f"Error: {e}")
         if state.consecutive_errors >= 5:
-            alert_path = os.path.join(ALERTS_DIR, "current.json")
-            with open(alert_path, "w") as f:
-                json.dump([{"type": "urgent", "category": "system", "message": f"Monitor error: {e}", "timestamp": datetime.now().isoformat()}], f, indent=2)
+            alert_dir = config.alerts_dir(RUN_ID, create=True)
+            if alert_dir:
+                with open(os.path.join(alert_dir, "current.json"), "w") as f:
+                    json.dump([{"type": "urgent", "category": "system", "message": f"Monitor error: {e}", "timestamp": datetime.now().isoformat()}], f, indent=2)
 
     return state
 
 
 def main() -> None:
-    global OBSERVE_ONLY
+    global OBSERVE_ONLY, RUN_ID
     # Configure the root logger before anything else, otherwise every logger.info()
     # below is discarded (no handlers) and the monitor appears silent.
     setup_logging(logging.INFO)
     OBSERVE_ONLY = configure_observe_only()
-    ensure_dirs()
+    if RUN_ID == UNSET_RUN_ID:
+        RUN_ID = allocate_run_id("obs" if OBSERVE_ONLY else "adv")
+        import smartrim.config as _cfg
+        _cfg.RUN_ID = RUN_ID
+        # The actor is built at import time with the placeholder; give it the real id
+        # so the actions audit log and outcome closing agree on the same run.
+        if _REFLEX_ACTOR is not None:
+            _REFLEX_ACTOR.run_id = RUN_ID
     if not _acquire_lock():
         return
+    write_active_run(RUN_ID, pid=os.getpid(), arm=_run_arm(), observe_only=OBSERVE_ONLY)
+    ensure_dirs()
     client = McpClient(MCP_URL, delay=MCP_DELAY)
 
     logger.info(f"Reflex monitor started. Polling every {POLL_INTERVAL}s (PID {os.getpid()}) "
                 f"run={RUN_ID} observe_only={OBSERVE_ONLY}")
-    logger.info(f"Alerts: {ALERTS_DIR}")
-    logger.info(f"Snapshots: {snapshot_dir_for(RUN_ID)}")
+    logger.info(f"Runtime: {config.run_dir(RUN_ID)}")
 
     state = PollResult(last_sig=_load_last_sig())
     try:
@@ -859,6 +891,7 @@ def main() -> None:
                 logger.debug(f"Timelapse capture failed: {e}")
             time.sleep(POLL_INTERVAL)
     finally:
+        clear_active_run(pid=os.getpid())
         _release_lock()
 
 

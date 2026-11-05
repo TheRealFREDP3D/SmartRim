@@ -1,5 +1,3 @@
-import glob
-import json
 import os
 from datetime import datetime
 
@@ -8,13 +6,11 @@ import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
+from smartrim import data as _data
 from smartrim.config import (
-    ALERTS_DIR,
-    BASE_DIR,
     MCP_DELAY,
     MCP_URL,
-    RUN_ID,
-    SNAPSHOTS_DIR,
+    resolve_run_id,
 )
 
 # Initialize session state for theme
@@ -130,107 +126,45 @@ st.markdown(get_theme_css(st.session_state.theme), unsafe_allow_html=True)
 
 @st.cache_data(ttl=5)
 def load_current_alerts():
-    alert_path = os.path.join(ALERTS_DIR, "current.json")
-    if os.path.exists(alert_path):
-        with open(alert_path, encoding='utf-8') as f:
-            return json.load(f)
-    return []
-
+    return _data.load_current_alerts()
 
 @st.cache_data(ttl=60)
 def load_dismissed_alerts():
-    dismissed_path = os.path.join(ALERTS_DIR, "dismissed.jsonl")
-    dismissed = []
-    if os.path.exists(dismissed_path):
-        with open(dismissed_path, encoding='utf-8') as f:
-            for line in f:
-                if line.strip():
-                    dismissed.append(json.loads(line))
-    return dismissed
+    return _data.load_dismissed_alerts()
 
 
 def dismiss_alert(alert_message, alert_type):
-    dismissed_path = os.path.join(ALERTS_DIR, "dismissed.jsonl")
-    dismissed_entry = {
-        "message": alert_message,
-        "type": alert_type,
-        "dismissed_at": datetime.now().isoformat(),
-    }
-    with open(dismissed_path, 'a', encoding='utf-8') as f:
-        f.write(json.dumps(dismissed_entry) + '\n')
+    _data.dismiss_alert(alert_message, alert_type)
     st.cache_data.clear()
-
 
 @st.cache_data(ttl=30)
 def load_all_advice():
-    advice_path = os.path.join(BASE_DIR, "memory", "advice", "advice.jsonl")
-    advice_list = []
-    if os.path.exists(advice_path):
-        with open(advice_path, encoding='utf-8') as f:
-            for line in f:
-                if line.strip():
-                    advice_list.append(json.loads(line))
-    return advice_list
+    return _data.load_all_advice()
 
 
 @st.cache_data(ttl=60)
 def load_lessons():
-    lessons_path = os.path.join(BASE_DIR, "memory", "lessons.jsonl")
-    lessons_list = []
-    if os.path.exists(lessons_path):
-        with open(lessons_path, encoding='utf-8') as f:
-            for line in f:
-                if line.strip():
-                    lessons_list.append(json.loads(line))
-    return lessons_list
+    return _data.load_lessons()
 
 
 @st.cache_data(ttl=60)
 def load_runs_metadata():
-    runs_dir = os.path.join(BASE_DIR, "memory", "runs")
-    runs = []
-    if os.path.exists(runs_dir):
-        for file in glob.glob(os.path.join(runs_dir, "*.end.json")):
-            with open(file, encoding='utf-8') as f:
-                runs.append(json.load(f))
-    return runs
+    return _data.load_runs_metadata()
 
 
 @st.cache_data(ttl=60)
 def load_run_snapshots(run_id):
-    snapshot_dir = os.path.join(SNAPSHOTS_DIR, run_id)
-    snapshots = []
-    if os.path.exists(snapshot_dir):
-        for file in glob.glob(os.path.join(snapshot_dir, "day-*.json")):
-            with open(file, encoding='utf-8') as f:
-                snapshots.append(json.load(f))
-        snapshots.sort(key=lambda x: x.get('day', ''))
-    return snapshots
+    return _data.load_run_snapshots(run_id)
 
 
 @st.cache_data(ttl=60)
 def load_debriefs():
-    debriefs_dir = os.path.join(BASE_DIR, "memory", "debriefs")
-    debriefs = []
-    if os.path.exists(debriefs_dir):
-        for file in glob.glob(os.path.join(debriefs_dir, "*.md")):
-            with open(file, encoding='utf-8') as f:
-                debriefs.append({'filename': os.path.basename(file), 'content': f.read()})
-    return debriefs
+    return _data.load_debriefs()
 
 
 @st.cache_data(ttl=10)
 def load_reflex_actions(limit=8):
-    path = os.path.join(BASE_DIR, "memory", "actions.jsonl")
-    out = []
-    if os.path.exists(path):
-        with open(path, encoding='utf-8') as f:
-            for line in f:
-                if line.strip():
-                    out.append(json.loads(line))
-    out.reverse()
-    return out[:limit]
-
+    return _data.load_reflex_actions(limit)
 
 def get_live_game_state():
     try:
@@ -246,63 +180,34 @@ def get_live_game_state():
 
 @st.cache_data(ttl=8)
 def fetch_colonists():
-    try:
-        from smartrim.mcp_client import McpClient
-        client = McpClient(MCP_URL, delay=MCP_DELAY)
-        return client.call_tool("list_colonists")
-    except (McpError, ValueError, KeyError, TypeError, OSError, AttributeError):
-        return None
+    return _data.fetch_colonists()
 
 
 @st.cache_data(ttl=8)
 def fetch_resources():
-    try:
-        from smartrim.mcp_client import McpClient
-        client = McpClient(MCP_URL, delay=MCP_DELAY)
-        return client.call_tool("get_resources")
-    except (McpError, ValueError, KeyError, TypeError, OSError, AttributeError):
-        return None
+    return _data.fetch_resources()
 
 
 def mood_color(mood):
-    try:
-        m = float(mood)
-    except (TypeError, ValueError):
-        return "#6b7280"
-    if m < 5:
-        return "#dc2626"
-    if m < 20:
-        return "#f59e0b"
-    if m < 35:
-        return "#eab308"
-    return "#16a34a"
+    return _data.mood_color(mood)
 
 
 # ---------- Command Center (dense second-screen layout) ----------
 
 def _reflex_enabled():
-    return os.getenv("REFLEX_KILL", "1") != "1"
+    return _data.reflex_enabled()
 
 
 def _reflex_dry_run():
-    return os.getenv("REFLEX_DRY_RUN", "1") != "0"
+    return _data.reflex_dry_run()
 
 
 def _game_colonists(game_state):
-    if not game_state:
-        return []
-    bundled = (game_state.get("bundled") or {}).get("list_colonists") or {}
-    return bundled.get("colonists", []) or []
+    return _data.game_colonists(game_state)
 
 
 def _game_alerts(game_state):
-    if not game_state:
-        return [], []
-    bundled = (game_state.get("bundled") or {}).get("get_alerts") or {}
-    active = bundled.get("activeAlerts", []) or []
-    recent_msgs = bundled.get("recentMessages", []) or []
-    return active, recent_msgs
-
+    return _data.game_alerts(game_state)
 
 def command_center_body():
     game_state = get_live_game_state()
@@ -394,7 +299,7 @@ def command_center_body():
     resources = (res_data or {}).get("resources", []) if isinstance(res_data, dict) else []
 
     # Load historical resource data for trend calculation
-    snapshots = load_run_snapshots(RUN_ID)
+    snapshots = load_run_snapshots(resolve_run_id() or "")
     resource_history = {}
     if snapshots and len(snapshots) >= 2:
         for snap in snapshots[-5:]:  # Last 5 snapshots
@@ -521,7 +426,7 @@ def command_center_body():
 
     # ---------- Trends (full width) ----------
     st.subheader("📈 Trends")
-    snapshots = load_run_snapshots(RUN_ID)
+    snapshots = load_run_snapshots(resolve_run_id() or "")
     if snapshots:
         tdata = []
         for snap in snapshots:
@@ -648,7 +553,7 @@ def live_monitor_tab():
 
     if game_state:
         game_connected.success("✅ Game Connected")
-        run_id_display.info(f"Run ID: {RUN_ID}")
+        run_id_display.info(f"Run ID: {resolve_run_id() or 'no active run'}")
 
         col1, col2, col3, col4 = st.columns(4)
         with col1:
@@ -705,7 +610,7 @@ def live_monitor_tab():
             st.warning(f"Could not load resource data: {e}")
     else:
         game_connected.error("❌ Game Not Connected")
-        run_id_display.info(f"Run ID: {RUN_ID}")
+        run_id_display.info(f"Run ID: {resolve_run_id() or 'no active run'}")
         st.warning("Unable to connect to RimWorld MCP server. Make sure RimWorld is running with the RimMolt mod.")
 
 
@@ -899,17 +804,21 @@ def timelapse_tab():
     except Exception as e:
         st.error(f"Timelapse module unavailable: {e}")
         return
-    data = list_captures(RUN_ID)
+    run_id = resolve_run_id()
+    data = list_captures(run_id)
+    if data["run_id"] is None:
+        st.info("No active run — no captures yet. Start the monitor to begin a session.")
+        return
     st.write(f"Run: {data['run_id']}  |  Captures: {len(data['files'])}")
     c1, c2 = st.columns(2)
     with c1:
         if st.button("📸 Capture now", width='stretch'):
-            r = capture(RUN_ID)
+            r = capture(data['run_id'])
             st.write(r)
             st.cache_data.clear()
     with c2:
         if st.button("🎞 Build GIF", width='stretch'):
-            r = build_gif(RUN_ID)
+            r = build_gif(data['run_id'])
             st.write(r)
             st.cache_data.clear()
     files = data["files"]
@@ -980,7 +889,7 @@ def main():
                                help="0 disables auto-refresh")
         run_every = None if refresh == 0 else refresh
         st.divider()
-        st.caption(f"Run: {RUN_ID} · {datetime.now().strftime('%H:%M:%S')}")
+        st.caption(f"Run: {resolve_run_id() or 'no active run'} · {datetime.now().strftime('%H:%M:%S')}")
 
     if mode == "🎯 Command Center":
         # Define fragment with chosen interval

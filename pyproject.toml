@@ -29,6 +29,13 @@ dashboard = [
     "pandas",
     "plotly",
 ]
+tui = [
+    "textual>=0.80",
+]
+
+[project.scripts]
+smartrim = "smartrim.cli:main"
+smartrim-tui = "smartrim.tui.app:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

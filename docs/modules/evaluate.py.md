@@ -33,9 +33,9 @@ python -m smartrim.evaluate compare --runs run-001 run-002 run-003
 - First food crisis day
 
 ## Data Sources
-- `memory/runs/{run_id}.end.json` — run marker
-- `memory/snapshots/{run_id}/day-*.json` — daily snapshots
-- `memory/advice/advice.jsonl` — advice log (filtered by run_id)
+- `runtime/{run_id}/end.json` — run marker
+- `runtime/<run>/snapshots/{run_id}/day-*.json` — daily snapshots
+- `runtime/<run>/advice.jsonl` — advice log (filtered by run_id)
 
 ## Notes
 - 462 lines

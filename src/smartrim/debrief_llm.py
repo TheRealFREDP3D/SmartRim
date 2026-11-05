@@ -5,7 +5,7 @@ Usage:
     python sidecar/debrief_llm.py --run run-005-adv-cassandra
 
 Reads a debrief bundle markdown, sends it to the local Ollama model, and
-writes the analysis to memory/debriefs/<run>-llm.md (or prints to stdout).
+writes the analysis to runtime/<run>/debriefs/<run>-llm.md (or prints to stdout).
 """
 import argparse
 import glob
@@ -19,7 +19,7 @@ import urllib.error
 from typing import Literal
 
 import requests
-from pydantic import BaseModel, ConfigDict, ValidationError, confloat
+from pydantic import BaseModel, ConfigDict, ValidationError, confloat, field_validator
 from tenacity import (
     before_sleep_log,
     retry,
@@ -28,7 +28,8 @@ from tenacity import (
     wait_exponential,
 )
 
-from smartrim.config import CANDIDATES_DIR, DEBRIEFS_DIR
+from smartrim import config
+from smartrim.config import resolve_run_id
 from smartrim.llm import generate
 
 logger = logging.getLogger(__name__)
@@ -121,6 +122,22 @@ class TriggerCandidate(BaseModel):
     difficulty: Literal['any'] | DIFFICULTY_T | list[DIFFICULTY_T] = 'any'
     storyteller: Literal['any'] | STORYTELLER_T | list[STORYTELLER_T] = 'any'
     biome: Literal['any'] | str | list[str] = 'any'
+
+    @field_validator("phases", "threats", "resources", mode="before")
+    @classmethod
+    def _as_list(cls, value):
+        """Accept a single scalar for list-valued scope fields.
+
+        Small models routinely emit ``"phases": "stabilization"`` or
+        ``"threats": "low_food"`` after the retry loop fixes the vocabulary.
+        Rejecting the whole candidate on shape alone throws away a correct
+        answer, so wrap scalars instead. ``None`` becomes an empty list.
+        """
+        if value is None:
+            return []
+        if isinstance(value, str):
+            return [value]
+        return value
 
 
 class LessonCandidate(BaseModel):
@@ -305,33 +322,47 @@ def analyze_debrief(bundle_text, model=None, temperature=0.3, system=None, task=
             return {"raw": raw}
 
 
+# Optional override for tests/tooling; None means runtime/<run_id>/debriefs.
+DEBRIEFS_DIR: str | None = None
+
+
+def _debriefs_dir(run_id):
+    """Debrief directory for a run (module override wins, for tests)."""
+    if DEBRIEFS_DIR:
+        return DEBRIEFS_DIR
+    return config.debriefs_dir(run_id, create=True)
+
+
 def find_bundle(run_id):
     """Find the debrief bundle file for a run."""
     if os.path.exists(run_id):
         return run_id
-    # Search in debriefs dir (bundle files are named <run_id>.bundle.md)
-    if DEBRIEFS_DIR:
+    # Search in the run's debriefs dir (bundle files are named <run_id>.bundle.md)
+    d = _debriefs_dir(run_id)
+    if d:
         for name in (f"{run_id}.bundle.md", f"{run_id}.md"):
-            path = os.path.join(DEBRIEFS_DIR, name)
+            path = os.path.join(d, name)
             if os.path.exists(path):
                 return path
     # Search in candidates
-    if CANDIDATES_DIR:
-        for f in glob.glob(os.path.join(CANDIDATES_DIR, f"*{run_id}*")):
+    cand = config.candidates_dir(run_id)
+    if cand:
+        for f in glob.glob(os.path.join(cand, f"*{run_id}*")):
             return f
     return None
 
 
 def write_analysis(run_id, analysis, model):
-    """Write the LLM analysis to a file.
+    """Write the LLM analysis to the run's debriefs directory.
 
-    Also writes candidate lessons to memory/candidates/<run>-<timestamp>.jsonl
+    Also writes candidate lessons to runtime/<run>/candidates/<run>-<timestamp>.jsonl
     if the analysis contains validated lesson candidates.
     """
-    if not DEBRIEFS_DIR:
+    debrief_dir = _debriefs_dir(run_id)
+    if not debrief_dir:
         return None
-    os.makedirs(DEBRIEFS_DIR, exist_ok=True)
-    path = os.path.join(DEBRIEFS_DIR, f"{run_id}-llm.md")
+    os.makedirs(debrief_dir, exist_ok=True)
+    path = os.path.join(debrief_dir, f"{run_id}-llm.md")
     with open(path, "w", encoding="utf-8") as f:
         f.write(f"# LLM Debrief Analysis: {run_id}\n\n")
         f.write(f"Model: {model}\n")
@@ -356,7 +387,9 @@ def write_analysis(run_id, analysis, model):
 
     # Write candidate lessons to JSONL if available
     if isinstance(analysis, dict) and "lessons" in analysis:
-        candidates_path = _write_candidate_lessons(run_id, analysis["lessons"], candidates_dir=CANDIDATES_DIR)
+        candidates_path = _write_candidate_lessons(
+            run_id, analysis["lessons"], candidates_dir=config.candidates_dir(run_id, create=True)
+        )
         if candidates_path:
             logger.info(f"Wrote candidate lessons to: {candidates_path}")
 
@@ -364,7 +397,7 @@ def write_analysis(run_id, analysis, model):
 
 
 def _write_candidate_lessons(run_id, lessons, candidates_dir=None):
-    """Write candidate lessons to memory/candidates/<run>-<timestamp>.jsonl.
+    """Write candidate lessons to runtime/<run>/candidates/<run>-<timestamp>.jsonl.
 
     Each lesson is converted to the full lesson schema with:
     - id: auto-generated as "C-<run_id>-<index>" (candidate format, not lesson format)
@@ -451,6 +484,11 @@ def main():
 
     # Find bundle
     bundle_path = args.bundle_file
+    if not args.run and not bundle_path:
+        args.run = resolve_run_id()
+        if not args.run:
+            print("No active run. Pass --run <run-id> or a bundle path.")
+            sys.exit(1)
     if args.run:
         bundle_path = find_bundle(args.run)
     if not bundle_path or not os.path.exists(bundle_path):

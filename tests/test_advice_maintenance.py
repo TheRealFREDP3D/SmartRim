@@ -1,6 +1,6 @@
 """Sweeper + single-owner tests for the advice log.
 
-- advice_log is the single owner of memory/advice/advice.jsonl (outcomes delegates to it).
+- advice_log is the single owner of runtime/<run>/advice.jsonl (outcomes delegates to it).
 - expire_stale ages out old `open` records so stale advice stops polluting debrief bundles.
 """
 

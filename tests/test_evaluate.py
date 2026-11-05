@@ -136,27 +136,16 @@ class TestObserveOnly(unittest.TestCase):
         self.assertTrue(monitor.adviser_acts(False))
 
     def test_end_marker_records_arm(self):
-        tmp = tempfile.mkdtemp()
-        orig_alerts = monitor.ALERTS_DIR
-        orig_snaps = monitor.SNAPSHOTS_DIR
-        monitor.ALERTS_DIR = os.path.join(tmp, "alerts")
-        monitor.SNAPSHOTS_DIR = os.path.join(tmp, "snapshots")
-        os.makedirs(monitor.ALERTS_DIR)
-        try:
-            client = _Client()
-            marker = monitor.write_run_end(client, "off-run", 11, observe_only=True, urgent_alerts=2, auto_pauses=0)
-            data = json.load(open(marker, encoding="utf-8"))
-            self.assertEqual(data["arm"], "off")
-            self.assertEqual(data["auto_pauses"], 0)
-            self.assertEqual(data["urgent_alerts"], 2)
-            self.assertTrue(os.path.exists(data["final_snapshot"]))
-            self.assertIn("off-run", data["snapshots_dir"])
-            # observe-only runs never pause, even at run end
-            self.assertFalse(any(c[0] == "set_speed" for c in client.calls))
-        finally:
-            monitor.ALERTS_DIR = orig_alerts
-            monitor.SNAPSHOTS_DIR = orig_snaps
-            shutil.rmtree(tmp, ignore_errors=True)
+        client = _Client()
+        marker = monitor.write_run_end(client, "off-run", 11, observe_only=True, urgent_alerts=2, auto_pauses=0)
+        data = json.load(open(marker, encoding="utf-8"))
+        self.assertEqual(data["arm"], "off")
+        self.assertEqual(data["auto_pauses"], 0)
+        self.assertEqual(data["urgent_alerts"], 2)
+        self.assertTrue(os.path.exists(data["final_snapshot"]))
+        self.assertIn("off-run", data["snapshots_dir"])
+        # observe-only runs never pause, even at run end
+        self.assertFalse(any(c[0] == "set_speed" for c in client.calls))
 
 
 class _Client:

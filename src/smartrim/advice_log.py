@@ -1,6 +1,6 @@
 """Advice log: append-only JSONL of every piece of advice given, with outcome tracking.
 
-This module is the single owner of ``memory/advice/advice.jsonl``: every read and every
+This module is the single owner of ``runtime/<run>/advice.jsonl``: every read and every
 rewrite (update_outcome, set_event_cause, outcomes.close_outcomes, expire_stale) goes
 through ``read_advice`` / ``_read_all`` / ``save_atomic`` here, so there is exactly one
 atomic-write implementation to keep correct.
@@ -11,16 +11,26 @@ import os
 import uuid
 from datetime import datetime, timedelta
 
-try:
-    from smartrim.config import BASE_DIR
-except ImportError:
-    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-ADVICE_DIR = os.path.join(BASE_DIR, "memory", "advice")
-ADVICE_FILE = os.path.join(ADVICE_DIR, "advice.jsonl")
+from smartrim import config
+
+# Optional overrides for tests/tooling. None means "the active run's ledger":
+# runtime/<run_id>/advice.jsonl
+ADVICE_DIR: str | None = None
+ADVICE_FILE: str | None = None
+
+
+def _advice_path(create: bool = False) -> str | None:
+    if ADVICE_FILE:
+        return ADVICE_FILE
+    if ADVICE_DIR:
+        return os.path.join(ADVICE_DIR, "advice.jsonl")
+    return config.advice_file(create=create)
 
 
 def _ensure_dir():
-    os.makedirs(ADVICE_DIR, exist_ok=True)
+    path = _advice_path(create=True)
+    if path:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
 
 
 def new_advice_id():
@@ -57,17 +67,18 @@ def log_advice(run_id, snapshot_day, trigger, severity, situation, actions,
         "context_tokens": context_tokens,
         "event_cause": event_cause,
     }
-    with open(ADVICE_FILE, "a", encoding="utf-8") as f:
+    with open(_advice_path(create=True), "a", encoding="utf-8") as f:
         f.write(json.dumps(record, default=str) + "\n")
     return advice_id
 
 
 def _read_all():
     """Read every advice record (no filtering)."""
-    if not os.path.exists(ADVICE_FILE):
+    path = _advice_path()
+    if not path or not os.path.exists(path):
         return []
     out = []
-    with open(ADVICE_FILE, encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         for line in f:
             line = line.strip()
             if line:
@@ -77,7 +88,6 @@ def _read_all():
 
 def read_advice(run_id=None, status=None):
     """Read advice records, optionally filtered by run_id or status."""
-    _ensure_dir()
     return [
         rec for rec in _read_all()
         if (not run_id or rec.get("run_id") == run_id)
@@ -87,12 +97,14 @@ def read_advice(run_id=None, status=None):
 
 def save_atomic(records):
     """Atomically replace the advice file with the given records (tmp write + os.replace)."""
-    _ensure_dir()
-    tmp_path = ADVICE_FILE + ".tmp"
+    path = _advice_path(create=True)
+    if not path:
+        return
+    tmp_path = path + ".tmp"
     with open(tmp_path, "w", encoding="utf-8") as f:
         for rec in records:
             f.write(json.dumps(rec, default=str) + "\n")
-    os.replace(tmp_path, ADVICE_FILE)
+    os.replace(tmp_path, path)
 
 
 def _mutate(predicate, mutator):

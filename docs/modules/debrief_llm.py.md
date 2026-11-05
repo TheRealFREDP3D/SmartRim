@@ -13,8 +13,8 @@ def analyze_debrief(bundle_text, model=None, temperature=0.3, system=None, task=
 2. Extract JSON from ```json fence
 3. Validate Section A (lesson candidates) with Pydantic schema
 4. On schema failure: retry once with error prompt (max 3 attempts)
-5. Write analysis to `memory/debriefs/{run_id}-llm.md`
-6. Write candidate lessons to `memory/candidates/{run_id}-lessons.jsonl`
+5. Write analysis to `runtime/<run>/debriefs/{run_id}-llm.md`
+6. Write candidate lessons to `runtime/<run>/candidates/{run_id}-lessons.jsonl`
 
 ## Schemas (Pydantic)
 
@@ -53,8 +53,8 @@ python -m smartrim.debrief_llm path/to/bundle.md --model gemma4-e2b-rimworld
 ```
 
 ## Output Files
-- `memory/debriefs/{run_id}-llm.md` — full analysis
-- `memory/candidates/{run_id}-lessons.jsonl` — validated LessonCandidate objects
+- `runtime/<run>/debriefs/{run_id}-llm.md` — full analysis
+- `runtime/<run>/candidates/{run_id}-lessons.jsonl` — validated LessonCandidate objects
 
 ## Notes
 - 435 lines

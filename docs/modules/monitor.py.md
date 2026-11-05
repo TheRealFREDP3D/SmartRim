@@ -7,7 +7,7 @@
 def main() -> None:
     # 1. Setup logging
     # 2. Parse --observe-only / OBSERVE_ONLY env
-    # 3. Acquire PID lock (memory/monitor.pid)
+    # 3. Acquire PID lock (runtime/control/monitor.pid)
     # 4. Create McpClient
     # 5. Loop: poll_once() every POLL_INTERVAL seconds
 ```
@@ -36,7 +36,7 @@ last_sig: Any | None  # alert signature for dedup
 3. **Check run end** → if `daysPassed >= RUN_DAYS`, write run-end marker, pause (if not observe-only), stop
 4. **Daily say** → at `SAY_DAILY_HOURS`, call `_say_daily_message()` (briefly unpauses to render)
 5. **Day roll** → new day → write snapshot, close outcomes (advice + reflex), log scheduled advice
-6. **Reflex checks** → `run_reflex_checks(client)` → writes `memory/alerts/current.json`
+6. **Reflex checks** → `run_reflex_checks(client)` → writes `runtime/<run>/alerts/current.json`
 7. **Alert signature dedup** → compare to `last_sig`, save new
 8. **Urgent alerts** → if any:
    - Display via `_say_visible()` (unpauses briefly)
@@ -64,7 +64,7 @@ last_sig: Any | None  # alert signature for dedup
 | `configure_observe_only(argv)` | Parse CLI --observe-only / --advise |
 
 ## Locking
-- PID file: `memory/monitor.pid`
+- PID file: `runtime/control/monitor.pid`
 - Stale PID detection (Windows via `ctypes`, Unix via `os.kill(pid, 0)`)
 
 ## Alert Categories (from `run_reflex_checks`)

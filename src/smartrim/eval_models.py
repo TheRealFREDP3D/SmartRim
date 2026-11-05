@@ -1,7 +1,7 @@
 """Evaluate models on the same debrief bundle (A/B style), and score them with the rubric.
 
 Writes response files to:
-  memory/debriefs/<run>.<provider>.<model>.response.md
+  runtime/<run>/debriefs/<run>.<provider>.<model>.response.md
 
 Then prints a comparison table with criterion scores.
 
@@ -20,7 +20,7 @@ import sys
 from dataclasses import dataclass
 from typing import Any
 
-from smartrim.config import DEBRIEFS_DIR
+from smartrim import config
 from smartrim.debrief_llm import BUNDLE_SYSTEM, analyze_debrief, find_bundle
 
 FENCE_RE = re.compile(r"```json\s*(.*?)```", re.DOTALL | re.IGNORECASE)
@@ -354,8 +354,8 @@ def eval_one(
     rubric_labels: dict[int, str],
     system: str | None,
 ) -> tuple[ScoreRow, str]:
-    out_path = os.path.join(DEBRIEFS_DIR, f"{run_id}.{provider}.{_safe_model_suffix(model)}.response.md")
-    os.makedirs(DEBRIEFS_DIR, exist_ok=True)
+    debrief_dir = config.debriefs_dir(run_id, create=True)
+    out_path = os.path.join(debrief_dir, f"{run_id}.{provider}.{_safe_model_suffix(model)}.response.md")
 
     if reuse_existing and os.path.exists(out_path):
         with open(out_path, encoding="utf-8") as f:

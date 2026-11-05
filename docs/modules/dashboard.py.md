@@ -5,21 +5,21 @@ Web UI for monitoring, advice browsing, lessons, run history, debriefs.
 ## Tabs
 | Tab | Function | Data Source |
 |-----|----------|-------------|
-| Live Monitor | `live_monitor_tab()` | MCP `get_status`, `get_alerts`, `memory/alerts/current.json` |
-| Advice Browser | `advice_browser_tab()` | `memory/advice/advice.jsonl` |
+| Live Monitor | `live_monitor_tab()` | MCP `get_status`, `get_alerts`, `runtime/<run>/alerts/current.json` |
+| Advice Browser | `advice_browser_tab()` | `runtime/<run>/advice.jsonl` |
 | Lesson Explorer | `lesson_explorer_tab()` | `memory/lessons.jsonl` |
-| Run History | `run_history_tab()` | `memory/runs/*.end.json` |
-| Debrief Viewer | `debrief_viewer_tab()` | `memory/debriefs/*.md` |
+| Run History | `run_history_tab()` | `runtime/*/end.json` |
+| Debrief Viewer | `debrief_viewer_tab()` | `runtime/<run>/debriefs/*.md` |
 
 ## Data Loading (cached)
 | Function | Cache TTL | Source |
 |----------|-----------|--------|
-| `load_current_alerts()` | 10s | `memory/alerts/current.json` |
-| `load_all_advice()` | 60s | `memory/advice/advice.jsonl` |
+| `load_current_alerts()` | 10s | `runtime/<run>/alerts/current.json` |
+| `load_all_advice()` | 60s | `runtime/<run>/advice.jsonl` |
 | `load_lessons()` | 60s | `memory/lessons.jsonl` |
-| `load_runs_metadata()` | 60s | `memory/runs/*.end.json` |
-| `load_run_snapshots(run_id)` | 60s | `memory/snapshots/{run_id}/day-*.json` |
-| `load_debriefs()` | 60s | `memory/debriefs/*.md` |
+| `load_runs_metadata()` | 60s | `runtime/*/end.json` |
+| `load_run_snapshots(run_id)` | 60s | `runtime/<run>/snapshots/{run_id}/day-*.json` |
+| `load_debriefs()` | 60s | `runtime/<run>/debriefs/*.md` |
 | `get_live_game_state()` | — | MCP `get_status` |
 
 ## Live Monitor Tab

@@ -11,7 +11,7 @@
 6. Dry-run (global `REFLEX_DRY_RUN` or per-action YAML)
 7. Say intent (in-game message)
 8. Execute MCP write
-9. Audit record → `memory/actions.jsonl`
+9. Audit record → `runtime/<run>/actions.jsonl`
 
 ## Configuration
 - `memory/reflex_actions.yaml` — whitelist (see below)
@@ -42,12 +42,12 @@ preconditions: list[str]   # names from reflex_preconditions.PRECONDITIONS
 ### Guards
 | Method | Check |
 |--------|-------|
-| `_paused(current_day)` | Read `memory/reflex_pause.json`, clear on day roll |
-| `_acquire_lock()` | PID lock `memory/reflex.lock` |
-| `_human_recent()` | Check `memory/last_human_action.json` < 60s |
+| `_paused(current_day)` | Read `runtime/control/reflex_pause.json`, clear on day roll |
+| `_acquire_lock()` | PID lock `runtime/control/reflex.lock` |
+| `_human_recent()` | Check `runtime/control/last_human_action.json` < 60s |
 | `_dry_run(action)` | **BUG**: ignores `action.dry_run`, only reads `REFLEX_DRY_RUN` env |
 | `_preconditions_pass(action, game_state)` | All precondition functions return True |
-| `_already_acted(alert_id, action_type)` | Check `memory/actions.jsonl` for duplicate |
+| `_already_acted(alert_id, action_type)` | Check `runtime/<run>/actions.jsonl` for duplicate |
 
 ### Execution
 | Action Type | Executor | Status |
@@ -70,7 +70,7 @@ def evaluate(alerts, situation, game_state, current_day=None) -> list[dict]:
     #   6. Write audit record
 ```
 
-## Audit Record (`memory/actions.jsonl`)
+## Audit Record (`runtime/<run>/actions.jsonl`)
 ```json
 {
   "timestamp": "...",

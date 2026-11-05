@@ -4,7 +4,7 @@
 
 **Last reviewed:** 2026-10-29 (after adding `_say_visible` to the reflex monitor).  
 **Source root:** `src/smartrim/` (installed editable; `PYTHONPATH=src`).  
-**Tests:** `python -m pytest` → 186 passing.  
+**Tests:** `python -m pytest` (see current results).  
 **Lint:** `ruff check` (target `py313`, line-length 100).
 
 ---
@@ -31,15 +31,13 @@ RimWorld (RimMolt MCP)  <--poll-->  monitor.py  -->  situation.py (classify + re
 | Path | Role |
 |---|---|
 | `src/smartrim/` | Main Python package (src layout). |
-| `sidecar/` | Replay harness and one-off scripts. |
 | `schemas/` | JSON schemas for lessons, advice, snapshots. |
-| `tests/` | pytest suite (`unittest.TestCase` style, 186 tests). |
-| `memory/` | Persistent runtime data (gitignored except `lessons.jsonl` and wiki cache). |
-| `local_llm/ollama/` | Modelfiles for tuned Ollama models. |
-| `scripts/` | Helper launchers. |
-| `start-monitor.*`, `start-dashboard.*` | Launchers for monitor/dashboard. |
+| `tests/` | pytest suite. |
+| `memory/` | Durable knowledge (tracked: `lessons.jsonl`, `phases.md`, `wiki/*.md`; derived/gitignored: `lessons.sqlite`, `wiki/raw/`). |
+| `runtime/` | Disposable runtime state (gitignored): `control/` (pid, logs, locks, `active.json`) and one `runtime/<run-id>/` per run (snapshots, alerts, advice, actions, debriefs, candidates, timelapse, quests, `end.json`). |
+| `docs/local_llm/ollama/` | Modelfiles for tuned Ollama models (`gemma4-e2b-rimworld`, `qwen3-rimworld`). |
+| 
 | `install.*` | Venv + dependency installer. |
-| `.env` / `.env.example` | Environment configuration. |
 | `pyproject.toml`, `ruff.toml` | Packaging, pytest config, lint config. |
 | `AGENTS.md`, `README.md`, `CONTRIBUTING.md`, `CHANGELOG.md` | Docs. |
 
@@ -51,7 +49,6 @@ RimWorld (RimMolt MCP)  <--poll-->  monitor.py  -->  situation.py (classify + re
 - **Role:** Package marker. One-line docstring only.
 
 ### 3.2 `config.py`
-- **Role:** Central environment-variable configuration. Loads `.env` via `python-dotenv` if available.
 - **Capabilities:** Exposes `MCP_URL`, `POLL_INTERVAL`, `MCP_DELAY`, `BASE_DIR`, directory paths (`ALERTS_DIR`, `SNAPSHOTS_DIR`, `DEBRIEFS_DIR`, `CANDIDATES_DIR`), health/mood thresholds (`HEALTH_THRESHOLD`, `MOOD_*_THRESHOLD`), `URGENT_KEYWORDS`, `SAY_DAILY_*`, `RUN_DAYS`, `REFLEX_*` flags, LLM model names.
 - **Notes:** Imported by nearly every module; keep side-effect-free.
 
@@ -201,12 +198,12 @@ RimWorld (RimMolt MCP)  <--poll-->  monitor.py  -->  situation.py (classify + re
 
 ---
 
-## 8. Sidecar (`sidecar/`)
+## 8. Sidecar (``)
 
-### 8.1 `sidecar/reflex.py`
+### 8.1 `reflex.py`
 - **Role:** Layer 2 reflex actor entry point (sidecar variant).
 
-### 8.2 `sidecar/replay.py`
+### 8.2 `replay.py`
 - **Role:** Replay harness (sidecar copy).
 
 ---
@@ -254,8 +251,6 @@ Fixtures live in `tests/fixtures/` (e.g., `snapshot_day13.json`).
 | File | Role |
 |---|---|
 | `install.ps1` / `install.sh` | Create venv + install deps (`pip install -e ".[dev]"`). |
-| `start-monitor.ps1` / `.sh` | Launch reflex monitor (adviser on by default; `--observe-only`). |
-| `start-dashboard.ps1` / `.sh` | Launch Streamlit dashboard. |
 | `stop-monitor.ps1` / `.sh` | Stop monitor (fixed `$pid` read-only bug). |
 | `scripts/start_monitor.*` | Alternate monitor launchers. |
 | `start-ollama.ps1`, `stop-ollama.ps1` | Ollama lifecycle helpers. |
@@ -269,7 +264,7 @@ Fixtures live in `tests/fixtures/` (e.g., `snapshot_day13.json`).
 |---|---|
 | `pyproject.toml` | Project metadata, optional extras (`dev`, `dashboard`, `llm`), pytest config (`pythonpath = ["src"]`). |
 | `ruff.toml` | Lint config: target `py313`, line-length 100, rules E,F,I,UP,B,SIM,C4,ISC,PIE,RUF. |
-| `.env.example` | Template for environment variables. |
+| `.env.example` | Environment configuration template (copy to `.env`, gitignored). |
 | `.gitignore` | Ignores runtime data, venv, caches. |
 | `AGENTS.md` | Agent/human working guide (this is the canonical reference). |
 | `README.md` | User-facing getting started. |

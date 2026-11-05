@@ -11,6 +11,7 @@ Usage:
 """
 
 import argparse
+import contextlib
 import json
 import os
 import shutil
@@ -18,36 +19,60 @@ import time
 from datetime import datetime
 
 try:
-    from smartrim.config import BASE_DIR, RUN_ID
-except ImportError:
-    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    RUN_ID = os.getenv("RUN_ID", "current-run") if False else "current-run"
+    from smartrim import config
+    from smartrim.config import UNSET_RUN_ID, resolve_run_id
+except ImportError:  # pragma: no cover - direct execution fallback
+    config = None
+    UNSET_RUN_ID = "current-run"
 
-import contextlib
-import os as _os
+    def resolve_run_id():
+        env_id = os.getenv("RUN_ID", "").strip()
+        return env_id if env_id and env_id != UNSET_RUN_ID else None
 
-RUN_ID = _os.getenv("RUN_ID", RUN_ID) if "RUN_ID" in _os.environ else RUN_ID
 
-TIMELAPSE_DIR = os.path.join(BASE_DIR, "memory", "timelapse")
+# Optional override for tests/tooling; None means runtime/<run_id>/timelapse.
+TIMELAPSE_DIR: str | None = None
 TIMELAPSE_HOURS = [int(h.strip()) for h in os.getenv("TIMELAPSE_HOURS", "6,18").split(",") if h.strip().isdigit()]
 TIMELAPSE_ENABLED = os.getenv("TIMELAPSE_ENABLED", "1") == "1"
 
 
-def _run_dir(run_id=None):
-    rid = run_id or RUN_ID
-    d = os.path.join(TIMELAPSE_DIR, rid)
-    os.makedirs(d, exist_ok=True)
+def _resolve_run(run_id=None):
+    """Concrete run id for an operation, or None when no run is known.
+
+    The ``current-run`` sentinel is never used as a directory name.
+    """
+    rid = str(run_id or resolve_run_id() or "").strip()
+    return None if not rid or rid == UNSET_RUN_ID else rid
+
+
+def _run_dir(run_id=None, create=True):
+    """Return (dir, run_id). Only creates the directory when ``create`` is True.
+
+    Reading timelapse state must never create ``runtime/<run>/timelapse`` — that
+    used to leave an empty ``current-run`` folder just by opening the TUI tab.
+    """
+    rid = _resolve_run(run_id)
+    if rid is None:
+        return None, None
+    if TIMELAPSE_DIR:
+        d = os.path.join(TIMELAPSE_DIR, rid)
+        if create:
+            os.makedirs(d, exist_ok=True)
+    elif config is not None:
+        d = config.timelapse_dir(rid, create=create)
+    else:  # pragma: no cover
+        return None, None
     return d, rid
 
 
-def _index_path(run_id=None):
-    d, _ = _run_dir(run_id)
-    return os.path.join(d, "index.json")
+def _index_path(run_id=None, create=False):
+    d, _ = _run_dir(run_id, create=create)
+    return os.path.join(d, "index.json") if d else None
 
 
 def _load_index(run_id=None):
     p = _index_path(run_id)
-    if os.path.exists(p):
+    if p and os.path.exists(p):
         try:
             with open(p, encoding="utf-8") as f:
                 return json.load(f)
@@ -57,7 +82,10 @@ def _load_index(run_id=None):
 
 
 def _save_index(entries, run_id=None):
-    p = _index_path(run_id)
+    p = _index_path(run_id, create=True)
+    if p is None:
+        raise ValueError("no active run to save captures for")
+    os.makedirs(os.path.dirname(p), exist_ok=True)
     with open(p, "w", encoding="utf-8") as f:
         json.dump(entries, f, indent=2)
 
@@ -92,6 +120,10 @@ def capture(run_id=None, label=None):
     Captures the region covering all colonists (the base area) with a margin,
     zoomed out enough to see the whole base, without disturbing the player camera.
     """
+    dest_dir, rid = _run_dir(run_id, create=True)
+    if dest_dir is None:
+        return {"error": "no active run: start the monitor or pass --run-id"}
+
     from smartrim.mcp_client import McpClient
     client = McpClient(os.getenv("MCP_URL", "http://localhost:8787/"), delay=0.15)
 
@@ -132,7 +164,7 @@ def capture(run_id=None, label=None):
         return {"error": f"screenshot file not found: {src_path}"}
     _close_screenshot_dialogs(client)
 
-    d, rid = _run_dir(run_id)
+    d = dest_dir
     ts = datetime.now()
     fname = (label or ts.strftime("capture-%Y%m%d-%H%M%S")) + ".png"
     dest = os.path.join(d, fname)
@@ -173,10 +205,13 @@ def capture(run_id=None, label=None):
 
 
 def list_captures(run_id=None):
-    entries = _load_index(run_id)
-    d, rid = _run_dir(run_id)
+    """List captures for a run without creating any directory."""
+    d, rid = _run_dir(run_id, create=False)
+    if d is None:
+        return {"run_id": None, "dir": None, "index": [], "files": []}
+    entries = _load_index(rid)
     # also include any png not in index
-    files = sorted(f for f in os.listdir(d) if f.lower().endswith(".png"))
+    files = sorted(f for f in os.listdir(d) if f.lower().endswith(".png")) if os.path.isdir(d) else []
     return {"run_id": rid, "dir": d, "index": entries, "files": files}
 
 
@@ -186,8 +221,10 @@ def build_gif(run_id=None, output=None, duration=800):
         from PIL import Image
     except ImportError:
         return {"error": "Pillow not installed. pip install Pillow"}
-    d, _rid = _run_dir(run_id)
-    files = sorted(f for f in os.listdir(d) if f.lower().endswith(".png"))
+    d, _rid = _run_dir(run_id, create=False)
+    if d is None:
+        return {"error": "no active run: start the monitor or pass --run-id"}
+    files = sorted(f for f in os.listdir(d) if f.lower().endswith(".png")) if os.path.isdir(d) else []
     if not files:
         return {"error": "no captures found"}
     images = []
@@ -206,6 +243,8 @@ def build_gif(run_id=None, output=None, duration=800):
 def should_capture_now():
     """Return True if current hour is a configured timelapse hour and not already captured this hour."""
     if not TIMELAPSE_ENABLED:
+        return False
+    if _resolve_run() is None:
         return False
     now = datetime.now()
     if now.hour not in TIMELAPSE_HOURS:

@@ -1,6 +1,6 @@
 # advice_log.py — Append-Only Advice Log with Outcome Tracking
 
-JSONL file: `memory/advice/advice.jsonl` (tracked in git, 282KB).
+JSONL file: `runtime/<run>/advice.jsonl` (tracked in git, 282KB).
 
 ## Record Schema
 
