@@ -9,7 +9,7 @@ Tests may still override individual paths; this is only the default.
 
 import pytest
 
-from smartrim import advice_log, config, debrief_llm, monitor, quests, timelapse
+from smartrim import advice_log, config, debrief_llm, monitor, outcomes, quests, timelapse
 
 
 @pytest.fixture(autouse=True)
@@ -37,6 +37,8 @@ def isolate_runtime(tmp_path, monkeypatch):
 
     # Modules that captured a path constant at import time.
     monkeypatch.setattr(monitor, "PID_FILE", str(control / "monitor.pid"))
+    # outcomes writes the lesson store; never point it at the tracked file.
+    monkeypatch.setattr(outcomes, "LESSONS_FILE", str(runtime / "lessons.jsonl"))
 
     # Per-module overrides default to "resolve from config".
     for module, attr in (
