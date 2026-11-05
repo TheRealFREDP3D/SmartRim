@@ -5,7 +5,7 @@ Every comparable run follows this protocol. A run that breaks it is recorded as 
 ## Fixed settings
 
 | Setting | Value | Why |
-|---|---|---|
+| --- | --- | --- |
 | Scenario | Crashlanded | Same starting team size as Sessions 1–3 |
 | Storyteller | Cassandra Classic | Baseline (wiki: AI_Storytellers) |
 | Difficulty | Adventure story | Baseline (wiki threat scale 60%, research speed 100%) |
@@ -21,11 +21,13 @@ Day counting: the run starts on the 1st day (`daysPassed` = 0). Ten full days mu
 
 1. Start RimWorld and load the MCP server (RimMolt mod).
 2. Start the run's monitor with a fresh run id. Evaluation runs alternate adviser on, then off.
+
    ```powershell
    $env:RUN_ID = "run-NNN-adv-cassandra"   # NNN = next run number
    .\start-monitor.ps1                     # adviser on: pauses and logs advice
    .\start-monitor.ps1 -ObserveOnly        # adviser off: snapshots only, no pause, no advice
    ```
+
    Optional third mode — reflex actor (Layer 2, opt-in): set `REFLEX_KILL=0` in `.env` before starting
    the monitor. Reflex actions then run after urgent-alert detection, guarded by the strict safety order
    (REFLEX_KILL → REFLEX_PAUSE one in-game day → REFLEX_LOCK PID file → 60s human-action window →
