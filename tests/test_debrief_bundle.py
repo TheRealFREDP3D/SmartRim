@@ -3,9 +3,9 @@ import os
 import shutil
 import tempfile
 import unittest
+from unittest import mock
 
-SIDECAR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "sidecar")
-
+import smartrim.debrief_bundle as db
 from smartrim.debrief_bundle import UNVERIFIED, WIKI_FACTS, _load_wiki_facts, build_bundle
 
 
@@ -159,6 +159,63 @@ class TestWikiFactsLoading(unittest.TestCase):
             self.assertEqual(unverified, [])
         finally:
             db.WIKI_FACTS_PATH = old_path
+
+
+class TestWikiExcerpts(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        self.snaps = os.path.join(self.tmp, "snapshots")
+        self.debs = os.path.join(self.tmp, "debriefs")
+        self.wiki = os.path.join(self.tmp, "wiki")
+        os.makedirs(self.snaps)
+        os.makedirs(self.wiki)
+        snap = valid_snapshot("3rd of Aprimay, 5500")
+        snap["alerts"] = {"activeAlerts": [{"label": "Low food"}, {"label": "Minor break risk"}]}
+        json.dump(snap, open(os.path.join(self.snaps, "day-1.json"), "w"))
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def _page(self, name, body):
+        with open(os.path.join(self.wiki, f"{name}.md"), "w", encoding="utf-8") as f:
+            f.write(body)
+
+    def test_excerpts_are_selected_and_boilerplate_removed(self):
+        self._page("Food", (
+            "Food - RimWorld Wiki\n\nJump to navigation\n\n"
+            "Food is the basic source of nutrition to both humans and animals. "
+            "Deprivation of food leads to malnutrition and death.\n\n"
+            "This article is suggested to be rewritten. You can help the RimWorld Wiki."
+        ))
+        self._page("Mood", (
+            "Mood - RimWorld Wiki\n\nContents\n\n"
+            "Mood is a game mechanic describing a colonist's feelings. "
+            "Low moods cause mental breaks, while high moods may trigger inspirations."
+        ))
+        with mock.patch.object(db, "WIKI_DIR", self.wiki), \
+             mock.patch.object(db, "WIKI_FACTS", []), \
+             mock.patch.object(db, "UNVERIFIED", []):
+            bundle, _ = build_bundle(self.snaps, self.debs, "t-wiki", advice_records=[])
+        text = open(bundle, encoding="utf-8").read()
+        self.assertIn("wiki:Food", text)
+        self.assertIn("wiki:Mood", text)
+        self.assertIn("basic source of nutrition", text)
+        self.assertNotIn("suggested to be rewritten", text)
+        self.assertIn("(none recorded for this run)", text)
+
+    def test_no_pages_states_it_explicitly(self):
+        with mock.patch.object(db, "WIKI_DIR", os.path.join(self.tmp, "missing")), \
+             mock.patch.object(db, "WIKI_FACTS", []):
+            bundle, _ = build_bundle(self.snaps, self.debs, "t-empty", advice_records=[])
+        text = open(bundle, encoding="utf-8").read()
+        self.assertIn("(no wiki pages matched this run", text)
+
+    def test_curated_facts_take_precedence(self):
+        with mock.patch.object(db, "WIKI_DIR", self.wiki), \
+             mock.patch.object(db, "WIKI_FACTS", ["Curated fact (wiki:Food)"]):
+            bundle, _ = build_bundle(self.snaps, self.debs, "t-curated", advice_records=[])
+        text = open(bundle, encoding="utf-8").read()
+        self.assertIn("- Curated fact (wiki:Food)", text)
 
 
 if __name__ == "__main__":
