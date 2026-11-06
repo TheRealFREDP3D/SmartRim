@@ -803,12 +803,15 @@ def poll_once(client: McpClient, state: PollResult) -> PollResult:
                         logged = _log_urgent(client, status_now, conditions, alerts, urgent, current_day) is not None
                     except (McpError, OSError, ValueError, TypeError, KeyError, AttributeError, json.JSONDecodeError, RuntimeError) as e:
                         logger.error(f"advice log error: {e}")
-                    try:
-                        client.call_tool("set_speed", {"action": "pause"})
-                        if logged:
-                            state.auto_pauses += 1
-                    except McpError as e:
-                        logger.debug("set_speed pause failed: %s", e)
+                    # With reflex enabled the sidecar handles the threat; pausing
+                    # repeatedly would freeze the fight it is trying to win.
+                    if not REFLEX_ENABLED:
+                        try:
+                            client.call_tool("set_speed", {"action": "pause"})
+                            if logged:
+                                state.auto_pauses += 1
+                        except McpError as e:
+                            logger.debug("set_speed pause failed: %s", e)
                 try:
                     rpath = write_reflex_snapshot(client)
                     if rpath:

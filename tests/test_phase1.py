@@ -161,6 +161,40 @@ class TestPollOnce(unittest.TestCase):
         new = poll_once(client, state)
         self.assertGreaterEqual(new.urgent_alerts, 1)
 
+    def test_reflex_enabled_skips_auto_pause(self):
+        snapshot = {
+            "status": {"colonistCount": 3, "daysPassed": 2, "loaded": True, "programState": "Playing"},
+            "conditions": {"date": "3rd of Aprimay, 5500", "hour": 6},
+            "colonists": {"colonists": [{"name": "A", "mood": 50, "health": 100, "downed": False}]},
+            "resources": {"resources": []},
+            "alerts": {"activeAlerts": [{"label": "Enemies"}]},
+            "research": {},
+        }
+        monitor.OBSERVE_ONLY = False
+        client = self._client(snapshot)
+        state = PollResult(last_day="3rd of Aprimay, 5500", snapshotted_day="3rd of Aprimay, 5500")
+        with mock.patch.object(monitor, "REFLEX_ENABLED", True), \
+             mock.patch.object(monitor, "_REFLEX_ACTOR", None):
+            poll_once(client, state)
+        self.assertNotIn("set_speed", client.calls)
+
+    def test_reflex_disabled_still_pauses(self):
+        snapshot = {
+            "status": {"colonistCount": 3, "daysPassed": 2, "loaded": True, "programState": "Playing"},
+            "conditions": {"date": "3rd of Aprimay, 5500", "hour": 6},
+            "colonists": {"colonists": [{"name": "A", "mood": 50, "health": 100, "downed": False}]},
+            "resources": {"resources": []},
+            "alerts": {"activeAlerts": [{"label": "Enemies"}]},
+            "research": {},
+        }
+        monitor.OBSERVE_ONLY = False
+        client = self._client(snapshot)
+        state = PollResult(last_day="3rd of Aprimay, 5500", snapshotted_day="3rd of Aprimay, 5500")
+        with mock.patch.object(monitor, "REFLEX_ENABLED", False), \
+             mock.patch.object(monitor, "_REFLEX_ACTOR", None):
+            poll_once(client, state)
+        self.assertIn("set_speed", client.calls)
+
 class TestDebrief(unittest.TestCase):
     def test_generate_debrief_with_fixture(self):
         d = tempfile.mkdtemp()

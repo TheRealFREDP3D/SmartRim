@@ -15,6 +15,7 @@ never touched; outcomes are closed by reusing ``outcomes._close_advice``.
 
 import json
 import os
+import re
 from contextlib import suppress
 from datetime import datetime
 
@@ -65,7 +66,10 @@ ENV_PAUSE = "REFLEX_PAUSE"
 
 HUMAN_WINDOW_SECONDS = 60
 
-EXECUTE_ACTIONS = ("draft_and_focus_fire", "designate_firefighting", "assign_beds")
+EXECUTE_ACTIONS = (
+    "draft_and_focus_fire", "designate_firefighting", "assign_beds",
+    "rescue_downed", "prioritize_treatment",
+)
 
 
 def _env_flag(name, default="1"):
@@ -435,9 +439,58 @@ class ReflexActor:
                 return self._exec_firefighting(game_state)
             if at == "assign_beds":
                 return self._exec_assign_beds(game_state)
+            if at == "rescue_downed":
+                return self._exec_rescue_downed(game_state)
+            if at == "prioritize_treatment":
+                return self._exec_prioritize_treatment(game_state)
         except Exception as e:  # pragma: no cover - defensive
             logger.error("reflex execute %s failed: %s", at, e)
         return False
+
+    def _exec_rescue_downed(self, game_state):
+        """Order an able colonist to rescue each downed colonist."""
+        colonists = [c for c in _colonists(game_state) if isinstance(c, dict)]
+        downed = [c for c in colonists if c.get("downed")]
+        able = [
+            c for c in colonists
+            if not c.get("downed") and not c.get("drafted")
+            and str(c.get("job", "")).lower().find("sleep") < 0
+        ]
+        if not downed or not able:
+            return False
+        rescuer = able[0]
+        rescuer_id = rescuer.get("id") or rescuer.get("name")
+        ok = True
+        for target in downed:
+            target_id = target.get("id") or target.get("name")
+            result = self.counselor.order(rescuer_id, target_id, "Rescue")
+            ok = ok and not _is_mcp_error(result)
+        return ok
+
+    def _exec_prioritize_treatment(self, game_state):
+        """Put the best medic on doctoring at priority 1 when someone is hurt."""
+        colonists = [c for c in _colonists(game_state) if isinstance(c, dict)]
+        wounded = [
+            c for c in colonists
+            if not c.get("downed") and c.get("health") is not None and c.get("health") < 100
+        ]
+        if not wounded:
+            return False
+
+        def medicine_skill(colonist):
+            best = -1
+            for skill in colonist.get("topSkills") or []:
+                match = re.search(r"Medicine\s+(\d+)", str(skill))
+                if match:
+                    best = max(best, int(match.group(1)))
+            return best
+
+        able = [c for c in colonists if not c.get("downed")]
+        if not able:
+            return False
+        medic = max(able, key=medicine_skill)
+        result = self.counselor.set_priority(medic.get("name") or medic.get("id"), "Doctor", 1)
+        return not _is_mcp_error(result)
 
     def _exec_draft(self, game_state):
         targets = self._draftable_colonists(game_state)

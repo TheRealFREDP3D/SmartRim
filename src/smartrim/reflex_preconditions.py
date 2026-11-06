@@ -8,10 +8,12 @@ missing keys.
 
 __all__ = [
     "PRECONDITIONS",
+    "has_downed_colonist",
     "has_fire_alert",
     "has_raid_alert",
     "has_shooter_above_5",
     "has_unassigned_colonist",
+    "has_wounded_colonist",
     "none_drafted",
 ]
 
@@ -90,10 +92,33 @@ def none_drafted(game_state) -> bool:
     return True
 
 
+def has_wounded_colonist(game_state) -> bool:
+    """Any colonist injured (health below 100) and not already downed."""
+    for c in _colonists(game_state):
+        if not isinstance(c, dict):
+            continue
+        if c.get("downed"):
+            continue
+        health = c.get("health")
+        if health is not None and health < 100:
+            return True
+    return False
+
+
+def has_downed_colonist(game_state) -> bool:
+    """Any colonist currently downed."""
+    return any(
+        isinstance(c, dict) and c.get("downed")
+        for c in _colonists(game_state)
+    )
+
+
 PRECONDITIONS = {
     "has_raid_alert": has_raid_alert,
     "has_fire_alert": has_fire_alert,
     "has_unassigned_colonist": has_unassigned_colonist,
     "has_shooter_above_5": has_shooter_above_5,
     "none_drafted": none_drafted,
+    "has_wounded_colonist": has_wounded_colonist,
+    "has_downed_colonist": has_downed_colonist,
 }

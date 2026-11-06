@@ -15,10 +15,12 @@ from smartrim.reflex_actor import (
 )
 from smartrim.reflex_preconditions import (
     PRECONDITIONS,
+    has_downed_colonist,
     has_fire_alert,
     has_raid_alert,
     has_shooter_above_5,
     has_unassigned_colonist,
+    has_wounded_colonist,
     none_drafted,
 )
 
@@ -53,6 +55,14 @@ class _FakeCounselor:
     def assign(self, *a, **kw):
         self.calls.append(("assign", a, kw))
         return {"assigned": True}
+
+    def order(self, colonist, target_id, command=None):
+        self.calls.append(("order", colonist, target_id, command))
+        return {"ordered": True}
+
+    def set_priority(self, colonist, work_type, priority):
+        self.calls.append(("set_priority", colonist, work_type, priority))
+        return {"ok": True}
 
 
 class _Env:
@@ -145,8 +155,20 @@ class TestPreconditions(unittest.TestCase):
         self.assertFalse(has_unassigned_colonist({"colonists": [], "alerts": []}))
 
     def test_precondition_registry(self):
-        self.assertEqual(set(PRECONDITIONS), {"has_raid_alert", "has_fire_alert",
-                                              "has_unassigned_colonist", "has_shooter_above_5", "none_drafted"})
+        self.assertEqual(set(PRECONDITIONS), {
+            "has_raid_alert", "has_fire_alert", "has_unassigned_colonist",
+            "has_shooter_above_5", "none_drafted",
+            "has_wounded_colonist", "has_downed_colonist",
+        })
+
+    def test_has_downed_colonist(self):
+        self.assertTrue(has_downed_colonist({"colonists": [{"downed": True}]}))
+        self.assertFalse(has_downed_colonist({"colonists": [{"downed": False}]}))
+
+    def test_has_wounded_colonist(self):
+        self.assertTrue(has_wounded_colonist({"colonists": [{"health": 80}]}))
+        self.assertFalse(has_wounded_colonist({"colonists": [{"health": 100}]}))
+        self.assertFalse(has_wounded_colonist({"colonists": [{"health": 50, "downed": True}]}))
 
 
 class TestReflexActor(unittest.TestCase):
@@ -355,6 +377,34 @@ class TestReflexActor(unittest.TestCase):
                                 "action": "draft_and_focus_fire", "executed": False}) + "\n")
         results = actor.evaluate(gs["alerts"], {}, gs)
         self.assertTrue(results[0]["executed"])
+
+    def test_exec_rescue_downed_orders_rescue(self):
+        counselor = _FakeCounselor()
+        actor = ReflexActor(run_id="test-run", actions_file=self.actions_file,
+                            human_action_file=self.human_file, lock_file=self.lock_file,
+                            pause_file=self.pause_file, counselor_mod=counselor)
+        gs = {"colonists": [
+            {"id": "A", "name": "Able", "downed": False, "job": "Hauling"},
+            {"id": "B", "name": "Hurt", "downed": True, "job": "Lying down"},
+        ]}
+        self.assertTrue(actor._exec_rescue_downed(gs))
+        self.assertEqual(counselor.calls[-1][:2], ("order", "A"))
+        self.assertEqual(counselor.calls[-1][2], "B")
+        self.assertEqual(counselor.calls[-1][3], "Rescue")
+
+    def test_exec_prioritize_treatment_picks_best_medic(self):
+        counselor = _FakeCounselor()
+        actor = ReflexActor(run_id="test-run", actions_file=self.actions_file,
+                            human_action_file=self.human_file, lock_file=self.lock_file,
+                            pause_file=self.pause_file, counselor_mod=counselor)
+        gs = {"colonists": [
+            {"id": "A", "name": "Medic", "downed": False, "health": 100,
+             "topSkills": ["Medicine 9"]},
+            {"id": "B", "name": "Patient", "downed": False, "health": 70,
+             "topSkills": ["Medicine 2"]},
+        ]}
+        self.assertTrue(actor._exec_prioritize_treatment(gs))
+        self.assertEqual(counselor.calls[-1], ("set_priority", "Medic", "Doctor", 1))
 
     def test_precondition_failure_audited_no_call(self):
         self.env.set(REFLEX_KILL="0", REFLEX_DRY_RUN="0", REFLEX_PAUSE="0")
