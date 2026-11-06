@@ -55,3 +55,6 @@ def isolate_runtime(tmp_path, monkeypatch):
     monkeypatch.setattr(config, "RUN_ID", config.UNSET_RUN_ID)
 
     yield tmp_path
+
+    # Advice/say work runs off the poll loop; never let it outlive the test.
+    monitor.drain_background(timeout=5)

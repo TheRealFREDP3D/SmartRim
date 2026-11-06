@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import sys
+import threading
 import time
 from dataclasses import dataclass
 from datetime import datetime
@@ -564,6 +565,55 @@ def _advice_context(client, status_now, conditions, alerts):
 OBSERVE_ONLY = os.getenv("OBSERVE_ONLY", "0") == "1"
 
 
+# --- slow advice work off the poll loop -------------------------------------
+#
+# The daily say and the day-roll advice both call a language model. With a slow
+# provider a single call blocked the loop for four minutes, which delayed the
+# next poll (and therefore the reflex) by the same amount. Reflex evaluation
+# also now runs before any advice work, so a raid is answered in the same poll
+# that detected it.
+
+_BACKGROUND: Any = None
+_BACKGROUND_FUTURES: list = []
+_BACKGROUND_LOCK = threading.Lock()
+
+
+def _background_pool():
+    global _BACKGROUND
+    with _BACKGROUND_LOCK:
+        if _BACKGROUND is None:
+            from concurrent.futures import ThreadPoolExecutor
+
+            _BACKGROUND = ThreadPoolExecutor(max_workers=1, thread_name_prefix="smartrim-advice")
+        return _BACKGROUND
+
+
+def submit_background(fn, *args, **kwargs):
+    """Queue slow, non-critical work (LLM advice) without blocking the poll loop."""
+
+    def run():
+        try:
+            fn(*args, **kwargs)
+        except Exception as e:
+            # A background task must never kill the monitor.
+            logger.error("background %s failed: %s", getattr(fn, "__name__", fn), e)
+
+    future = _background_pool().submit(run)
+    with _BACKGROUND_LOCK:
+        _BACKGROUND_FUTURES.append(future)
+    return future
+
+
+def drain_background(timeout: float = 10.0) -> None:
+    """Wait for queued background work to finish (tests, shutdown)."""
+    with _BACKGROUND_LOCK:
+        pending = list(_BACKGROUND_FUTURES)
+        _BACKGROUND_FUTURES.clear()
+    for future in pending:
+        with contextlib.suppress(Exception):
+            future.result(timeout=timeout)
+
+
 def _run_arm():
     """Arm recorded on the run-end marker: reflex when reflex actions are opted in."""
     if OBSERVE_ONLY:
@@ -736,7 +786,7 @@ def poll_once(client: McpClient, state: PollResult) -> PollResult:
                 say_key = (current_day, current_hour)
                 if say_key != (state.last_say_day, state.last_say_hour):
                     slot = "morning" if current_hour < 12 else "evening"
-                    _say_daily_message(client, conditions, slot=slot)
+                    submit_background(_say_daily_message, client, conditions, slot=slot)
                     state.last_say_day = current_day
                     state.last_say_hour = current_hour
         except (McpError, OSError, ValueError, TypeError, KeyError, AttributeError, json.JSONDecodeError, RuntimeError) as e:
@@ -770,11 +820,23 @@ def poll_once(client: McpClient, state: PollResult) -> PollResult:
             with open(os.path.join(alert_dir, "current.json"), "w") as f:
                 json.dump(alerts, f, indent=2)
 
-        if day_rolled and adviser_acts(OBSERVE_ONLY):
+        # Reflex first: act on this poll's alerts before the LLM-backed advice
+        # work below, which can take minutes with a slow provider. Reflex acts
+        # on any new alert signature, not only "urgent" ones: actions have their
+        # own alert_match and preconditions.
+        if alerts and _REFLEX_ACTOR is not None and adviser_acts(OBSERVE_ONLY):
             try:
-                _log_scheduled(client, status_now, conditions, alerts, current_day)
-            except (McpError, OSError, ValueError, TypeError, KeyError, AttributeError, json.JSONDecodeError, RuntimeError) as e:
-                logger.error(f"scheduled advice error: {e}")
+                _snap_summary, situation, _, _ = _advice_context(
+                    client, status_now, conditions, alerts)
+                game_state = _counselor.game_state() if _counselor is not None else {}
+                _REFLEX_ACTOR.evaluate(alerts, situation, game_state,
+                                       current_day=current_day)
+            except (McpError, OSError, ValueError, TypeError, KeyError,
+                    AttributeError, json.JSONDecodeError) as e:
+                logger.error(f"reflex actor error: {e}")
+
+        if day_rolled and adviser_acts(OBSERVE_ONLY):
+            submit_background(_log_scheduled, client, status_now, conditions, alerts, current_day)
 
         urgent = [a for a in alerts if a.get("type") == "urgent"]
         _sig = tuple(sorted((a.get("type"), a.get("category"), a.get("message")) for a in alerts))
@@ -832,20 +894,6 @@ def poll_once(client: McpClient, state: PollResult) -> PollResult:
                 logger.info(f"{len(alerts)} alert(s): " + ", ".join(a.get("message", "") for a in alerts))
             else:
                 logger.debug("No alerts.")
-
-            # Reflex acts on any new alert signature, not only "urgent" ones:
-            # actions have their own alert_match and preconditions, and a raid
-            # labelled "Enemies" or a "wounded" alert is not always urgent.
-            if alerts and _REFLEX_ACTOR is not None and adviser_acts(OBSERVE_ONLY):
-                try:
-                    _snap_summary, situation, _, _ = _advice_context(
-                        client, status_now, conditions, alerts)
-                    game_state = _counselor.game_state() if _counselor is not None else {}
-                    _REFLEX_ACTOR.evaluate(alerts, situation, game_state,
-                                           current_day=current_day)
-                except (McpError, OSError, ValueError, TypeError, KeyError,
-                        AttributeError, json.JSONDecodeError) as e:
-                    logger.error(f"reflex actor error: {e}")
 
     except (McpError, OSError, ValueError, TypeError, KeyError, AttributeError, json.JSONDecodeError, RuntimeError, ImportError) as e:
         state.consecutive_errors += 1
