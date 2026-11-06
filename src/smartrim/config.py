@@ -64,7 +64,10 @@ MOOD_THRESHOLD: int = MOOD_MINOR_THRESHOLD
 
 # (Threshold names standardized: MOOD_*_THRESHOLD / HEALTH_THRESHOLD)
 
-URGENT_KEYWORDS: list[str] = ["fire", "predator", "raid", "attack", "downed", "berserk", "pyromaniac"]
+URGENT_KEYWORDS: list[str] = [
+    "fire", "predator", "raid", "attack", "downed", "berserk", "pyromaniac",
+    "enemy", "enemies", "hostile",
+]
 
 # Optional LLM provider for debrief generation (Phase 1 optional)
 # Providers: openai | anthropic | ollama | nvidia

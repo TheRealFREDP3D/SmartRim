@@ -77,7 +77,8 @@ class TestReplay(unittest.TestCase):
 
     def test_replay_detects_draft_delta(self):
         colonists = [
-            {"name": f"C{i}", "health": 100, "drafted": False} for i in range(6)
+            {"name": f"C{i}", "health": 100, "drafted": False, "topSkills": ["Shooting 8"]}
+            for i in range(6)
         ]
         s1 = _snap("10th of Septober, 5500", 9, colonists,
                    [{"label": "Raid incoming!", "category": "game_alert"}])
@@ -91,7 +92,8 @@ class TestReplay(unittest.TestCase):
 
     def test_replay_flags_missing_delta(self):
         colonists = [
-            {"name": f"C{i}", "health": 100, "drafted": False} for i in range(6)
+            {"name": f"C{i}", "health": 100, "drafted": False, "topSkills": ["Shooting 8"]}
+            for i in range(6)
         ]
         s1 = _snap("10th of Septober, 5500", 9, colonists,
                    [{"label": "Raid incoming!", "category": "game_alert"}])
@@ -109,7 +111,8 @@ class TestReplay(unittest.TestCase):
 
     def test_replay_handles_reflex_incident_snapshots(self):
         colonists = [
-            {"name": f"C{i}", "health": 100, "drafted": False} for i in range(6)
+            {"name": f"C{i}", "health": 100, "drafted": False, "topSkills": ["Shooting 8"]}
+            for i in range(6)
         ]
         s1 = _snap("10th of Septober, 5500", 9, colonists,
                    [{"label": "Raid incoming!", "category": "game_alert"}])

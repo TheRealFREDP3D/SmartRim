@@ -816,16 +816,6 @@ def poll_once(client: McpClient, state: PollResult) -> PollResult:
                         logger.info(f"Reflex snapshot: {rpath}")
                 except (McpError, OSError, ValueError, TypeError, KeyError, AttributeError, json.JSONDecodeError) as e:
                     logger.error(f"reflex snapshot error: {e}")
-                if _REFLEX_ACTOR is not None and adviser_acts(OBSERVE_ONLY):
-                    try:
-                        _snap_summary, situation, _, _ = _advice_context(
-                            client, status_now, conditions, alerts)
-                        game_state = _counselor.game_state() if _counselor is not None else {}
-                        _REFLEX_ACTOR.evaluate(alerts, situation, game_state,
-                                               current_day=current_day)
-                    except (McpError, OSError, ValueError, TypeError, KeyError,
-                            AttributeError, json.JSONDecodeError) as e:
-                        logger.error(f"reflex actor error: {e}")
                 if any(a.get("category") == "colony_death" for a in alerts) and not state.run_ended:
                     marker = write_run_end(
                         client, RUN_ID, days_now, observe_only=OBSERVE_ONLY,
@@ -839,6 +829,20 @@ def poll_once(client: McpClient, state: PollResult) -> PollResult:
                 logger.info(f"{len(alerts)} alert(s): " + ", ".join(a.get("message", "") for a in alerts))
             else:
                 logger.debug("No alerts.")
+
+            # Reflex acts on any new alert signature, not only "urgent" ones:
+            # actions have their own alert_match and preconditions, and a raid
+            # labelled "Enemies" or a "wounded" alert is not always urgent.
+            if alerts and _REFLEX_ACTOR is not None and adviser_acts(OBSERVE_ONLY):
+                try:
+                    _snap_summary, situation, _, _ = _advice_context(
+                        client, status_now, conditions, alerts)
+                    game_state = _counselor.game_state() if _counselor is not None else {}
+                    _REFLEX_ACTOR.evaluate(alerts, situation, game_state,
+                                           current_day=current_day)
+                except (McpError, OSError, ValueError, TypeError, KeyError,
+                        AttributeError, json.JSONDecodeError) as e:
+                    logger.error(f"reflex actor error: {e}")
 
     except (McpError, OSError, ValueError, TypeError, KeyError, AttributeError, json.JSONDecodeError, RuntimeError, ImportError) as e:
         state.consecutive_errors += 1

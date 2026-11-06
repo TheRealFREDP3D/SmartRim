@@ -436,8 +436,14 @@ class ReflexActor:
         targets = self._draftable_colonists(game_state)
         if not targets:
             return False
-        names = [c.get("name", "?") for c in targets]
-        result = self.counselor.draft(names)
+        # The MCP draft tool addresses pawns by ThingID; names are not unique
+        # and fail with "Pawn not found".
+        ids = [c.get("id") for c in targets if c.get("id")]
+        if ids:
+            result = self.counselor.draft(ids)
+        else:
+            names = [c.get("name", "?") for c in targets]
+            result = self.counselor.draft(names)
         return not _is_mcp_error(result)
 
     def _exec_firefighting(self, game_state):

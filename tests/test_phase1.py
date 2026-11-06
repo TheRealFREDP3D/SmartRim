@@ -46,6 +46,12 @@ class TestReflexChecks(unittest.TestCase):
         self.snapshot = json.load(open(path))
         self.client = FakeClient(self.snapshot)
 
+    def test_enemies_label_is_urgent(self):
+        # "Enemies" is what RimWorld actually shows for a raid; "enemy" did not match.
+        self.assertTrue(monitor._is_urgent_label("Enemies"))
+        self.assertTrue(monitor._is_urgent_label("Raid incoming"))
+        self.assertFalse(monitor._is_urgent_label("Need batteries"))
+
     def test_run_reflex_checks_returns_list(self):
         alerts = run_reflex_checks(self.client)
         self.assertIsInstance(alerts, list)

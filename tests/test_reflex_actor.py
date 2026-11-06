@@ -100,11 +100,11 @@ class TestReflexWhitelist(unittest.TestCase):
 
 class TestPreconditions(unittest.TestCase):
     COLONISTS: ClassVar[list[dict]] = [
-        {"name": "A", "health": 100, "job": "Constructor", "downed": False},
-        {"name": "B", "health": 100, "job": "Constructor", "downed": False},
-        {"name": "C", "health": 100, "job": "Constructor", "downed": False},
-        {"name": "D", "health": 100, "job": "Constructor", "downed": False},
-        {"name": "E", "health": 100, "job": "Constructor", "downed": False},
+        {"name": "A", "health": 100, "job": "Constructor", "downed": False, "topSkills": ["Shooting 8"]},
+        {"name": "B", "health": 100, "job": "Constructor", "downed": False, "topSkills": ["Shooting 6"]},
+        {"name": "C", "health": 100, "job": "Constructor", "downed": False, "topSkills": ["Shooting 7"]},
+        {"name": "D", "health": 100, "job": "Constructor", "downed": False, "topSkills": ["Shooting 9"]},
+        {"name": "E", "health": 100, "job": "Constructor", "downed": False, "topSkills": ["Shooting 10"]},
     ]
 
     def test_has_raid_alert(self):
@@ -121,14 +121,16 @@ class TestPreconditions(unittest.TestCase):
     def test_has_shooter_above_5(self):
         gs = {"colonists": list(self.COLONISTS)}
         self.assertTrue(has_shooter_above_5(gs))
-        gs["colonists"] = gs["colonists"][:4]
+        gs["colonists"] = [{"name": "A", "health": 100, "job": "Hunter", "downed": False,
+                            "topSkills": ["Shooting 4"]}]
         self.assertFalse(has_shooter_above_5(gs))
         gs["colonists"] = list(self.COLONISTS)
         gs["colonists"][0]["downed"] = True
-        self.assertFalse(has_shooter_above_5(gs))
+        self.assertFalse(has_shooter_above_5({"colonists": gs["colonists"][:1]}))
+        gs["colonists"] = list(self.COLONISTS)
         gs["colonists"][0]["downed"] = False
         gs["colonists"][0]["job"] = "Sleeping"
-        self.assertFalse(has_shooter_above_5(gs))
+        self.assertFalse(has_shooter_above_5({"colonists": gs["colonists"][:1]}))
 
     def test_none_drafted(self):
         self.assertTrue(none_drafted({"colonists": self.COLONISTS}))
@@ -176,7 +178,7 @@ class TestReflexActor(unittest.TestCase):
                             human_action_file=self.human_file, lock_file=self.lock_file,
                             pause_file=self.pause_file, counselor_mod=counselor)
         gs = {
-            "colonists": [{"name": f"C{i}", "health": 100, "job": "Hunter", "downed": False} for i in range(6)],
+            "colonists": [{"name": f"C{i}", "health": 100, "job": "Hunter", "downed": False, "topSkills": ["Shooting 8"]} for i in range(6)],
             "alerts": [{"label": "Raid incoming!", "category": "game_alert", "message": "Raid incoming!"}],
         }
         results = actor.evaluate(gs["alerts"], {}, gs, current_day="10th of Septober, 5500")
@@ -203,7 +205,7 @@ class TestReflexActor(unittest.TestCase):
                             human_action_file=self.human_file, lock_file=self.lock_file,
                             pause_file=self.pause_file, counselor_mod=counselor)
         gs = {
-            "colonists": [{"name": f"C{i}", "health": 100, "job": "Hunter", "downed": False} for i in range(6)],
+            "colonists": [{"name": f"C{i}", "health": 100, "job": "Hunter", "downed": False, "topSkills": ["Shooting 8"]} for i in range(6)],
             "alerts": [{"label": "Raid incoming!", "category": "game_alert"}],
         }
         results = actor.evaluate(gs["alerts"], {}, gs)
@@ -219,7 +221,7 @@ class TestReflexActor(unittest.TestCase):
                             human_action_file=self.human_file, lock_file=self.lock_file,
                             pause_file=self.pause_file, counselor_mod=counselor)
         gs = {
-            "colonists": [{"name": f"C{i}", "health": 100, "job": "Hunter", "downed": False} for i in range(6)],
+            "colonists": [{"id": f"Human{i}", "name": f"C{i}", "health": 100, "job": "Hunter", "downed": False, "topSkills": ["Shooting 8"]} for i in range(6)],
             "alerts": [{"label": "Raid incoming!", "category": "game_alert"}],
         }
         results = actor.evaluate(gs["alerts"], {}, gs)
@@ -229,6 +231,7 @@ class TestReflexActor(unittest.TestCase):
         self.assertTrue(r["executed"])
         self.assertEqual(counselor.calls[0][0], "say")
         self.assertEqual(counselor.calls[1][0], "draft")
+        self.assertEqual(set(counselor.calls[1][1]), {f"Human{i}" for i in range(6)})
         recs = self._read_actions()
         self.assertEqual(len(recs), 1)
         self.assertEqual(recs[0]["executed"], True)
@@ -242,7 +245,7 @@ class TestReflexActor(unittest.TestCase):
                             human_action_file=self.human_file, lock_file=self.lock_file,
                             pause_file=self.pause_file, counselor_mod=counselor)
         gs = {
-            "colonists": [{"name": f"C{i}", "health": 100, "job": "Hunter", "downed": False} for i in range(6)],
+            "colonists": [{"name": f"C{i}", "health": 100, "job": "Hunter", "downed": False, "topSkills": ["Shooting 8"]} for i in range(6)],
             "alerts": [{"label": "Raid incoming!", "category": "game_alert"}],
         }
         results = actor.evaluate(gs["alerts"], {}, gs)
@@ -259,7 +262,7 @@ class TestReflexActor(unittest.TestCase):
                             human_action_file=self.human_file, lock_file=self.lock_file,
                             pause_file=self.pause_file, counselor_mod=counselor)
         gs = {
-            "colonists": [{"name": f"C{i}", "health": 100, "job": "Hunter", "downed": False} for i in range(6)],
+            "colonists": [{"name": f"C{i}", "health": 100, "job": "Hunter", "downed": False, "topSkills": ["Shooting 8"]} for i in range(6)],
             "alerts": [{"label": "Raid incoming!", "category": "game_alert"}],
         }
         results = actor.evaluate(gs["alerts"], {}, gs)
@@ -276,7 +279,7 @@ class TestReflexActor(unittest.TestCase):
                             human_action_file=self.human_file, lock_file=self.lock_file,
                             pause_file=self.pause_file, counselor_mod=counselor)
         gs = {
-            "colonists": [{"name": f"C{i}", "health": 100, "job": "Hunter", "downed": False} for i in range(6)],
+            "colonists": [{"name": f"C{i}", "health": 100, "job": "Hunter", "downed": False, "topSkills": ["Shooting 8"]} for i in range(6)],
             "alerts": [{"label": "Raid incoming!", "category": "game_alert"}],
         }
         results = actor.evaluate(gs["alerts"], {}, gs, current_day=day)
@@ -290,7 +293,7 @@ class TestReflexActor(unittest.TestCase):
                             human_action_file=self.human_file, lock_file=self.lock_file,
                             pause_file=self.pause_file, counselor_mod=counselor)
         gs = {
-            "colonists": [{"name": f"C{i}", "health": 100, "job": "Hunter", "downed": False} for i in range(6)],
+            "colonists": [{"name": f"C{i}", "health": 100, "job": "Hunter", "downed": False, "topSkills": ["Shooting 8"]} for i in range(6)],
             "alerts": [{"label": "Raid incoming!", "category": "game_alert"}],
         }
         results = actor.evaluate(gs["alerts"], {}, gs, current_day="10th of Septober, 5500")
@@ -310,7 +313,7 @@ class TestReflexActor(unittest.TestCase):
                                 human_action_file=self.human_file, lock_file=self.lock_file,
                                 pause_file=self.pause_file, counselor_mod=counselor)
             gs = {
-                "colonists": [{"name": f"C{i}", "health": 100, "job": "Hunter", "downed": False} for i in range(6)],
+                "colonists": [{"name": f"C{i}", "health": 100, "job": "Hunter", "downed": False, "topSkills": ["Shooting 8"]} for i in range(6)],
                 "alerts": [{"label": "Raid incoming!", "category": "game_alert"}],
             }
             results = actor.evaluate(gs["alerts"], {}, gs)
@@ -326,7 +329,7 @@ class TestReflexActor(unittest.TestCase):
                             human_action_file=self.human_file, lock_file=self.lock_file,
                             pause_file=self.pause_file, counselor_mod=counselor)
         gs = {
-            "colonists": [{"name": f"C{i}", "health": 100, "job": "Hunter", "downed": False} for i in range(6)],
+            "colonists": [{"name": f"C{i}", "health": 100, "job": "Hunter", "downed": False, "topSkills": ["Shooting 8"]} for i in range(6)],
             "alerts": [{"label": "Raid incoming!", "category": "game_alert"}],
         }
         actor.evaluate(gs["alerts"], {}, gs)

@@ -56,8 +56,14 @@ def has_unassigned_colonist(game_state) -> bool:
 
 
 def has_shooter_above_5(game_state) -> bool:
-    """At least 5 combat-ready colonists (not downed, not sleeping, healthy)."""
-    count = 0
+    """At least one combat-ready colonist with Shooting skill above 5.
+
+    The previous version required five combat-ready colonists, which made the
+    raid reflex impossible for a normal early colony. The name and the intent
+    are about a competent shooter, not a headcount.
+    """
+    import re
+
     for c in _colonists(game_state):
         if not isinstance(c, dict):
             continue
@@ -69,8 +75,11 @@ def has_shooter_above_5(game_state) -> bool:
         health = c.get("health")
         if health is not None and health <= 0:
             continue
-        count += 1
-    return count >= 5
+        for skill in c.get("topSkills") or []:
+            match = re.search(r"Shooting\s+(\d+)", str(skill))
+            if match and int(match.group(1)) > 5:
+                return True
+    return False
 
 
 def none_drafted(game_state) -> bool:
