@@ -12,6 +12,7 @@ __all__ = [
     "has_fire_alert",
     "has_food_alert",
     "has_raid_alert",
+    "has_research_idle_alert",
     "has_shooter_above_5",
     "has_unassigned_colonist",
     "has_wounded_colonist",
@@ -123,6 +124,12 @@ def has_food_alert(game_state) -> bool:
     ))
 
 
+def has_research_idle_alert(game_state) -> bool:
+    """The game reports that no research project is selected."""
+    text = " ".join(_alert_text(a) for a in _alerts(game_state))
+    return "research project" in text or "no research" in text
+
+
 PRECONDITIONS = {
     "has_raid_alert": has_raid_alert,
     "has_fire_alert": has_fire_alert,
@@ -132,4 +139,5 @@ PRECONDITIONS = {
     "has_wounded_colonist": has_wounded_colonist,
     "has_downed_colonist": has_downed_colonist,
     "has_food_alert": has_food_alert,
+    "has_research_idle_alert": has_research_idle_alert,
 }

@@ -19,6 +19,7 @@ from smartrim.reflex_preconditions import (
     has_fire_alert,
     has_food_alert,
     has_raid_alert,
+    has_research_idle_alert,
     has_shooter_above_5,
     has_unassigned_colonist,
     has_wounded_colonist,
@@ -43,6 +44,7 @@ class _FakeCounselor:
         self.zone_list = []
         self.food_zone_created = True
         self.cooking_bill_added = True
+        self.research_project_set = True
 
     def say(self, message):
         self.calls.append(("say", message))
@@ -80,6 +82,10 @@ class _FakeCounselor:
         self.calls.append(("ensure_cooking_bill",))
         return self.cooking_bill_added
 
+    def ensure_research_project(self):
+        self.calls.append(("ensure_research_project",))
+        return self.research_project_set
+
 
 class _Env:
     def __init__(self):
@@ -102,12 +108,12 @@ class _Env:
 
 
 class TestReflexWhitelist(unittest.TestCase):
-    def test_loads_six_actions(self):
+    def test_loads_seven_actions(self):
         actions = {a.id: a for a in load_reflex_actions()}
-        self.assertEqual(len(actions), 6)
+        self.assertEqual(len(actions), 7)
         ids = set(actions)
-        self.assertEqual(ids, {"draft-and-focus-fire", "designate-firefighting", "assign-beds-to-unassigned", "rescue-downed", "prioritize-treatment", "ensure-food-supply"})
-        live = {"draft-and-focus-fire", "ensure-food-supply"}
+        self.assertEqual(ids, {"draft-and-focus-fire", "designate-firefighting", "assign-beds-to-unassigned", "rescue-downed", "prioritize-treatment", "ensure-food-supply", "set-research-project"})
+        live = {"draft-and-focus-fire", "ensure-food-supply", "set-research-project"}
         for a in actions.values():
             self.assertEqual(a.dry_run, a.id not in live, a.id)
         raid = {"label": "Raid incoming!", "category": "game_alert", "message": "Raid incoming!"}
@@ -256,6 +262,11 @@ class TestPreconditions(unittest.TestCase):
         self.assertFalse(has_food_alert({"alerts": [{"label": "Raid incoming"}]}))
         self.assertFalse(has_food_alert({"alerts": []}))
 
+    def test_has_research_idle_alert(self):
+        self.assertTrue(has_research_idle_alert({"alerts": [{"label": "Need research project"}]}))
+        self.assertFalse(has_research_idle_alert({"alerts": [{"label": "Food stock low"}]}))
+        self.assertFalse(has_research_idle_alert({"alerts": []}))
+
     def test_has_fire_alert(self):
         self.assertTrue(has_fire_alert({"alerts": [{"label": "Fire!"}]}))
         self.assertFalse(has_fire_alert({"alerts": [{"label": "Raid"}]}))
@@ -292,6 +303,7 @@ class TestPreconditions(unittest.TestCase):
             "has_raid_alert", "has_fire_alert", "has_unassigned_colonist",
             "has_shooter_above_5", "none_drafted",
             "has_wounded_colonist", "has_downed_colonist", "has_food_alert",
+            "has_research_idle_alert",
         })
 
     def test_has_downed_colonist(self):

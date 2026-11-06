@@ -73,6 +73,7 @@ ATTEMPT_COOLDOWN_SECONDS = int(os.getenv("REFLEX_COOLDOWN_SECONDS", "600"))
 EXECUTE_ACTIONS = (
     "draft_and_focus_fire", "designate_firefighting", "assign_beds",
     "rescue_downed", "prioritize_treatment", "ensure_food_supply",
+    "set_research_project",
 )
 
 FOOD_CROPS = ("rice", "potato", "corn", "pumpkin")
@@ -499,6 +500,8 @@ class ReflexActor:
             return f"SmartRim: {unassigned} unassigned colonist(s) — assign beds ({label})"
         if at == "ensure_food_supply":
             return f"SmartRim: food low ({label}) — starting a rice farm / cooking bill"
+        if at == "set_research_project":
+            return f"SmartRim: no research selected ({label}) — picking a project"
         return f"SmartRim: reflex {at} ({label})"
 
     def _execute(self, action, game_state):
@@ -516,6 +519,8 @@ class ReflexActor:
                 return self._exec_prioritize_treatment(game_state)
             if at == "ensure_food_supply":
                 return self._exec_ensure_food_supply(game_state)
+            if at == "set_research_project":
+                return bool(self.counselor.ensure_research_project())
         except Exception as e:  # pragma: no cover - defensive
             logger.error("reflex execute %s failed: %s", at, e)
         return False

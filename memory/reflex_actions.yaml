@@ -50,3 +50,11 @@ reflex_actions:
     kill_switch_env: REFLEX_KILL
     preconditions:
       - has_food_alert
+  - id: set-research-project
+    alert_match:
+      label_contains: ["need research project", "no research project"]
+    action_type: set_research_project
+    dry_run: false
+    kill_switch_env: REFLEX_KILL
+    preconditions:
+      - has_research_idle_alert

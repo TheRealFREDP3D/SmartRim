@@ -319,6 +319,51 @@ def set_research(project):
     return _call("set_research", {"project": project})
 
 
+# Ordered by how much each unlock helps a colony stand on its own feet.
+RESEARCH_PRIORITY = (
+    "Machining",
+    "Electricity",
+    "Batteries",
+    "SolarPanels",
+    "Smithing",
+    "Stonecutting",
+    "ComplexFurniture",
+    "GunTurrets",
+    "Hydroponics",
+    "PackagedSurvivalMeal",
+    "DrugProduction",
+    "PenoxycylineProduction",
+    "Devilstrand",
+    "Brewing",
+)
+
+
+def ensure_research_project():
+    """Pick a research project when the colony has none selected.
+
+    Prefers the unlocks that most reduce dependence on luck (machine components,
+    power, food preservation), then falls back to the cheapest startable project
+    so the bench is never idle. Returns True when a project was set.
+    """
+    current = _call("get_research")
+    if isinstance(current, dict) and current.get("current"):
+        return False
+    listing = _call("get_research", {"list": "unfinished"})
+    projects = listing.get("projects") or []
+    startable = {
+        str(p.get("defName") or ""): p
+        for p in projects
+        if isinstance(p, dict) and p.get("canStartNow") and p.get("defName")
+    }
+    if not startable:
+        return False
+    for name in RESEARCH_PRIORITY:
+        if name in startable:
+            return bool(_call("set_research", {"project": name}).get("ok"))
+    cheapest = min(startable.values(), key=lambda p: p.get("cost") or 10**6)
+    return bool(_call("set_research", {"project": cheapest["defName"]}).get("ok"))
+
+
 # === Zones ===
 
 def designate(designator, x1, z1, x2=None, z2=None, x=None, z=None):
