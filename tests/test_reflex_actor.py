@@ -124,6 +124,52 @@ class TestReflexWhitelist(unittest.TestCase):
         self.assertTrue(actions["ensure-food-supply"].matches(food))
 
 
+class TestAlertPreconditionWiring(unittest.TestCase):
+    """Preconditions must see the alert that triggered the action."""
+
+    def test_monitor_derived_alert_reaches_preconditions(self):
+        from smartrim.reflex_actor import _with_alert
+
+        alert = {"type": "warning", "category": "food_low",
+                 "message": "Food stock low (13 units)"}
+        game_state = {"alerts": [], "colonists": []}
+        self.assertFalse(has_food_alert(game_state))
+        self.assertTrue(has_food_alert(_with_alert(game_state, alert)))
+
+    def test_with_alert_keeps_existing_alerts(self):
+        from smartrim.reflex_actor import _with_alert
+
+        raid = {"label": "Raid incoming!"}
+        state = {"alerts": [raid], "colonists": [{"name": "A"}]}
+        merged = _with_alert(state, {"message": "Food stock low"})
+        self.assertEqual(merged["alerts"][0], raid)
+        self.assertEqual(len(merged["alerts"]), 2)
+        self.assertEqual(merged["colonists"], state["colonists"])
+
+    def test_with_alert_tolerates_non_dict_state(self):
+        from smartrim.reflex_actor import _with_alert
+
+        self.assertEqual(_with_alert(None, {"message": "x"}), {"alerts": [{"message": "x"}]})
+
+
+class TestRunRebind(unittest.TestCase):
+    def test_rebind_run_points_audit_at_new_run(self):
+        import smartrim.reflex_actor as ra
+
+        orig = ra._actions_file
+        ra._actions_file = lambda: os.path.join("runtime", "run-006-adv", "actions.jsonl")
+        try:
+            actor = ReflexActor(run_id="current-run")
+            self.assertTrue(actor.actions_file.endswith(os.path.join("current-run", "actions.jsonl"))
+                            or "run-" in actor.actions_file)
+            path = actor.rebind_run("run-006-adv")
+            self.assertEqual(actor.run_id, "run-006-adv")
+            self.assertEqual(path, os.path.join("runtime", "run-006-adv", "actions.jsonl"))
+            self.assertEqual(actor.actions_file, path)
+        finally:
+            ra._actions_file = orig
+
+
 class TestPreconditions(unittest.TestCase):
     COLONISTS: ClassVar[list[dict]] = [
         {"name": "A", "health": 100, "job": "Constructor", "downed": False, "topSkills": ["Shooting 8"]},

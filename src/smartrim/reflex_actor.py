@@ -287,6 +287,21 @@ def _alert_id(alert):
     return f"{alert.get('category','')}|{alert.get('label') or alert.get('message') or ''}"
 
 
+def _with_alert(game_state, alert):
+    """Return a game_state whose alerts include the alert that triggered the action.
+
+    The monitor derives some alerts itself (food stock, mood, medicine) instead of
+    reading them from the game, so they never appear in ``game_state['alerts']``.
+    Preconditions must still see them, otherwise an action matches its alert but
+    fails its own precondition over and over.
+    """
+    if not isinstance(game_state, dict):
+        return {"alerts": [alert]}
+    alerts = list(game_state.get("alerts") or [])
+    alerts.append(alert)
+    return {**game_state, "alerts": alerts}
+
+
 class ReflexActor:
     """Evaluate and execute whitelisted reflex actions."""
 
@@ -302,6 +317,17 @@ class ReflexActor:
         self.pause_file = pause_file or _pause_file()
         self.counselor = counselor_mod or counselor
         self.actions = load_reflex_actions(self.actions_path)
+
+    def rebind_run(self, run_id):
+        """Point the actor at a run the monitor allocated *after* import.
+
+        The actions audit path is resolved at import time from the active-run
+        pointer, which still names the previous run, so without this the actor
+        records this run's actions into the previous run's directory.
+        """
+        self.run_id = run_id
+        self.actions_file = _actions_file()
+        return self.actions_file
 
     # --- guards ---------------------------------------------------------
 
@@ -594,7 +620,7 @@ class ReflexActor:
                 if self._already_acted(alert_id, action.action_type):
                     results.append({**base, "precondition_result": None, "skipped_reason": "duplicate"})
                     continue
-                pre = self._preconditions_pass(action, game_state)
+                pre = self._preconditions_pass(action, _with_alert(game_state, alert))
                 dry = self._dry_run(action)
                 if not pre:
                     self._write_audit({**base, "precondition_result": False,

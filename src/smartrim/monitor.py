@@ -872,7 +872,7 @@ def main() -> None:
         # The actor is built at import time with the placeholder; give it the real id
         # so the actions audit log and outcome closing agree on the same run.
         if _REFLEX_ACTOR is not None:
-            _REFLEX_ACTOR.run_id = RUN_ID
+            _REFLEX_ACTOR.rebind_run(RUN_ID)
     if not _acquire_lock():
         return
     write_active_run(RUN_ID, pid=os.getpid(), arm=_run_arm(), observe_only=OBSERVE_ONLY)
