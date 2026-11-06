@@ -182,14 +182,68 @@ def save(name=None):
 
 # === Building ===
 
-def build(def_name, x, z, stuff=None, rotation=None):
-    """Build a thing at coordinates."""
+def _probe_construct(x, z):
+    """Ask each colonist whether they could build the blueprint at (x, z).
+
+    RimMolt's ``order_pawn`` lists the right-click float menu without executing
+    anything, so a disabled "Cannot construct <thing>: <reason>" option tells us
+    the blueprint can never be finished by that pawn. Returns ``(feasible,
+    reasons)``: ``feasible`` is True if at least one colonist could build it.
+    """
+    reasons = []
+    colonists = _call("list_colonists").get("colonists") or []
+    for colonist in colonists:
+        options = _call("order_pawn", {"id": colonist.get("id"), "x": x, "z": z})
+        options = options.get("options") or []
+        for option in options:
+            if not option.get("disabled"):
+                return True, []
+            reason = str(option.get("label") or "").strip()
+            if reason and reason not in reasons:
+                reasons.append(reason)
+    return False, reasons
+
+
+def build(def_name, x, z, stuff=None, rotation=None, verify=True):
+    """Build a thing at coordinates.
+
+    With ``verify`` (the default) a placed blueprint is checked against every
+    colonist's construction options. If none of them can ever finish it - the
+    usual cause is a construction-skill prerequisite above the colony's best
+    builder - the blueprint is cancelled and the result reports ``ok: False``
+    instead of leaving dead steel on the map.
+    """
     args = {"def": def_name, "x": x, "z": z}
     if stuff:
         args["stuff"] = stuff
     if rotation is not None:
         args["rot"] = rotation
-    return _call("build", args)
+    result = _call("build", args)
+    if not verify or not result.get("ok"):
+        return result
+
+    footprint = result.get("footprint") or {}
+    center_x = (footprint.get("minX", x) + footprint.get("maxX", x)) // 2
+    center_z = (footprint.get("minZ", z) + footprint.get("maxZ", z)) // 2
+    feasible, reasons = _probe_construct(center_x, center_z)
+    if feasible:
+        return result
+
+    blockers = "; ".join(reasons) or "no colonist can reach or build it"
+    permanent = any("skill" in reason.lower() for reason in reasons) and not any(
+        "path" in reason.lower() or "reach" in reason.lower() for reason in reasons
+    )
+    thing = _call("inspect_thing", {"x": center_x, "z": center_z})
+    thing_id = thing.get("id")
+    if permanent and thing_id:
+        _call("do_thing_action", {"id": thing_id, "label": "Cancel"})
+        result["ok"] = False
+        result["cancelled"] = True
+        result["reason"] = f"No colonist can construct this: {blockers}"
+        return result
+
+    result["warning"] = f"No colonist can construct this right now: {blockers}"
+    return result
 
 
 def build_wall(x1, z1, x2, z2, stuff="WoodLog"):
