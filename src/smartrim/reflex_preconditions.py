@@ -10,6 +10,7 @@ __all__ = [
     "PRECONDITIONS",
     "has_downed_colonist",
     "has_fire_alert",
+    "has_food_alert",
     "has_raid_alert",
     "has_shooter_above_5",
     "has_unassigned_colonist",
@@ -113,6 +114,15 @@ def has_downed_colonist(game_state) -> bool:
     )
 
 
+def has_food_alert(game_state) -> bool:
+    """Food shortage mentioned in any alert label or message."""
+    text = " ".join(_alert_text(a) for a in _alerts(game_state))
+    return any(kw in text for kw in (
+        "food stock low", "starving", "starvation", "malnutrition",
+        "no food", "food shortage",
+    ))
+
+
 PRECONDITIONS = {
     "has_raid_alert": has_raid_alert,
     "has_fire_alert": has_fire_alert,
@@ -121,4 +131,5 @@ PRECONDITIONS = {
     "none_drafted": none_drafted,
     "has_wounded_colonist": has_wounded_colonist,
     "has_downed_colonist": has_downed_colonist,
+    "has_food_alert": has_food_alert,
 }

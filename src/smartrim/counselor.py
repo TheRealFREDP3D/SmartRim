@@ -354,6 +354,72 @@ def stockpile(x1, z1, x2, z2):
     return designate("Designator_ZoneAddStockpile_Resources", x1, z1, x2, z2)
 
 
+# === Food security ===
+
+FOOD_PLANT = "Plant_Rice"
+MEAL_RECIPE = "CookMealSimple"
+ARABLE_TERRAIN = ("Soil", "SoilRich", "Gravel", "Sand", "PackedDirt")
+
+
+def _colony_center():
+    """Average colonist position, or None when nobody is on the map."""
+    colonists = _call("list_colonists").get("colonists") or []
+    xs = [c.get("x") for c in colonists if isinstance(c.get("x"), int)]
+    zs = [c.get("z") for c in colonists if isinstance(c.get("z"), int)]
+    if not xs or not zs:
+        return None
+    return sum(xs) // len(xs), sum(zs) // len(zs)
+
+
+def start_food_zone(center=None, plant=FOOD_PLANT, width=8, height=6):
+    """Create a growing zone of ``plant`` on the first mostly-arable ground near the colony.
+
+    Returns True when a zone was created. Ring of candidate offsets keeps the
+    farm close to the colonists without needing a map scan: each candidate is
+    validated with a cheap terrain summary first.
+    """
+    center = center or _colony_center()
+    if not center:
+        return False
+    cx, cz = center
+    offsets = ((0, -10), (10, 0), (-10, 0), (0, 10),
+               (14, -14), (-14, -14), (14, 14), (-14, 14))
+    for dx, dz in offsets:
+        x1 = max(2, min(cx + dx - width // 2, 168))
+        z1 = max(2, min(cz + dz - height // 2, 168))
+        summary = _call("get_area", {
+            "minX": x1, "minZ": z1, "maxX": x1 + width, "maxZ": z1 + height,
+            "summary": True,
+        })
+        terrain = summary.get("terrainSummary") or {}
+        total = sum(terrain.values())
+        arable = sum(count for key, count in terrain.items() if key in ARABLE_TERRAIN)
+        if not total or arable / total < 0.8:
+            continue
+        result = growing_zone(x1, z1, x1 + width, z1 + height, plant=plant)
+        if result.get("ok"):
+            return True
+    return False
+
+
+def ensure_cooking_bill():
+    """Add a forever 'cook simple meal' bill to a stove or campfire that has none."""
+    buildings = _call("list_things", {"category": "building", "limit": 200}).get("things") or []
+    for thing in buildings:
+        def_name = str(thing.get("def") or "")
+        if def_name != "Campfire" and "Stove" not in def_name:
+            continue
+        bills = _call("list_bills", {"id": thing.get("id")}).get("bills") or []
+        if any("meal" in str(b.get("label") or b.get("recipe") or "").lower() for b in bills):
+            continue
+        added = _call("add_bill", {
+            "id": thing.get("id"), "recipe": MEAL_RECIPE, "repeatMode": "forever",
+        })
+        if added.get("ok"):
+            return True
+    return False
+
+
 # === Communication ===
 
 def say(message):

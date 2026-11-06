@@ -42,3 +42,11 @@ reflex_actions:
     kill_switch_env: REFLEX_KILL
     preconditions:
       - has_wounded_colonist
+  - id: ensure-food-supply
+    alert_match:
+      label_contains: ["food stock low", "starving", "starvation", "food shortage"]
+    action_type: ensure_food_supply
+    dry_run: false
+    kill_switch_env: REFLEX_KILL
+    preconditions:
+      - has_food_alert

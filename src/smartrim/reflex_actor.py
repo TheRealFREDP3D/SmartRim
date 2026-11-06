@@ -68,8 +68,10 @@ HUMAN_WINDOW_SECONDS = 60
 
 EXECUTE_ACTIONS = (
     "draft_and_focus_fire", "designate_firefighting", "assign_beds",
-    "rescue_downed", "prioritize_treatment",
+    "rescue_downed", "prioritize_treatment", "ensure_food_supply",
 )
+
+FOOD_CROPS = ("rice", "potato", "corn", "pumpkin")
 
 
 def _env_flag(name, default="1"):
@@ -428,6 +430,8 @@ class ReflexActor:
                 if isinstance(c, dict) and not c.get("bed_id") and not c.get("bed")
             )
             return f"SmartRim: {unassigned} unassigned colonist(s) — assign beds ({label})"
+        if at == "ensure_food_supply":
+            return f"SmartRim: food low ({label}) — starting a rice farm / cooking bill"
         return f"SmartRim: reflex {at} ({label})"
 
     def _execute(self, action, game_state):
@@ -443,6 +447,8 @@ class ReflexActor:
                 return self._exec_rescue_downed(game_state)
             if at == "prioritize_treatment":
                 return self._exec_prioritize_treatment(game_state)
+            if at == "ensure_food_supply":
+                return self._exec_ensure_food_supply(game_state)
         except Exception as e:  # pragma: no cover - defensive
             logger.error("reflex execute %s failed: %s", at, e)
         return False
@@ -491,6 +497,21 @@ class ReflexActor:
         medic = max(able, key=medicine_skill)
         result = self.counselor.set_priority(medic.get("name") or medic.get("id"), "Doctor", 1)
         return not _is_mcp_error(result)
+
+    def _exec_ensure_food_supply(self, game_state):
+        """Make sure food is actually being produced: a food crop plus a cooking bill."""
+        acted = False
+        zones = (self.counselor.zones() or {}).get("zones") or []
+        food_zone = any(
+            isinstance(zone, dict)
+            and zone.get("kind") == "growing"
+            and any(crop in str(zone.get("plant") or "").lower() for crop in FOOD_CROPS)
+            for zone in zones
+        )
+        if not food_zone:
+            acted = bool(self.counselor.start_food_zone()) or acted
+        acted = bool(self.counselor.ensure_cooking_bill()) or acted
+        return acted
 
     def _exec_draft(self, game_state):
         targets = self._draftable_colonists(game_state)

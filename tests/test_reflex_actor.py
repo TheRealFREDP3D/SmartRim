@@ -17,6 +17,7 @@ from smartrim.reflex_preconditions import (
     PRECONDITIONS,
     has_downed_colonist,
     has_fire_alert,
+    has_food_alert,
     has_raid_alert,
     has_shooter_above_5,
     has_unassigned_colonist,
@@ -39,6 +40,9 @@ class _FakeCounselor:
 
     def __init__(self):
         self.calls = []
+        self.zone_list = []
+        self.food_zone_created = True
+        self.cooking_bill_added = True
 
     def say(self, message):
         self.calls.append(("say", message))
@@ -64,6 +68,18 @@ class _FakeCounselor:
         self.calls.append(("set_priority", colonist, work_type, priority))
         return {"ok": True}
 
+    def zones(self):
+        self.calls.append(("zones",))
+        return {"zones": self.zone_list}
+
+    def start_food_zone(self):
+        self.calls.append(("start_food_zone",))
+        return self.food_zone_created
+
+    def ensure_cooking_bill(self):
+        self.calls.append(("ensure_cooking_bill",))
+        return self.cooking_bill_added
+
 
 class _Env:
     def __init__(self):
@@ -86,26 +102,26 @@ class _Env:
 
 
 class TestReflexWhitelist(unittest.TestCase):
-    def test_loads_five_dry_run_actions(self):
+    def test_loads_six_actions(self):
         actions = {a.id: a for a in load_reflex_actions()}
-        self.assertEqual(len(actions), 5)
+        self.assertEqual(len(actions), 6)
         ids = set(actions)
-        self.assertEqual(ids, {"draft-and-focus-fire", "designate-firefighting", "assign-beds-to-unassigned", "rescue-downed", "prioritize-treatment"})
+        self.assertEqual(ids, {"draft-and-focus-fire", "designate-firefighting", "assign-beds-to-unassigned", "rescue-downed", "prioritize-treatment", "ensure-food-supply"})
+        live = {"draft-and-focus-fire", "ensure-food-supply"}
         for a in actions.values():
-            if a.id == "draft-and-focus-fire":
-                self.assertFalse(a.dry_run)
-            else:
-                self.assertTrue(a.dry_run)
+            self.assertEqual(a.dry_run, a.id not in live, a.id)
         raid = {"label": "Raid incoming!", "category": "game_alert", "message": "Raid incoming!"}
         fire = {"label": "Fire!", "category": "game_alert", "message": "A fire has broken out"}
         idle = {"label": "1 colonist idle", "category": "idle_colonist", "message": "1 colonist idle"}
         sys_alert = {"label": "Low food", "category": "food_low", "message": "Low food"}
+        food = {"label": "Food stock low (12 units)", "category": "food_low", "message": "Food stock low"}
         self.assertTrue(actions["draft-and-focus-fire"].matches(raid))
         self.assertFalse(actions["draft-and-focus-fire"].matches(fire))
         self.assertTrue(actions["designate-firefighting"].matches(fire))
         self.assertTrue(actions["assign-beds-to-unassigned"].matches(idle))
         self.assertFalse(actions["assign-beds-to-unassigned"].matches(sys_alert))
         self.assertFalse(actions["draft-and-focus-fire"].matches(sys_alert))
+        self.assertTrue(actions["ensure-food-supply"].matches(food))
 
 
 class TestPreconditions(unittest.TestCase):
@@ -122,6 +138,13 @@ class TestPreconditions(unittest.TestCase):
         self.assertTrue(has_raid_alert({"alerts": [{"message": "Enemy detected"}]}))
         self.assertFalse(has_raid_alert({"alerts": [{"label": "Fire!", "category": "game_alert"}]}))
         self.assertFalse(has_raid_alert({"alerts": []}))
+
+    def test_has_food_alert(self):
+        self.assertTrue(has_food_alert({"alerts": [{"label": "Food stock low (15 units)"}]}))
+        self.assertTrue(has_food_alert({"alerts": [{"message": "Colonists are starving"}]}))
+        self.assertTrue(has_food_alert({"alerts": [{"label": "Food shortage"}]}))
+        self.assertFalse(has_food_alert({"alerts": [{"label": "Raid incoming"}]}))
+        self.assertFalse(has_food_alert({"alerts": []}))
 
     def test_has_fire_alert(self):
         self.assertTrue(has_fire_alert({"alerts": [{"label": "Fire!"}]}))
@@ -158,7 +181,7 @@ class TestPreconditions(unittest.TestCase):
         self.assertEqual(set(PRECONDITIONS), {
             "has_raid_alert", "has_fire_alert", "has_unassigned_colonist",
             "has_shooter_above_5", "none_drafted",
-            "has_wounded_colonist", "has_downed_colonist",
+            "has_wounded_colonist", "has_downed_colonist", "has_food_alert",
         })
 
     def test_has_downed_colonist(self):
@@ -391,6 +414,32 @@ class TestReflexActor(unittest.TestCase):
         self.assertEqual(counselor.calls[-1][:2], ("order", "A"))
         self.assertEqual(counselor.calls[-1][2], "B")
         self.assertEqual(counselor.calls[-1][3], "Rescue")
+
+    def test_exec_ensure_food_supply_starts_farm_and_cook_bill(self):
+        counselor = _FakeCounselor()
+        counselor.zone_list = [
+            {"id": 1, "kind": "growing", "plant": "Plant_Cotton"},
+        ]
+        actor = ReflexActor(run_id="test-run", actions_file=self.actions_file,
+                            human_action_file=self.human_file, lock_file=self.lock_file,
+                            pause_file=self.pause_file, counselor_mod=counselor)
+        self.assertTrue(actor._exec_ensure_food_supply({"colonists": []}))
+        names = [call[0] for call in counselor.calls]
+        self.assertEqual(names, ["zones", "start_food_zone", "ensure_cooking_bill"])
+
+    def test_exec_ensure_food_supply_skips_farm_when_food_crop_exists(self):
+        counselor = _FakeCounselor()
+        counselor.zone_list = [
+            {"id": 1, "kind": "growing", "plant": "Plant_Rice"},
+        ]
+        counselor.cooking_bill_added = False
+        actor = ReflexActor(run_id="test-run", actions_file=self.actions_file,
+                            human_action_file=self.human_file, lock_file=self.lock_file,
+                            pause_file=self.pause_file, counselor_mod=counselor)
+        self.assertFalse(actor._exec_ensure_food_supply({"colonists": []}))
+        names = [call[0] for call in counselor.calls]
+        self.assertNotIn("start_food_zone", names)
+        self.assertIn("ensure_cooking_bill", names)
 
     def test_exec_prioritize_treatment_picks_best_medic(self):
         counselor = _FakeCounselor()
