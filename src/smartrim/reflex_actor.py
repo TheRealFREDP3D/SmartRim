@@ -17,7 +17,7 @@ import json
 import os
 import re
 from contextlib import suppress
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from smartrim import config, counselor
 from smartrim.config import UNSET_RUN_ID
@@ -65,6 +65,10 @@ ENV_DRY_RUN = "REFLEX_DRY_RUN"
 ENV_PAUSE = "REFLEX_PAUSE"
 
 HUMAN_WINDOW_SECONDS = 60
+
+# How long an action that already ran for the same situation stays quiet. Keeps
+# idempotent maintain-actions from repeating their in-game say every poll.
+ATTEMPT_COOLDOWN_SECONDS = int(os.getenv("REFLEX_COOLDOWN_SECONDS", "600"))
 
 EXECUTE_ACTIONS = (
     "draft_and_focus_fire", "designate_firefighting", "assign_beds",
@@ -287,6 +291,14 @@ def _alert_id(alert):
     return f"{alert.get('category','')}|{alert.get('label') or alert.get('message') or ''}"
 
 
+_NUMBERS = re.compile(r"\d+(?:\.\d+)?")
+
+
+def _normalized_alert_id(alert_id):
+    """Collapse volatile counts so 'Food stock low (17 units)' matches '(12 units)'."""
+    return _NUMBERS.sub("#", str(alert_id or "").lower()).strip()
+
+
 def _with_alert(game_state, alert):
     """Return a game_state whose alerts include the alert that triggered the action.
 
@@ -419,6 +431,35 @@ class ReflexActor:
                 and rec.get("action") == action_type
                 and rec.get("executed") is True
             ):
+                return True
+        return False
+
+    def _in_cooldown(self, alert_id, action_type):
+        """True if the action already ran for this situation within the cooldown.
+
+        An idempotent action (``ensure_food_supply`` and friends) reports
+        "nothing left to do" every poll while the alert persists - the stock is
+        still low until the harvest. Without a cooldown that repeats the in-game
+        say and the audit record every 30 seconds. Only attempts that actually
+        ran (preconditions passed) count; a precondition failure is re-checked
+        every poll because the underlying situation may have changed.
+        """
+        if ATTEMPT_COOLDOWN_SECONDS <= 0:
+            return False
+        needle = _normalized_alert_id(alert_id)
+        cutoff = datetime.now() - timedelta(seconds=ATTEMPT_COOLDOWN_SECONDS)
+        for rec in _read_jsonl(self.actions_file):
+            if rec.get("action") != action_type:
+                continue
+            if rec.get("precondition_result") is False:
+                continue
+            if _normalized_alert_id(rec.get("alert_id")) != needle:
+                continue
+            try:
+                when = datetime.fromisoformat(str(rec.get("timestamp")))
+            except (TypeError, ValueError):
+                continue
+            if when >= cutoff:
                 return True
         return False
 
@@ -619,6 +660,9 @@ class ReflexActor:
                     continue
                 if self._already_acted(alert_id, action.action_type):
                     results.append({**base, "precondition_result": None, "skipped_reason": "duplicate"})
+                    continue
+                if self._in_cooldown(alert_id, action.action_type):
+                    results.append({**base, "precondition_result": None, "skipped_reason": "cooldown"})
                     continue
                 pre = self._preconditions_pass(action, _with_alert(game_state, alert))
                 dry = self._dry_run(action)

@@ -170,6 +170,70 @@ class TestRunRebind(unittest.TestCase):
             ra._actions_file = orig
 
 
+class TestAttemptCooldown(unittest.TestCase):
+    """Idempotent actions must not repeat their say/audit every poll."""
+
+    def setUp(self):
+        import tempfile
+
+        self.tmp = tempfile.mkdtemp()
+        self.actions_file = os.path.join(self.tmp, "actions.jsonl")
+        self.human_file = os.path.join(self.tmp, "human.json")
+        self.lock_file = os.path.join(self.tmp, "reflex.lock")
+        self.pause_file = os.path.join(self.tmp, "pause.json")
+        self.env = _Env()
+        self.env.set(REFLEX_KILL="0", REFLEX_DRY_RUN="0", REFLEX_PAUSE="0")
+
+    def tearDown(self):
+        self.env.restore()
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def _actor(self):
+        return ReflexActor(run_id="run-x", actions_file=self.actions_file,
+                           human_action_file=self.human_file, lock_file=self.lock_file,
+                           pause_file=self.pause_file, counselor_mod=_FakeCounselor())
+
+    def _record(self, alert_id, executed=False, precondition_result=True, seconds_ago=10):
+        stamp = (datetime.now() - timedelta(seconds=seconds_ago)).isoformat()
+        with open(self.actions_file, "a", encoding="utf-8") as f:
+            f.write(json.dumps({"timestamp": stamp, "run_id": "run-x", "alert_id": alert_id,
+                                "action": "ensure_food_supply",
+                                "precondition_result": precondition_result,
+                                "executed": executed}) + "\n")
+
+    def test_cooldown_matches_volatile_counts(self):
+        self._record("food_low|Food stock low (12 units)")
+        actor = self._actor()
+        self.assertTrue(actor._in_cooldown("food_low|Food stock low (17 units)", "ensure_food_supply"))
+
+    def test_cooldown_expires(self):
+        self._record("food_low|Food stock low (12 units)", seconds_ago=3600)
+        actor = self._actor()
+        self.assertFalse(actor._in_cooldown("food_low|Food stock low (17 units)", "ensure_food_supply"))
+
+    def test_precondition_failures_do_not_start_a_cooldown(self):
+        self._record("food_low|Food stock low (12 units)", precondition_result=False)
+        actor = self._actor()
+        self.assertFalse(actor._in_cooldown("food_low|Food stock low (17 units)", "ensure_food_supply"))
+
+    def test_cooldown_skips_repeat_say(self):
+        counselor = _FakeCounselor()
+        counselor.zone_list = [{"id": 1, "kind": "growing", "plant": "Plant_Rice"}]
+        counselor.cooking_bill_added = False
+        actor = ReflexActor(run_id="run-x", actions_file=self.actions_file,
+                            human_action_file=self.human_file, lock_file=self.lock_file,
+                            pause_file=self.pause_file, counselor_mod=counselor)
+        alerts = [{"type": "warning", "category": "food_low",
+                   "message": "Food stock low (17 units)"}]
+        game_state = {"colonists": [], "alerts": []}
+        first = actor.evaluate(alerts, {}, game_state)
+        second = actor.evaluate(alerts, {}, game_state)
+        self.assertNotEqual(first[0].get("skipped_reason"), "cooldown")
+        self.assertEqual(second[0].get("skipped_reason"), "cooldown")
+        says = [c for c in counselor.calls if c[0] == "say"]
+        self.assertEqual(len(says), 1, "the cooldown must suppress the repeat say")
+
+
 class TestPreconditions(unittest.TestCase):
     COLONISTS: ClassVar[list[dict]] = [
         {"name": "A", "health": 100, "job": "Constructor", "downed": False, "topSkills": ["Shooting 8"]},
