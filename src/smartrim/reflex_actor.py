@@ -374,11 +374,18 @@ class ReflexActor:
         return all(fn(game_state) for fn in action.precondition_fns())
 
     def _already_acted(self, alert_id, action_type):
+        """True only if this run already *executed* the action for this alert.
+
+        Failed attempts (MCP error, missing precondition, dry-run) must not
+        suppress a retry: the earlier version marked them as acted and a
+        transient gap became permanent for the rest of the run.
+        """
         for rec in _read_jsonl(self.actions_file):
             if (
                 rec.get("run_id") == self.run_id
                 and rec.get("alert_id") == alert_id
                 and rec.get("action") == action_type
+                and rec.get("executed") is True
             ):
                 return True
         return False

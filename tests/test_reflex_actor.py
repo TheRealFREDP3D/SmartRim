@@ -338,6 +338,24 @@ class TestReflexActor(unittest.TestCase):
         self.assertEqual(len(recs), 1)  # no duplicate action record
         self.assertEqual(counselor.calls[0][0], "say")  # say only once
 
+    def test_failed_attempt_does_not_block_retry(self):
+        self.env.set(REFLEX_KILL="0", REFLEX_DRY_RUN="0", REFLEX_PAUSE="0")
+        counselor = _FakeCounselor()
+        actor = ReflexActor(run_id="test-run", actions_file=self.actions_file,
+                            human_action_file=self.human_file, lock_file=self.lock_file,
+                            pause_file=self.pause_file, counselor_mod=counselor)
+        gs = {
+            "colonists": [{"id": f"Human{i}", "name": f"C{i}", "health": 100, "job": "Hunter",
+                           "downed": False, "topSkills": ["Shooting 8"]} for i in range(6)],
+            "alerts": [{"label": "Raid incoming!", "category": "game_alert"}],
+        }
+        # A failed attempt recorded earlier must not suppress this one.
+        with open(self.actions_file, "a") as f:
+            f.write(json.dumps({"run_id": "test-run", "alert_id": "game_alert|Raid incoming!",
+                                "action": "draft_and_focus_fire", "executed": False}) + "\n")
+        results = actor.evaluate(gs["alerts"], {}, gs)
+        self.assertTrue(results[0]["executed"])
+
     def test_precondition_failure_audited_no_call(self):
         self.env.set(REFLEX_KILL="0", REFLEX_DRY_RUN="0", REFLEX_PAUSE="0")
         counselor = _FakeCounselor()
