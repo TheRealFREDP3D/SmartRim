@@ -12,6 +12,7 @@ This directory maintains a growing knowledge base from web research and gameplay
 | `base-design.md` | Base layout, killbox, freezer, room design patterns |
 | `combat.md` | Raid handling, weapon tiers, defensive strategies |
 | `research-tree.md` | Tech tree priorities, key unlocks, research order |
+| `wiki/Power_generation.md` | Source-verified power generation formulas and placement rules (1.6.4850) |
 | `dlc/royalty/` | Royalty DLC notes |
 | `dlc/ideology/` | Ideology DLC notes |
 | `dlc/biotech/` | Biotech DLC notes |
