@@ -52,6 +52,9 @@ game state via a local HTTP API. Get it from: [Steam Workshop](https://steamcomm
    `REFLEX_KILL=1` (all reflex actions dry-run only / disabled).    Use `python -m smartrim.cli reflex pause|resume|status`
    to manage the one in-game day pause. All reflex actions ship `dry_run: true` by default; set
    `REFLEX_DRY_RUN=0` to allow actual MCP writes.
+   **Gotcha:** python-dotenv never overrides variables already set in the shell - a stale
+   `$env:REFLEX_KILL=1` from an earlier session silently beats `.env` (this happened; the
+   monitor now logs `Reflex resolved from env: ...` at startup - check it).
    - `python -m smartrim.cli reflex status` - show kill/dry-run/pause/lock/human-action state
    - `python -m smartrim.cli reflex pause` - suspend reflex actions for one in-game day (cleared on day roll)
    - `python -m smartrim.cli reflex resume` - clear the pause early

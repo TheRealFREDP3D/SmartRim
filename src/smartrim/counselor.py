@@ -1,6 +1,7 @@
 """SmartRim - Reusable tool library for game interaction via MCP."""
 
 import json
+import re
 
 import requests
 
@@ -380,18 +381,46 @@ def designate(designator, x1, z1, x2=None, z2=None, x=None, z=None):
     return _call("designate", args)
 
 
+def _is_error(result):
+    return isinstance(result, dict) and "error" in result
+
+
+def _zone_list(zones_result):
+    """Tolerate every list_zones shape: bare list, {zones: [...]}, or error dict."""
+    if isinstance(zones_result, list):
+        return zones_result
+    if isinstance(zones_result, dict):
+        zones = zones_result.get("zones")
+        if isinstance(zones, list):
+            return zones
+    return []
+
+
+def _zone_ids(zones_result, kind=None):
+    out = set()
+    for zone in _zone_list(zones_result):
+        if kind and zone.get("kind") != kind:
+            continue
+        if zone.get("id") is not None:
+            out.add(zone["id"])
+    return out
+
+
 def growing_zone(x1, z1, x2, z2, plant="Plant_Rice"):
-    """Create a growing zone."""
+    """Create a growing zone; returns (ok, detail)."""
     before = zones()
-    before_ids = {z.get("id") for z in (before.get("zones", []) if isinstance(before, dict) else []) if z.get("kind") == "growing"}
+    before_ids = _zone_ids(before, kind="growing")
     r = designate("Designator_ZoneAdd_Growing", x1, z1, x2, z2)
+    if _is_error(r):
+        return False, f"designate failed: {r.get('error')}"
     zones_list = zones()
-    growing = [z for z in (zones_list.get("zones", []) if isinstance(zones_list, dict) else []) if z.get("kind") == "growing" and z.get("id") not in before_ids]
+    growing = [z for z in _zone_list(zones_list)
+               if z.get("kind") == "growing" and z.get("id") not in before_ids]
     if not growing:
-        growing = [z for z in (zones_list.get("zones", []) if isinstance(zones_list, dict) else []) if z.get("kind") == "growing"]
+        growing = [z for z in _zone_list(zones_list) if z.get("kind") == "growing"]
     if growing:
         _call("set_growing_zone", {"id": growing[0]["id"], "plant": plant})
-    return r
+    return True, "growing zone created" if growing else "zone designated; plant not confirmed"
 
 
 def stockpile(x1, z1, x2, z2):
@@ -417,18 +446,20 @@ def _colony_center():
 
 
 def start_food_zone(center=None, plant=FOOD_PLANT, width=8, height=6):
-    """Create a growing zone of ``plant`` on the first mostly-arable ground near the colony.
+    """Create a growing zone of ``plant`` on mostly-arable ground near the colony.
 
-    Returns True when a zone was created. Ring of candidate offsets keeps the
-    farm close to the colonists without needing a map scan: each candidate is
-    validated with a cheap terrain summary first.
+    Returns (ok, detail). Ring of candidate offsets keeps the farm close to the
+    colonists without needing a map scan: each candidate is validated with a
+    cheap terrain summary first; if the terrain summary is missing or
+    unparseable we proceed optimistically rather than silently do nothing.
     """
     center = center or _colony_center()
     if not center:
-        return False
+        return False, "no colonists on map (cannot place a farm)"
     cx, cz = center
     offsets = ((0, -10), (10, 0), (-10, 0), (0, 10),
                (14, -14), (-14, -14), (14, 14), (-14, 14))
+    last_detail = "no arable ground found in scan ring"
     for dx, dz in offsets:
         x1 = max(2, min(cx + dx - width // 2, 168))
         z1 = max(2, min(cz + dz - height // 2, 168))
@@ -436,33 +467,83 @@ def start_food_zone(center=None, plant=FOOD_PLANT, width=8, height=6):
             "minX": x1, "minZ": z1, "maxX": x1 + width, "maxZ": z1 + height,
             "summary": True,
         })
-        terrain = summary.get("terrainSummary") or {}
-        total = sum(terrain.values())
-        arable = sum(count for key, count in terrain.items() if key in ARABLE_TERRAIN)
-        if not total or arable / total < 0.8:
+        if _is_error(summary):
+            return False, f"get_area failed: {summary.get('error')}"
+        # Tolerate every terrain-summary shape the server may emit; if none is
+        # found, proceed optimistically instead of skipping the zone.
+        terrain = (summary.get("terrainSummary")
+                   or summary.get("terrain")
+                   or summary.get("terrainCounts")
+                   or {})
+        if terrain:
+            total = sum(terrain.values())
+            arable = sum(count for key, count in terrain.items() if key in ARABLE_TERRAIN)
+            if not total or arable / total < 0.8:
+                last_detail = f"insufficient arable ground at ({x1},{z1})"
+                continue
+        ok, detail = growing_zone(x1, z1, x1 + width, z1 + height, plant=plant)
+        if ok:
+            return True, detail
+        last_detail = detail
+    return False, last_detail
+
+
+_COOKING_DEF_RE = re.compile(r"stove|campfire|kitchen|oven|grill|brazier|cook", re.I)
+
+
+def _cooking_building_defs():
+    """Find cooking-capable building defs via the cheap summary, then exact ids."""
+    summary = _call("list_things", {"category": "building", "summary": True})
+    if _is_error(summary):
+        return None, f"list_things failed: {summary.get('error')}"
+    defs = []
+    for group in summary.get("groups") or []:
+        def_name = str(group.get("def") or "")
+        if _COOKING_DEF_RE.search(def_name) and int(group.get("count") or 0) > 0:
+            defs.append(def_name)
+    if not defs:
+        return [], None
+    stoves = []
+    for def_name in defs:
+        result = _call("list_things", {"category": "building", "defName": def_name,
+                                       "limit": 20})
+        if _is_error(result):
             continue
-        result = growing_zone(x1, z1, x1 + width, z1 + height, plant=plant)
-        if result.get("ok"):
-            return True
-    return False
+        stoves.extend(t for t in (result.get("things") or []) if isinstance(t, dict))
+    return stoves, None
 
 
 def ensure_cooking_bill():
-    """Add a forever 'cook simple meal' bill to a stove or campfire that has none."""
-    buildings = _call("list_things", {"category": "building", "limit": 200}).get("things") or []
-    for thing in buildings:
-        def_name = str(thing.get("def") or "")
-        if def_name != "Campfire" and "Stove" not in def_name:
+    """Add a forever 'cook simple meal' bill to a stove/campfire that has none.
+
+    Returns (ok, detail): ok=True when a bill was added; otherwise detail says
+    why not (no cooking building, everything already billed, or the MCP error).
+    """
+    stoves, error = _cooking_building_defs()
+    if error:
+        return False, error
+    if stoves is None:
+        return False, "list_things failed"
+    if not stoves:
+        return False, "no campfire or stove found"
+
+    last_detail = "meal bill already present"
+    for thing in stoves:
+        bills = _call("list_bills", {"id": thing.get("id")})
+        if _is_error(bills):
+            last_detail = f"list_bills failed: {bills.get('error')}"
             continue
-        bills = _call("list_bills", {"id": thing.get("id")}).get("bills") or []
+        bills = bills.get("bills") or []
         if any("meal" in str(b.get("label") or b.get("recipe") or "").lower() for b in bills):
             continue
         added = _call("add_bill", {
             "id": thing.get("id"), "recipe": MEAL_RECIPE, "repeatMode": "forever",
         })
-        if added.get("ok"):
-            return True
-    return False
+        if _is_error(added):
+            last_detail = f"add_bill failed: {added.get('error')}"
+            continue
+        return True, f"cook-simple-meal bill added to {thing.get('def')} (id {thing.get('id')})"
+    return False, last_detail
 
 
 # === Communication ===

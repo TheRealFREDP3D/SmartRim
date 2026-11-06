@@ -23,6 +23,24 @@ except ImportError:
     config = None
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+try:
+    from smartrim import runmarker as _runmarker
+
+    def _is_inconclusive(marker):
+        return _runmarker.is_inconclusive(marker)
+except ImportError:  # pragma: no cover - evaluate must work without runmarker
+    def _is_inconclusive(marker):
+        if not isinstance(marker, dict):
+            return True
+        reason = str(marker.get("stop_reason") or "").strip()
+        return reason not in ("run_length", "colony_death")
+
+try:
+    from smartrim.protocol import protocol_matches as _protocol_matches
+except ImportError:  # pragma: no cover
+    def _protocol_matches(marker):
+        return False
+
 SUMMARY_KEYS = [
     "run_id",
     "arm",
@@ -288,6 +306,8 @@ def summarize_run(run_id, runs_dir, advice_file, snapshots_root=None):
         "advice_total": len(advice),
         "has_end_marker": marker is not None,
         "stop_reason": marker.get("stop_reason") if marker else None,
+        "inconclusive": _is_inconclusive(marker),
+        "protocol_ok": bool(marker) and not _is_inconclusive(marker) and _protocol_matches(marker),
     }
 
 
@@ -416,9 +436,30 @@ def _maybe_write(rows, path):
     print(f"\nWrote {path}")
 
 
-def _rows_from_dir(runs_dir, advice_file, snapshots_root):
+def _exclude_rows(rows, include_inconclusive=False, include_any_protocol=False):
+    """Split evaluable rows from quarantined ones.
+
+    Returns (kept, exclusions) where exclusions is a list of (run_id, reason).
+    Inconclusive runs (no definitive ending) and definitive runs that violate
+    the evaluation protocol are excluded unless explicitly opted in.
+    """
+    kept, exclusions = [], []
+    for row in rows:
+        if row.get("inconclusive"):
+            if not include_inconclusive:
+                exclusions.append((row["run_id"], "inconclusive"))
+                continue
+        elif not row.get("protocol_ok") and not include_any_protocol:
+            exclusions.append((row["run_id"], "protocol mismatch"))
+            continue
+        kept.append(row)
+    return kept, exclusions
+
+
+def _rows_from_dir(runs_dir, advice_file, snapshots_root, include_inconclusive=False,
+                   include_any_protocol=False):
     if not os.path.isdir(runs_dir):
-        return None
+        return None, []
     run_ids = sorted(
         {name[:-len(".end.json")] for name in os.listdir(runs_dir) if name.endswith(".end.json")}
         | {
@@ -428,14 +469,30 @@ def _rows_from_dir(runs_dir, advice_file, snapshots_root):
             and os.path.exists(os.path.join(runs_dir, name, "end.json"))
         }
     )
-    return [summarize_run(run_id, runs_dir, advice_file, snapshots_root) for run_id in run_ids]
+    rows = [summarize_run(run_id, runs_dir, advice_file, snapshots_root) for run_id in run_ids]
+    return _exclude_rows(rows, include_inconclusive, include_any_protocol)
+
+
+def _print_exclusions(exclusions):
+    if not exclusions:
+        return
+    by_reason = {}
+    for run_id, reason in exclusions:
+        by_reason.setdefault(reason, []).append(run_id)
+    for reason, ids in sorted(by_reason.items()):
+        print(f"Excluded {len(ids)} run(s) ({reason}): {', '.join(sorted(ids))}")
+    print("Pass --include-inconclusive / --include-any-protocol to include them.")
+    print()
 
 
 def cmd_summarize(args):
-    rows = _rows_from_dir(args.runs_dir, args.advice, args.snapshots_dir)
+    rows, excluded = _rows_from_dir(args.runs_dir, args.advice, args.snapshots_dir,
+                                    include_inconclusive=args.include_inconclusive,
+                                    include_any_protocol=args.include_any_protocol)
     if rows is None:
         print(f"Runs dir not found: {args.runs_dir}")
         return
+    _print_exclusions(excluded)
     if not rows:
         print("No completed runs found.")
         return
@@ -443,8 +500,79 @@ def cmd_summarize(args):
     _maybe_write(rows, args.write)
 
 
+def _load_lessons_file(path):
+    lessons = []
+    with open(path, encoding="utf-8") as fh:
+        for line in fh:
+            line = line.strip()
+            if line:
+                lessons.append(json.loads(line))
+    return lessons
+
+
+def cmd_lessons(args):
+    path = args.lessons or os.path.join(BASE_DIR, "memory", "lessons.jsonl")
+    if not os.path.isfile(path):
+        print(f"Lessons file not found: {path}")
+        return 1
+    lessons = _load_lessons_file(path)
+    min_n = args.min_evidence
+    rows = []
+    for lesson in lessons:
+        if not args.include_inactive and lesson.get("status") != "active":
+            continue
+        helped = int(lesson.get("times_helped") or 0)
+        failed = int(lesson.get("times_failed") or 0)
+        applied = int(lesson.get("times_applied") or 0)
+        n = helped + failed
+        win = (helped - failed) / n if n >= min_n and n else None
+        rows.append((win, lesson, helped, failed, applied, n))
+    judged = [r for r in rows if r[0] is not None]
+    unjudged = [r for r in rows if r[0] is None]
+    judged.sort(key=lambda r: (r[0], r[1].get("confidence") or 0))
+    unjudged.sort(key=lambda r: -(r[1].get("confidence") or 0))
+    limit = args.limit
+
+    print(f"Lesson effectiveness — {len(rows)} lessons ({'active' if not args.include_inactive else 'all'}), "
+          f"min evidence {min_n} judged verdicts")
+    print()
+    print("Judged, worst first (review for demotion/retirement):")
+    print("id | win_rate | helped | failed | applied | conf | title")
+    for win, lesson, helped, failed, applied, _n in judged[:limit]:
+        print(f"{lesson.get('id')} | {win:+.2f} | {helped} | {failed} | {applied} | "
+              f"{lesson.get('confidence')} | {lesson.get('title', '')[:60]}")
+    if not judged:
+        print("(none — no lesson has enough judged outcomes yet)")
+    print()
+    print(f"Unjudged (fewer than {min_n} verdicts; ineligible for auto-demotion): {len(unjudged)}")
+    if args.dupes:
+        from smartrim.promote import similarity
+
+        active = [lesson for lesson in lessons if lesson.get("status") == "active"]
+        print()
+        print("Near-duplicate active lessons (token similarity >= 0.6):")
+        shown = 0
+        for i in range(len(active)):
+            for j in range(i + 1, len(active)):
+                first, second = active[i], active[j]
+                score = similarity(f"{first.get('title', '')} {first.get('recommendation', '')}",
+                                   f"{second.get('title', '')} {second.get('recommendation', '')}")
+                if score >= 0.6:
+                    shown += 1
+                    print(f"{first.get('id')} ~ {second.get('id')} ({score:.2f}): {first.get('title', '')[:50]} / {second.get('title', '')[:50]}")
+        if shown == 0:
+            print("(none)")
+    return 0
+
+
 def cmd_compare(args):
     rows = [summarize_run(run_id, args.runs_dir, args.advice, args.snapshots_dir) for run_id in args.runs]
+    rows, excluded = _exclude_rows(rows, getattr(args, "include_inconclusive", False),
+                                   getattr(args, "include_any_protocol", False))
+    _print_exclusions(excluded)
+    if not rows:
+        print("No conclusive runs to compare.")
+        return
     _print_rows(rows)
     _maybe_write(rows, args.write)
 
@@ -462,6 +590,10 @@ def main():
     summarize.add_argument("--advice", default=default_advice)
     summarize.add_argument("--snapshots-dir", default=default_snaps)
     summarize.add_argument("--write", default=None, help="Write the markdown report to this path")
+    summarize.add_argument("--include-inconclusive", action="store_true",
+                           help="Keep runs with no definitive ending (manual_close/monitor_abort)")
+    summarize.add_argument("--include-any-protocol", action="store_true",
+                           help="Keep definitive runs that violate the evaluation protocol")
     summarize.set_defaults(func=cmd_summarize)
 
     compare = sub.add_parser("compare")
@@ -470,7 +602,21 @@ def main():
     compare.add_argument("--advice", default=default_advice)
     compare.add_argument("--snapshots-dir", default=default_snaps)
     compare.add_argument("--write", default=None, help="Write the markdown report to this path")
+    compare.add_argument("--include-inconclusive", action="store_true",
+                         help="Keep runs with no definitive ending (manual_close/monitor_abort)")
+    compare.add_argument("--include-any-protocol", action="store_true",
+                         help="Keep definitive runs that violate the evaluation protocol")
     compare.set_defaults(func=cmd_compare)
+
+    lessons = sub.add_parser("lessons", help="Per-lesson effectiveness report (win rate, min evidence)")
+    lessons.add_argument("--lessons", default=None, help="Path to lessons.jsonl (default: memory/lessons.jsonl)")
+    lessons.add_argument("--include-inactive", action="store_true",
+                         help="Include needs_review/retired lessons, not just active")
+    lessons.add_argument("--min-evidence", type=int, default=4,
+                         help="Minimum judged verdicts (helped+failed) for a win-rate score")
+    lessons.add_argument("--limit", type=int, default=None, help="Cap printed rows")
+    lessons.add_argument("--dupes", action="store_true", help="Also report near-duplicate active lessons")
+    lessons.set_defaults(func=cmd_lessons)
 
     args = parser.parse_args()
     args.func(args)

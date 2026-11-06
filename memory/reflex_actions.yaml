@@ -2,7 +2,7 @@ version: 1
 reflex_actions:
   - id: draft-and-focus-fire
     alert_match:
-      label_contains: ["raid", "enemy", "attack"]
+      label_contains: ["raid", "enem", "attack", "hostile"]
     action_type: draft_and_focus_fire
     dry_run: false
     kill_switch_env: REFLEX_KILL

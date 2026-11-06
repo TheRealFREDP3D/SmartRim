@@ -42,8 +42,11 @@ class _FakeCounselor:
     def __init__(self):
         self.calls = []
         self.zone_list = []
+        self.zones_error = None          # set to a string to simulate list_zones failure
         self.food_zone_created = True
         self.cooking_bill_added = True
+        self.start_food_zone_result = None    # tuple override, e.g. (True, "growing zone created")
+        self.cooking_bill_result = None       # tuple override, e.g. (False, "no campfire or stove found")
         self.research_project_set = True
 
     def say(self, message):
@@ -72,14 +75,20 @@ class _FakeCounselor:
 
     def zones(self):
         self.calls.append(("zones",))
+        if self.zones_error:
+            return {"error": self.zones_error}
         return {"zones": self.zone_list}
 
     def start_food_zone(self):
         self.calls.append(("start_food_zone",))
+        if self.start_food_zone_result is not None:
+            return self.start_food_zone_result
         return self.food_zone_created
 
     def ensure_cooking_bill(self):
         self.calls.append(("ensure_cooking_bill",))
+        if self.cooking_bill_result is not None:
+            return self.cooking_bill_result
         return self.cooking_bill_added
 
     def ensure_research_project(self):
@@ -611,6 +620,103 @@ class TestReflexActor(unittest.TestCase):
         self.assertEqual(food_rec["outcome_status"], "helped")  # food days >= 5 via _close_advice
         self.assertEqual(raid_rec["outcome_status"], "expired")  # no active threat -> expired
         self.assertIsNotNone(food_rec["outcome_check_at"])
+
+
+class TestEnsureFoodSupply(unittest.TestCase):
+    """P2-A: the food reflex must prove itself end-to-end or say exactly why not."""
+
+    def setUp(self):
+        import tempfile
+
+        self.tmp = tempfile.mkdtemp()
+        self.actions_file = os.path.join(self.tmp, "actions.jsonl")
+        self.human_file = os.path.join(self.tmp, "human.json")
+        self.lock_file = os.path.join(self.tmp, "reflex.lock")
+        self.pause_file = os.path.join(self.tmp, "pause.json")
+        self.env = _Env()
+        self.env.set(REFLEX_KILL="0", REFLEX_DRY_RUN="0", REFLEX_PAUSE="0")
+
+    def tearDown(self):
+        self.env.restore()
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def _actor(self, counselor):
+        return ReflexActor(run_id="run-food", actions_file=self.actions_file,
+                           human_action_file=self.human_file, lock_file=self.lock_file,
+                           pause_file=self.pause_file, counselor_mod=counselor)
+
+    def _run_food(self, counselor):
+        alerts = [{"type": "warning", "category": "food_low",
+                   "message": "Food stock low (13 units)"}]
+        game_state = {"alerts": [{"label": "Food stock low (13 units)"}], "colonists": []}
+        return self._actor(counselor).evaluate(alerts, {}, game_state)
+
+    def _audit(self):
+        with open(self.actions_file, encoding="utf-8") as fh:
+            return [json.loads(line) for line in fh if line.strip()]
+
+    FOOD_ZONE: ClassVar[list[dict]] = [{"id": 7, "kind": "growing", "plant": "Plant_Rice"}]
+
+    def test_existing_zone_and_bill_executes_true(self):
+        counselor = _FakeCounselor()
+        counselor.zone_list = list(self.FOOD_ZONE)
+        counselor.cooking_bill_result = (True, "cook-simple-meal bill added to Stove_Fueled (id 3)")
+        results = self._run_food(counselor)
+        self.assertTrue(results[0]["executed"])
+        self.assertNotIn("reason", self._audit()[-1])
+
+    def test_existing_zone_bill_already_present_records_reason(self):
+        counselor = _FakeCounselor()
+        counselor.zone_list = list(self.FOOD_ZONE)
+        counselor.cooking_bill_result = (False, "meal bill already present")
+        results = self._run_food(counselor)
+        self.assertFalse(results[0]["executed"])
+        record = self._audit()[-1]
+        self.assertEqual(record["reason"], "food growing zone already present; meal bill already present")
+
+    def test_missing_zone_is_created_and_executes_true(self):
+        counselor = _FakeCounselor()
+        counselor.start_food_zone_result = (True, "growing zone created")
+        counselor.cooking_bill_result = (True, "cook-simple-meal bill added")
+        results = self._run_food(counselor)
+        self.assertTrue(results[0]["executed"])
+        self.assertIn(("start_food_zone",), counselor.calls)
+
+    def test_no_stove_or_campfire_records_reason(self):
+        counselor = _FakeCounselor()
+        counselor.zone_list = list(self.FOOD_ZONE)
+        counselor.cooking_bill_result = (False, "no campfire or stove found")
+        results = self._run_food(counselor)
+        self.assertFalse(results[0]["executed"])
+        self.assertEqual(self._audit()[-1]["reason"],
+                         "food growing zone already present; no campfire or stove found")
+
+    def test_zones_error_records_reason_and_makes_no_writes(self):
+        counselor = _FakeCounselor()
+        counselor.zones_error = "boom"
+        results = self._run_food(counselor)
+        self.assertFalse(results[0]["executed"])
+        self.assertEqual(self._audit()[-1]["reason"], "list_zones failed: boom")
+        self.assertNotIn(("start_food_zone",), counselor.calls)
+        self.assertNotIn(("ensure_cooking_bill",), counselor.calls)
+
+    def test_reason_absent_when_executed(self):
+        counselor = _FakeCounselor()
+        counselor.zone_list = []
+        counselor.start_food_zone_result = (True, "growing zone created")
+        counselor.cooking_bill_result = (True, "bill added")
+        self._run_food(counselor)
+        self.assertNotIn("reason", self._audit()[-1])
+
+    def test_enemies_alert_matches_draft_and_focus_fire(self):
+        actions = {a.id: a for a in load_reflex_actions()}
+        enemies = {"label": "Enemies", "category": "game_alert",
+                   "message": "Enemies", "type": "urgent"}
+        self.assertTrue(actions["draft-and-focus-fire"].matches(enemies))
+
+    def test_has_raid_alert_recognizes_enemies(self):
+        self.assertTrue(has_raid_alert({"alerts": [{"message": "Enemies"}]}))
+        self.assertTrue(has_raid_alert({"alerts": [{"label": "Enemies", "priority": "Critical"}]}))
 
 
 if __name__ == "__main__":

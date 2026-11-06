@@ -85,16 +85,43 @@ On each in-game day roll the monitor calls `outcomes.close_outcomes()`:
 |---|---|
 | `helped` | `times_helped + 1`, `confidence + 0.10` (cap 1.0) |
 | `failed` | `times_failed + 1`, `confidence - 0.15` (floor 0.0); after 3 failures with more failures than helps, `status = needs_review` |
-| either | `times_applied + 1`, `last_updated = today`, run id appended to `source_runs` |
+| either (helped or failed) | `times_applied + 1`, `last_updated = today`, run id appended to `source_runs` (expired verdicts count nothing) |
 
-Closing is idempotent; advice older than 3 in-game days with no outcome is aged
-out to `expired` first.
+Closing is idempotent. Records are **judged first** at each day roll; only records that stay
+undecidable are then aged out to `expired` — after 3 in-game days when the record and the
+snapshot both carry `days_passed` (monitor-written records do), otherwise after 7 wall-clock
+days (`ADVICE_EXPIRE_IN_GAME_DAYS` / `ADVICE_EXPIRE_DAYS`). **Only helped/failed verdicts
+touch lesson counters**: `times_applied` counts judged advice, and inconclusive closures
+(`expired`) leave the lessons, confidence and `source_runs` untouched.
 
 ### Step 4. Run ends
 
 When `RUN_DAYS` is reached (or the colony dies) the monitor writes
 `runtime/<run-id>/end.json` and a final snapshot. Debrief tooling then has a
 stable run id to work with.
+
+If the run is **abandoned** (game closed, save dropped, monitor stopped before
+the ending) it never gets a definitive marker from the monitor. Instead the next
+monitor start auto-closes it via `runmarker` (or you can run
+`python -m smartrim.runmarker close <run-id> [--reason manual_close|monitor_abort]`):
+an inconclusive marker is written from the last available snapshot — no live
+capture, since the game may be gone — and the run is **excluded from evaluation**
+by default (`python -m smartrim.evaluate summarize --include-inconclusive` to
+override). Definitive endings (`run_length`, `colony_death`) stay the only valid
+comparison datapoints.
+
+All of Steps 5–10 can be run as one command:
+
+```bash
+python -m smartrim.pipeline <run-id>
+```
+
+This builds the debrief and v3 bundle, runs the LLM analysis, auto-promotes
+candidates that pass the quality rules (cited source, schema-valid, scoped
+trigger, not a duplicate — always as `needs_review`, never auto-activated), and
+regenerates `memory/lessons-learned.md`. `--skip-llm` reuses the newest
+candidates file; `--dry-run` reports without writing; `--no-promote` stops
+after the analysis. Everything else can still be done manually:
 
 ### Step 5. Build the debrief bundle
 
@@ -111,6 +138,19 @@ This writes:
 The bundle contains: instructions, run metadata (outcome, biome, quests, causes),
 verified wiki facts, explicitly unverified claims, the daily timeline, an event
 digest (transitions and urgent incidents), the advice log, and the task.
+
+Urgent advice is auto-tagged with a best-effort cause at log time
+(`event_cause`, e.g. `hostile_raid`, `fire_during_raid`, `food_exhaustion` —
+derived from the game's own alerts; see `smartrim/event_cause.py`). Scheduled,
+informational advice stays untagged. Auto-tags are never overwritten by
+re-tagging; override or refine one with:
+
+```bash
+python -m smartrim.advice_log cause <advice-id> "raider arson"       # one record
+python -m smartrim.advice_log cause-match <run-id> fire "raider arson"  # whole burst
+```
+
+Backfill historical runs: `python -m smartrim.event_cause backfill --all` (idempotent; `--dry-run` to preview).
 
 ### Step 6. Ask the LLM for candidates
 
@@ -268,9 +308,12 @@ Empty list or `"any"` means unscoped for that field. These enums live in
 | Test retrieval | `python -m smartrim.situation retrieve sit.json` |
 | Promote candidates | `python -m smartrim.situation promote <candidate-file>` |
 | Trace a run | `python -m smartrim.situation lineage <run-id>` |
+| One-command post-run pipeline | `python -m smartrim.pipeline <run-id>` |
 | Build bundle | `python -m smartrim.debrief <run-id>` |
 | LLM analysis | `python -m smartrim.debrief_llm --run <run-id>` |
+| Backfill event causes | `python -m smartrim.event_cause backfill --all [--dry-run]` |
 | Compare runs | `python -m smartrim.evaluate compare` |
+| Lesson effectiveness | `python -m smartrim.evaluate lessons [--dupes]` |
 
 ---
 

@@ -118,6 +118,28 @@ class Lesson:
         )
 
 
+MIN_EFFECTIVE_VERDICTS = 4
+CLEAR_LOSS_EFFECTIVENESS = -0.5
+
+
+def effectiveness(helped, failed):
+    """Win rate on judged verdicts; 0.0 until enough evidence exists.
+
+    Historical counters are polluted by a system that counted inconclusive
+    closures as applications, so below MIN_EFFECTIVE_VERDICTS we rank lessons
+    as neutral rather than trust noise.
+    """
+    n = (helped or 0) + (failed or 0)
+    if n < MIN_EFFECTIVE_VERDICTS:
+        return 0.0
+    return ((helped or 0) - (failed or 0)) / n
+
+
+def is_clear_loser(helped, failed):
+    """True when a lesson has enough evidence and is clearly losing."""
+    return effectiveness(helped, failed) <= CLEAR_LOSS_EFFECTIVENESS
+
+
 class LessonStore(ABC):
     """Protocol for lesson storage and retrieval."""
 
@@ -237,11 +259,9 @@ class JsonlLessonStore(LessonStore):
             if l_biome and not _ci_contains(l_biome, biome):
                 continue
 
-            conf = lesson.confidence
-            helped = lesson.times_helped
-            failed = lesson.times_failed
-            last_updated = lesson.last_updated or ""
-            key = (-conf, -(helped - failed), last_updated, lesson.id)
+            eff = effectiveness(lesson.times_helped, lesson.times_failed)
+            key = (-eff, -lesson.confidence, -(lesson.times_helped - lesson.times_failed),
+                   lesson.last_updated or "", lesson.id)
             candidates.append((key, lesson))
 
         candidates.sort(key=lambda x: x[0])
@@ -482,12 +502,18 @@ class SqliteLessonStore(LessonStore):
 
             fts_scores = {row["lesson_id"]: row["rank"] for row in cursor.fetchall()}
 
-            # Sort by FTS rank (lower is better in BM25)
-            candidates.sort(key=lambda lesson: fts_scores.get(lesson.id, float("inf")))
-        else:
-            # No semantic search: sort by confidence and effectiveness
+            # Clear losers sink below every non-loser; FTS order is preserved otherwise.
             candidates.sort(
                 key=lambda lesson: (
+                    1 if is_clear_loser(lesson.times_helped, lesson.times_failed) else 0,
+                    fts_scores.get(lesson.id, float("inf")),
+                )
+            )
+        else:
+            # No semantic search: effectiveness first, then confidence, then net verdicts.
+            candidates.sort(
+                key=lambda lesson: (
+                    -effectiveness(lesson.times_helped, lesson.times_failed),
                     -lesson.confidence,
                     -(lesson.times_helped - lesson.times_failed),
                     lesson.last_updated or "",

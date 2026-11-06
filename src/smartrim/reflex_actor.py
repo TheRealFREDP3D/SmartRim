@@ -330,6 +330,8 @@ class ReflexActor:
         self.pause_file = pause_file or _pause_file()
         self.counselor = counselor_mod or counselor
         self.actions = load_reflex_actions(self.actions_path)
+        # Why the last execute failed/no-op; recorded in the audit trail.
+        self.last_error: str | None = None
 
     def rebind_run(self, run_id):
         """Point the actor at a run the monitor allocated *after* import.
@@ -499,31 +501,39 @@ class ReflexActor:
             )
             return f"SmartRim: {unassigned} unassigned colonist(s) — assign beds ({label})"
         if at == "ensure_food_supply":
-            return f"SmartRim: food low ({label}) — starting a rice farm / cooking bill"
+            return f"SmartRim: food low ({label}) — checking rice zone and cooking bill"
         if at == "set_research_project":
             return f"SmartRim: no research selected ({label}) — picking a project"
         return f"SmartRim: reflex {at} ({label})"
 
     def _execute(self, action, game_state):
         at = action.action_type
+        self.last_error = None
         try:
             if at == "draft_and_focus_fire":
-                return self._exec_draft(game_state)
-            if at == "designate_firefighting":
-                return self._exec_firefighting(game_state)
-            if at == "assign_beds":
-                return self._exec_assign_beds(game_state)
-            if at == "rescue_downed":
-                return self._exec_rescue_downed(game_state)
-            if at == "prioritize_treatment":
-                return self._exec_prioritize_treatment(game_state)
-            if at == "ensure_food_supply":
-                return self._exec_ensure_food_supply(game_state)
-            if at == "set_research_project":
-                return bool(self.counselor.ensure_research_project())
+                ok = self._exec_draft(game_state)
+            elif at == "designate_firefighting":
+                ok = self._exec_firefighting(game_state)
+            elif at == "assign_beds":
+                ok = self._exec_assign_beds(game_state)
+            elif at == "rescue_downed":
+                ok = self._exec_rescue_downed(game_state)
+            elif at == "prioritize_treatment":
+                ok = self._exec_prioritize_treatment(game_state)
+            elif at == "ensure_food_supply":
+                ok = self._exec_ensure_food_supply(game_state)
+            elif at == "set_research_project":
+                ok = bool(self.counselor.ensure_research_project())
+            else:
+                ok = False
+                self.last_error = f"no executor for {at}"
         except Exception as e:  # pragma: no cover - defensive
             logger.error("reflex execute %s failed: %s", at, e)
-        return False
+            self.last_error = f"{at} raised: {e}"
+            return False
+        if not ok and self.last_error is None:
+            self.last_error = f"{at} returned false"
+        return ok
 
     def _exec_rescue_downed(self, game_state):
         """Order an able colonist to rescue each downed colonist."""
@@ -571,19 +581,40 @@ class ReflexActor:
         return not _is_mcp_error(result)
 
     def _exec_ensure_food_supply(self, game_state):
-        """Make sure food is actually being produced: a food crop plus a cooking bill."""
+        """Make sure food is actually being produced: a food crop plus a cooking bill.
+
+        On failure, ``self.last_error`` carries the precise reason (e.g.
+        "no campfire or stove found") so the audit trail shows *why*.
+        """
+        zones_result = self.counselor.zones()
+        if isinstance(zones_result, dict) and "error" in zones_result:
+            self.last_error = f"list_zones failed: {zones_result['error']}"
+            return False
+
+        self.last_error = None
+        zone_list = counselor._zone_list(zones_result)
         acted = False
-        zones = (self.counselor.zones() or {}).get("zones") or []
+        reasons = []
         food_zone = any(
             isinstance(zone, dict)
             and zone.get("kind") == "growing"
             and any(crop in str(zone.get("plant") or "").lower() for crop in FOOD_CROPS)
-            for zone in zones
+            for zone in zone_list
         )
         if not food_zone:
-            acted = bool(self.counselor.start_food_zone()) or acted
-        acted = bool(self.counselor.ensure_cooking_bill()) or acted
-        return acted
+            ok, detail = _as_ok_detail(self.counselor.start_food_zone())
+            reasons.append(detail)
+            acted = ok or acted
+        else:
+            reasons.append("food growing zone already present")
+        ok, detail = _as_ok_detail(self.counselor.ensure_cooking_bill())
+        reasons.append(detail)
+        acted = ok or acted
+
+        if acted:
+            return True
+        self.last_error = "; ".join(r for r in reasons if r)
+        return False
 
     def _exec_draft(self, game_state):
         targets = self._draftable_colonists(game_state)
@@ -602,11 +633,13 @@ class ReflexActor:
     def _exec_firefighting(self, game_state):
         # Fire cell coordinates are not carried by the alert; never issue a
         # blind coordinate designator. Player must designate manually after the say.
+        self.last_error = "fire cells not on the alert; designation is manual"
         return False
 
     def _exec_assign_beds(self, game_state):
         # Bed building IDs are not carried by the alert; never issue a blind
         # assign. Player assigns manually after the say.
+        self.last_error = "bed building ids not on the alert; assignment is manual"
         return False
 
     # --- audit ----------------------------------------------------------
@@ -626,6 +659,8 @@ class ReflexActor:
         }
         if result.get("skipped_reason"):
             record["skipped_reason"] = result["skipped_reason"]
+        if result.get("reason"):
+            record["reason"] = result["reason"]
         _append_jsonl(self.actions_file, record)
 
     # --- entry point ----------------------------------------------------
@@ -700,9 +735,12 @@ class ReflexActor:
                                     "executed": False, "say": intent, "skipped_reason": "paused_before_execute"})
                     continue
                 executed = self._execute(action, game_state)
-                self._write_audit({**base, "precondition_result": True, "dry_run": False,
-                                   "executed": executed, "outcome_check_at": None,
-                                   "outcome_status": None})
+                record = {**base, "precondition_result": True, "dry_run": False,
+                          "executed": executed, "outcome_check_at": None,
+                          "outcome_status": None}
+                if not executed and self.last_error:
+                    record["reason"] = self.last_error
+                self._write_audit(record)
                 results.append({**base, "precondition_result": True, "dry_run": False,
                                 "executed": executed, "say": intent})
             finally:
@@ -751,6 +789,19 @@ def _colonists(game_state):
 
 def _is_mcp_error(result):
     return isinstance(result, dict) and "error" in result
+
+
+def _as_ok_detail(result):
+    """Normalize a counselor return into (ok, detail).
+
+    Counselors return (ok, reason) tuples; older tooling and test doubles may
+    still return bare booleans — those map to (ok, "ok"/"failed").
+    """
+    if isinstance(result, tuple) and len(result) == 2:
+        ok, detail = result
+        return bool(ok), str(detail)
+    ok = bool(result)
+    return ok, "done" if ok else "action returned false"
 
 
 if __name__ == "__main__":  # pragma: no cover

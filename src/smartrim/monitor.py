@@ -513,23 +513,31 @@ def write_run_end(client: McpClient, run_id: str, days_passed: int, observe_only
     marker = config.run_file("end.json", run_id, create=True)
     if not marker:
         return None
+    from smartrim import protocol
+
+    marker_dict = {
+        "run_id": run_id,
+        "created_by": "smartrim.monitor",
+        "arm": arm,
+        "observe_only": bool(observe_only),
+        "run_days": RUN_DAYS,
+        "days_passed": days_passed,
+        "stop_reason": stop_reason,
+        "urgent_alerts": urgent_alerts,
+        "auto_pauses": auto_pauses,
+        "reflex_snapshots": reflex_snapshots,
+        "difficulty": status.get("difficulty"),
+        "storyteller": status.get("storyteller"),
+        "ended_at": datetime.now().isoformat(),
+        "snapshots_dir": snapshot_dir_for(run_id),
+        "final_snapshot": path,
+    }
+    marker_dict = protocol.stamp(marker_dict,
+                                 storyteller=status.get("storyteller"),
+                                 difficulty=status.get("difficulty"),
+                                 run_days=RUN_DAYS)
     with open(marker, "w", encoding="utf-8") as f:
-        json.dump({
-            "run_id": run_id,
-            "arm": arm,
-            "observe_only": bool(observe_only),
-            "run_days": RUN_DAYS,
-            "days_passed": days_passed,
-            "stop_reason": stop_reason,
-            "urgent_alerts": urgent_alerts,
-            "auto_pauses": auto_pauses,
-            "reflex_snapshots": reflex_snapshots,
-            "difficulty": status.get("difficulty"),
-            "storyteller": status.get("storyteller"),
-            "ended_at": datetime.now().isoformat(),
-            "snapshots_dir": snapshot_dir_for(run_id),
-            "final_snapshot": path,
-        }, f, indent=2)
+        json.dump(marker_dict, f, indent=2)
     return marker
 
 
@@ -687,9 +695,11 @@ def _say_daily_message(client: McpClient, conditions: dict[str, Any], slot: str 
 def _log_scheduled(client, status_now, conditions, alerts, day_label):
     from smartrim import advice_log
     _, _, actions, linked = _advice_context(client, status_now, conditions, alerts)
+    days_now = status_now.get("daysPassed") if isinstance(status_now, dict) else None
     advice_log.log_advice(
         run_id=RUN_ID,
         snapshot_day=day_label or "unknown",
+        days_passed=days_now,
         trigger="scheduled",
         severity="info",
         situation=f"Daily assessment for {day_label}",
@@ -697,6 +707,17 @@ def _log_scheduled(client, status_now, conditions, alerts, day_label):
         linked_lessons=linked,
         auto_paused=False,
     )
+
+
+def _auto_event_cause(urgent):
+    """Best-effort incident cause from the alerts behind an urgent advice record."""
+    try:
+        from smartrim.event_cause import derive_event_cause
+
+        return derive_event_cause(urgent)
+    except Exception as e:  # tagging must never block advice logging
+        logger.debug(f"event_cause derivation failed: {e}")
+        return None
 
 
 def _log_urgent(client, status_now, conditions, alerts, urgent, day_label):
@@ -710,9 +731,11 @@ def _log_urgent(client, status_now, conditions, alerts, urgent, day_label):
     except (OSError, json.JSONDecodeError, ValueError, TypeError, KeyError) as e:
         logger.debug("find_open_duplicate failed: %s", e)
     _, _, actions, linked = _advice_context(client, status_now, conditions, alerts)
+    days_now = status_now.get("daysPassed") if isinstance(status_now, dict) else None
     advice_log.log_advice(
         run_id=RUN_ID,
         snapshot_day=day_label or "unknown",
+        days_passed=days_now,
         trigger="reflex",
         severity="urgent",
         situation=situation,
@@ -725,6 +748,7 @@ def _log_urgent(client, status_now, conditions, alerts, urgent, day_label):
         linked_lessons=linked,
         reflex_name=",".join(sorted({a.get("category", "") for a in urgent})),
         auto_paused=True,
+        event_cause=_auto_event_cause(urgent),
     )
     return situation
 
@@ -921,10 +945,25 @@ def main() -> None:
         # so the actions audit log and outcome closing agree on the same run.
         if _REFLEX_ACTOR is not None:
             _REFLEX_ACTOR.rebind_run(RUN_ID)
+    # Resolved reflex state, spelled out — a stale REFLEX_KILL/DRY_RUN in the
+    # launching shell silently overrides .env (dotenv never overrides real env).
+    logger.info("Reflex resolved from env: REFLEX_KILL=%s REFLEX_DRY_RUN=%s REFLEX_PAUSE=%s",
+                os.getenv("REFLEX_KILL", "1"), os.getenv("REFLEX_DRY_RUN", "1"), os.getenv("REFLEX_PAUSE", "1"))
     if not _acquire_lock():
         return
     write_active_run(RUN_ID, pid=os.getpid(), arm=_run_arm(), observe_only=OBSERVE_ONLY)
     ensure_dirs()
+    # Any run left behind without an end.json was abandoned mid-run (game closed,
+    # save dropped, monitor stopped). Close it now as inconclusive so it is never
+    # mistaken for valid comparison data — but never the run we just allocated.
+    if os.getenv("AUTO_CLOSE_ABANDONED", "1") != "0":
+        try:
+            from smartrim import runmarker
+
+            runmarker.close_abandoned_runs(exclude=RUN_ID,
+                                           log=lambda msg: logger.info(msg))
+        except Exception as e:  # the sweep must never block the monitor
+            logger.error(f"abandoned-run closeout failed: {e}")
     client = McpClient(MCP_URL, delay=MCP_DELAY)
 
     logger.info(f"Reflex monitor started. Polling every {POLL_INTERVAL}s (PID {os.getpid()}) "

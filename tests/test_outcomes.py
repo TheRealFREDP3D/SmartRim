@@ -99,6 +99,93 @@ class TestOutcomes(unittest.TestCase):
         self.assertLessEqual(lessons[0]["confidence"], 0.35)
 
 
+class TestVerdictSemantics(unittest.TestCase):
+    """P0 outcome-loop fix: only helped/failed verdicts touch lesson counters,
+    and judging happens before expiry (in-game aging preferred)."""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        self.orig_advice = advice_log.ADVICE_FILE
+        self.orig_lessons = outcomes.LESSONS_FILE
+        advice_log.ADVICE_FILE = os.path.join(self.tmp, "advice.jsonl")
+        outcomes.LESSONS_FILE = os.path.join(self.tmp, "lessons.jsonl")
+        lesson = {"id": "L-0001", "title": "t", "trigger": {"phases": [], "threats": [], "resources": []},
+                  "recommendation": "r", "rationale": "r", "source": ["x"], "confidence": 0.5,
+                  "times_applied": 0, "times_helped": 0, "times_failed": 0, "status": "active",
+                  "tags": [], "source_runs": [], "last_updated": "2026-01-01"}
+        with open(outcomes.LESSONS_FILE, "w") as f:
+            f.write(json.dumps(lesson) + "\n")
+
+    def tearDown(self):
+        advice_log.ADVICE_FILE = self.orig_advice
+        outcomes.LESSONS_FILE = self.orig_lessons
+        import shutil
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def _seed(self, **overrides):
+        rec = {"advice_id": "adv-1", "run_id": "r1", "status": "open", "trigger": "reflex",
+               "severity": "warning", "situation": "Some risk", "actions": [],
+               "linked_lessons": ["L-0001"], "auto_paused": False,
+               "timestamp": "2026-11-05T12:00:00"}
+        rec.update(overrides)
+        with open(advice_log.ADVICE_FILE, "a") as f:
+            f.write(json.dumps(rec) + "\n")
+        return rec
+
+    def test_expired_verdict_does_not_touch_lesson_counters(self):
+        self._seed()
+        summary = {"food_days": 10, "medicine_count": 10, "min_mood": 50, "resources": {}}
+        outcomes.close_outcomes(summary, run_id="r1")
+        recs = advice_log.read_advice(run_id="r1")
+        self.assertEqual(recs[0]["status"], "expired")
+        lessons = outcomes._read_lessons()
+        self.assertEqual(lessons[0]["times_applied"], 0)
+        self.assertEqual(lessons[0]["times_helped"], 0)
+        self.assertEqual(lessons[0]["times_failed"], 0)
+        self.assertEqual(lessons[0]["confidence"], 0.5)
+        self.assertEqual(lessons[0]["source_runs"], [])
+
+    def test_helped_increments_times_applied(self):
+        self._seed(situation="Food stock low")
+        summary = {"food_days": 7, "medicine_count": 10, "min_mood": 50, "resources": {}}
+        outcomes.close_outcomes(summary, run_id="r1")
+        lessons = outcomes._read_lessons()
+        self.assertEqual(lessons[0]["times_applied"], 1)
+        self.assertEqual(lessons[0]["times_helped"], 1)
+
+    def test_judging_happens_before_expiry(self):
+        from datetime import datetime, timedelta
+        old_ts = (datetime.now() - timedelta(days=30)).isoformat()
+        self._seed(situation="Food stock low", timestamp=old_ts)
+        # food_days >= 5 is decidable as helped; expiry must not swallow it first.
+        summary = {"food_days": 7, "medicine_count": 10, "min_mood": 50, "resources": {}}
+        outcomes.close_outcomes(summary, run_id="r1")
+        recs = advice_log.read_advice(run_id="r1")
+        self.assertEqual(recs[0]["status"], "helped")
+
+    def test_in_game_age_expires_undecidable_records(self):
+        # food_days=3 is between thresholds: undecidable, stays open at first.
+        self._seed(advice_id="adv-old", situation="Food stock low", days_passed=2)
+        self._seed(advice_id="adv-new", situation="Food stock low", days_passed=9)
+        summary = {"food_days": 3, "medicine_count": 10, "min_mood": 50,
+                   "resources": {}, "days_passed": 10}
+        outcomes.close_outcomes(summary, run_id="r1")
+        statuses = {r["advice_id"]: r["status"] for r in advice_log.read_advice(run_id="r1")}
+        self.assertEqual(statuses["adv-old"], "expired")
+        self.assertEqual(statuses["adv-new"], "open")
+
+    def test_in_game_age_preferred_over_wall_clock(self):
+        from datetime import datetime, timedelta
+        # 30 wall-clock days old, but only 1 in-game day old: must stay open.
+        old_ts = (datetime.now() - timedelta(days=30)).isoformat()
+        self._seed(situation="Food stock low", timestamp=old_ts, days_passed=9)
+        summary = {"food_days": 3, "medicine_count": 10, "min_mood": 50,
+                   "resources": {}, "days_passed": 10}
+        outcomes.close_outcomes(summary, run_id="r1")
+        recs = advice_log.read_advice(run_id="r1")
+        self.assertEqual(recs[0]["status"], "open")
+
+
 class TestCloseAdvice(unittest.TestCase):
     def test_food_helped(self):
         advice = {"situation": "Food stock low", "trigger": "reflex"}

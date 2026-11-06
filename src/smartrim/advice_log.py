@@ -39,11 +39,15 @@ def new_advice_id():
 
 def log_advice(run_id, snapshot_day, trigger, severity, situation, actions,
                risks=None, watch_next=None, linked_lessons=None, reflex_name=None,
-               auto_paused=False, llm_model=None, context_tokens=None, event_cause=None):
+               auto_paused=False, llm_model=None, context_tokens=None, event_cause=None,
+               days_passed=None):
     """Append one advice record. Returns the advice_id.
 
-    event_cause is filled in after the run (see set_event_cause): "raider arson", "quest target
-    extraction", "food stock exhaustion". The bundle cannot infer causes, only symptoms.
+    event_cause is auto-tagged at log time from the game's own alerts (see
+    smartrim.event_cause); a human may override it later with set_event_cause
+    / set_cause_matching ("raider arson", "quest target extraction"). Auto-tags
+    are never overwritten by re-tagging. The bundle cannot infer causes, only
+    symptoms — this field is the bridge.
     """
     _ensure_dir()
     advice_id = new_advice_id()
@@ -66,6 +70,7 @@ def log_advice(run_id, snapshot_day, trigger, severity, situation, actions,
         "llm_model": llm_model,
         "context_tokens": context_tokens,
         "event_cause": event_cause,
+        "days_passed": days_passed,
     }
     with open(_advice_path(create=True), "a", encoding="utf-8") as f:
         f.write(json.dumps(record, default=str) + "\n")
@@ -95,16 +100,21 @@ def read_advice(run_id=None, status=None):
     ]
 
 
-def save_atomic(records):
-    """Atomically replace the advice file with the given records (tmp write + os.replace)."""
-    path = _advice_path(create=True)
-    if not path:
-        return
+def save_atomic_at(path, records):
+    """Atomically replace an arbitrary advice file (tmp write + os.replace)."""
     tmp_path = path + ".tmp"
     with open(tmp_path, "w", encoding="utf-8") as f:
         for rec in records:
             f.write(json.dumps(rec, default=str) + "\n")
     os.replace(tmp_path, path)
+
+
+def save_atomic(records):
+    """Atomically replace the advice file with the given records (tmp write + os.replace)."""
+    path = _advice_path(create=True)
+    if not path:
+        return
+    save_atomic_at(path, records)
 
 
 def _mutate(predicate, mutator):
@@ -147,6 +157,7 @@ def set_event_cause(advice_id, cause):
 
     def _set(rec):
         rec["event_cause"] = cause
+        rec["event_cause_source"] = "human"
 
     return bool(_mutate(lambda rec: rec.get("advice_id") == advice_id, _set))
 
@@ -164,6 +175,7 @@ def set_cause_matching(run_id, needle, cause):
 
     def _set(rec):
         rec["event_cause"] = cause
+        rec["event_cause_source"] = "human"
 
     return len(_mutate(_matches, _set))
 
@@ -176,25 +188,64 @@ def _parse_ts(value):
         return None
 
 
-def expire_stale(max_age_days: float = 3.0, now: datetime | None = None) -> int:
-    """Auto-expire old open records so stale advice stops polluting debrief bundles.
+def _record_days_passed(rec):
+    try:
+        return int(rec["days_passed"])
+    except (KeyError, TypeError, ValueError):
+        return None
 
-    An ``open`` record whose ISO ``timestamp`` is older than max_age_days (wall clock)
-    is marked ``expired``. Records with a missing/unparseable timestamp are left alone
-    (manually seeded test data). Idempotent; returns how many records were expired.
+
+def expiry_matches(rec, *, now, wall_days, game_days, current_days_passed):
+    """True when an open record is too old to ever be judged decidable.
+
+    Aging prefers in-game days when both the current ``days_passed`` and the
+    record's own ``days_passed`` are known; otherwise wall-clock aging applies.
+    """
+    if rec.get("status") != "open":
+        return False
+    if current_days_passed is not None:
+        rec_days = _record_days_passed(rec)
+        if rec_days is not None:
+            return (current_days_passed - rec_days) > game_days
+    ts = _parse_ts(rec.get("timestamp"))
+    return ts is not None and ts < now - timedelta(days=wall_days)
+
+
+def expiry_thresholds(max_age_days=None):
+    """(wall_days, game_days) thresholds from args/env. See expire_stale."""
+    wall = max_age_days if max_age_days is not None else float(os.getenv("ADVICE_EXPIRE_DAYS", "7.0"))
+    game = float(os.getenv("ADVICE_EXPIRE_IN_GAME_DAYS", "3.0"))
+    return wall, game
+
+
+def expire_stale(max_age_days: float | None = None, now: datetime | None = None,
+                 current_days_passed: int | None = None) -> int:
+    """Expire undecidable open records so stale advice stops polluting debrief bundles.
+
+    Judging happens before expiry (outcomes.close_outcomes decides helped/failed
+    first); this only sweeps records that could not be resolved. Aging prefers
+    in-game days: when both the current ``days_passed`` and the record's own
+    ``days_passed`` are known, a record older than ADVICE_EXPIRE_IN_GAME_DAYS
+    (default 3) expires. Otherwise it falls back to wall-clock aging at
+    ADVICE_EXPIRE_DAYS (default 7). Records with neither are left alone.
+
+    Passing ``max_age_days`` explicitly overrides the wall-clock threshold
+    (kept for CLI/tests; predates in-game aging). Idempotent; returns how many
+    records were expired.
     """
     now = now or datetime.now()
-    cutoff = now - timedelta(days=max_age_days)
+    wall, game = expiry_thresholds(max_age_days)
 
     def _matches(rec):
-        if rec.get("status") != "open":
-            return False
-        ts = _parse_ts(rec.get("timestamp"))
-        return ts is not None and ts < cutoff
+        return expiry_matches(rec, now=now, wall_days=wall, game_days=game,
+                              current_days_passed=current_days_passed)
 
     def _expire(rec):
         rec["status"] = "expired"
-        rec["outcome_note"] = f"auto-expired: no outcome recorded within {max_age_days} d"
+        if current_days_passed is not None and _record_days_passed(rec) is not None:
+            rec["outcome_note"] = f"auto-expired: no outcome recorded within {game:g} in-game day(s)"
+        else:
+            rec["outcome_note"] = f"auto-expired: no outcome recorded within {wall:g} day(s)"
 
     return len(_mutate(_matches, _expire))
 

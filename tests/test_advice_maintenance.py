@@ -81,6 +81,35 @@ class TestExpireStale:
         assert advice_log.expire_stale(max_age_days=3) == 0
         assert advice_log.expire_stale(max_age_days=1) == 1
 
+    def test_in_game_age_expires_old_records(self, temp_advice):
+        path = str(temp_advice / "advice.jsonl")
+        _seed(path, advice_id="adv-old", days_passed=2)
+        _seed(path, advice_id="adv-fresh", days_passed=9)
+
+        assert advice_log.expire_stale(current_days_passed=10) == 1
+        statuses = {r["advice_id"]: r["status"] for r in advice_log.read_advice()}
+        assert statuses["adv-old"] == "expired"
+        assert statuses["adv-fresh"] == "open"
+
+    def test_in_game_age_preferred_over_wall_clock(self, temp_advice):
+        path = str(temp_advice / "advice.jsonl")
+        old_ts = (datetime.now() - timedelta(days=30)).isoformat()
+        _seed(path, advice_id="adv-old-wall", timestamp=old_ts, days_passed=9)
+
+        assert advice_log.expire_stale(current_days_passed=10) == 0
+        statuses = {r["advice_id"]: r["status"] for r in advice_log.read_advice()}
+        assert statuses["adv-old-wall"] == "open"
+
+    def test_in_game_age_note_mentions_in_game_days(self, temp_advice):
+        path = str(temp_advice / "advice.jsonl")
+        _seed(path, advice_id="adv-old", days_passed=1)
+
+        assert advice_log.expire_stale(current_days_passed=10) == 1
+        note = next(
+            r["outcome_note"] for r in advice_log.read_advice() if r["advice_id"] == "adv-old"
+        )
+        assert "in-game" in note
+
 
 class TestCloseOutcomesExpiresStale:
     def test_close_outcomes_ages_out_stale_open_records(self, temp_advice):

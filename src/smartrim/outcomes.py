@@ -114,20 +114,32 @@ def _close_advice(advice, snapshot_summary):
     return None, None  # stays open
 
 
+def _days_passed(snapshot_summary) -> int | None:
+    """Current in-game day from a snapshot summary, or None when unknown."""
+    try:
+        return int(snapshot_summary.get("days_passed"))
+    except (TypeError, ValueError, AttributeError):
+        return None
+
+
 def close_outcomes(snapshot_summary, run_id=None):
     """Close open advice records and update lesson confidence. Idempotent.
 
-    First ages out stale `open` records (advice given > 3 days ago with no recorded
-    outcome) so the debrief/evaluation reads reflect reality rather than dead entries.
+    Order matters: records are judged (helped/failed/expired) *first* at each
+    day roll, and only then are still-undecidable records aged out. Expiry
+    prefers in-game days when the record and the snapshot both carry
+    ``days_passed``. Only helped/failed verdicts touch lesson counters —
+    expiry and other inconclusive closures update the advice record alone,
+    so ``times_applied`` counts judged advice, not retrieval frequency.
     """
-    from smartrim.advice_log import expire_stale
-    expire_stale()
+    days_passed = _days_passed(snapshot_summary)
 
     records = _read_advice()
     lessons = _read_lessons()
     lesson_map = {lesson["id"]: lesson for lesson in lessons}
 
     changed = False
+    lessons_changed = False
     for rec in records:
         if rec.get("status") not in ("open", "applied"):
             continue
@@ -141,8 +153,14 @@ def close_outcomes(snapshot_summary, run_id=None):
             rec["outcome_note"] = note
         changed = True
 
-        # A lesson is applied as soon as linked advice is issued, even if its
-        # outcome remains open. Record that touch now so lineage is complete.
+        # A verdict is required to learn anything. Inconclusive closures
+        # (e.g. "expired" = risk cleared before a decision could be made)
+        # are recorded on the advice record and never touch lessons.
+        if new_status not in ("helped", "failed"):
+            continue
+
+        # A lesson is applied as soon as a verdict is recorded. Record that
+        # touch so lineage is complete.
         effective_run_id = run_id or rec.get("run_id")
         for lid in rec.get("linked_lessons") or []:
             lesson = lesson_map.get(lid)
@@ -152,7 +170,7 @@ def close_outcomes(snapshot_summary, run_id=None):
             if effective_run_id and effective_run_id not in source_runs:
                 source_runs.append(effective_run_id)
                 lesson["source_runs"] = source_runs
-                changed = True
+                lessons_changed = True
 
         # Update linked lessons
         for lid in rec.get("linked_lessons") or []:
@@ -171,9 +189,29 @@ def close_outcomes(snapshot_summary, run_id=None):
                     lesson["status"] = "needs_review"
             lesson["times_applied"] = lesson.get("times_applied", 0) + 1
             lesson["last_updated"] = datetime.now().strftime("%Y-%m-%d")
+            lessons_changed = True
+
+    # Judge everything decidable first; only then age out the undecidable —
+    # inline, on the same in-memory records, so the single atomic write below
+    # carries both the verdicts and the expiries.
+    from smartrim.advice_log import expiry_matches, expiry_thresholds
+
+    now = datetime.now()
+    wall, game = expiry_thresholds()
+    for rec in records:
+        if not expiry_matches(rec, now=now, wall_days=wall, game_days=game,
+                              current_days_passed=days_passed):
+            continue
+        rec["status"] = "expired"
+        if days_passed is not None and rec.get("days_passed") is not None:
+            rec["outcome_note"] = f"auto-expired: no outcome recorded within {game:g} in-game day(s)"
+        else:
+            rec["outcome_note"] = f"auto-expired: no outcome recorded within {wall:g} day(s)"
+        changed = True
 
     if changed:
         _write_advice(records)
+    if lessons_changed:
         _write_lessons(list(lesson_map.values()))
 
     return changed

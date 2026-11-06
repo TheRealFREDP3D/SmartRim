@@ -86,8 +86,9 @@ ALERT_TO_THREAT = {
 
 GAME_ALERT_KEYWORDS = {
     "raid": "raid_incoming",
-    "enemy": "raid_incoming",
+    "enem": "raid_incoming",
     "attack": "raid_incoming",
+    "hostile": "raid_incoming",
     "predator": "predator_near_worker",
     "fire": "threat_response",
     # Food and medicine alerts reach here when they arrive as generic game alerts
@@ -135,7 +136,7 @@ def classify_phase(snapshot_summary, alerts):
             is_crisis = True
         if cat == "game_alert":
             label = a.get("label", "").lower() if "label" in a else a.get("message", "").lower()
-            if any(k in label for k in ("attack", "enemy", "predator", "fire")):
+            if any(k in label for k in ("attack", "enem", "predator", "fire")):
                 is_crisis = True
     if is_crisis:
         return "crisis"
@@ -146,6 +147,8 @@ def classify_phase(snapshot_summary, alerts):
         if cat in ("hostile", "predator_near"):
             return "raid_prep"
         if cat == "game_alert" and "raid" in label:
+            return "raid_prep"
+        if cat == "game_alert" and "enem" in label:
             return "raid_prep"
         if cat == "game_alert" and "defenses" in label:
             return "raid_prep"
@@ -440,11 +443,14 @@ def retrieve(situation, lessons=None, limit=5, store=None, use_semantic_search=T
         if l_biome and not _ci_contains(l_biome, biome):
             continue
 
+        from smartrim.lesson_store import effectiveness
+
         conf = lesson.get("confidence", 0.0)
         helped = lesson.get("times_helped", 0)
         failed = lesson.get("times_failed", 0)
+        eff = effectiveness(helped, failed)
         last_updated = lesson.get("last_updated") or ""
-        key = (-conf, -(helped - failed), last_updated, lesson.get("id", ""))
+        key = (-eff, -conf, -(helped - failed), last_updated, lesson.get("id", ""))
         candidates.append((key, lesson))
 
     candidates.sort(key=lambda x: x[0])
@@ -670,7 +676,7 @@ def main(argv=None):
     elif cmd == "verify-facts":
         import yaml
 
-        from smartrim.debrief_bundle import BASE_DIR, WIKI_FACTS_PATH
+        from smartrim.debrief_bundle import WIKI_FACTS_PATH
 
         # Load wiki facts
         if not os.path.exists(WIKI_FACTS_PATH):
@@ -774,12 +780,10 @@ def main(argv=None):
                 sys.exit(1)
 
         # Load existing lessons
-        existing_lessons = load_lessons()
+        from smartrim import promote as _promote
 
-        # Generate new IDs for promoted lessons
-        next_num = (
-            max([int(lesson.get("id", "L-0000")[2:]) for lesson in existing_lessons] + [0]) + 1
-        )
+        existing_lessons = _promote.load_existing_lessons()
+        next_num = _promote.next_lesson_number(existing_lessons)
 
         promoted = []
         for idx in indices:
@@ -825,26 +829,11 @@ def main(argv=None):
 
         # Append to lessons.jsonl (via LessonStore so SQLite stays in sync)
         if promoted:
-            try:
-                from smartrim.lesson_store import DEFAULT_SQLITE_PATH, SqliteLessonStore
-
-                db_path = (
-                    os.path.splitext(LESSONS_FILE)[0] + ".sqlite"
-                    if os.path.join(BASE_DIR, "memory", "lessons.jsonl") != LESSONS_FILE
-                    else DEFAULT_SQLITE_PATH
-                )
-                store = SqliteLessonStore(db_path=db_path, jsonl_path=LESSONS_FILE)
-                try:
-                    for lesson in promoted:
-                        store.append(lesson)
-                finally:
-                    store.close()
+            synced = _promote.append_lessons_to_store(promoted)
+            if synced:
                 print(f"\nPromoted {len(promoted)} lesson(s) to {LESSONS_FILE}")
                 print("Synchronized SQLite index.")
-            except Exception:
-                with open(LESSONS_FILE, "a", encoding="utf-8") as f:
-                    for lesson in promoted:
-                        f.write(json.dumps(lesson) + "\n")
+            else:
                 print(f"\nPromoted {len(promoted)} lesson(s) to {LESSONS_FILE}")
             print("Run 'python -m smartrim.situation validate' to verify.")
         else:

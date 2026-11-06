@@ -59,6 +59,12 @@
     },
     "auto_paused": { "type": "boolean" },
     "llm_model": { "type": ["string", "null"] },
-    "context_tokens": { "type": ["integer", "null"] }
+    "context_tokens": { "type": ["integer", "null"] },
+    "days_passed": { "type": ["integer", "null"], "minimum": 0, "description": "In-game daysPassed counter at the time the advice was given (used for in-game-day expiry)" },
+    "event_cause": {
+      "type": ["string", "null"],
+      "description": "What caused the incident, e.g. fire_during_raid, hostile_raid, food_exhaustion. Auto-tagged from the game's own alerts at log time ('auto:alerts'); humans may override with cause/cause-match. null = untagged."
+    },
+    "event_cause_source": { "type": ["string", "null"], "description": "How the cause was set: 'auto:alerts' or 'human'." }
   }
 }

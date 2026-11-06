@@ -299,5 +299,14 @@ class TestRankActions(unittest.TestCase):
         self.assertIsInstance(actions, list)
 
 
+class TestEnemyAlertParsing(unittest.TestCase):
+    """Regression: RimWorld's 'Enemies' alert (Crucior on the map, 05:50 run-011) was invisible."""
+
+    def test_enemies_alert_is_game_alert(self):
+        alerts = [{"type": "urgent", "category": "game_alert", "message": "Enemies"}]
+        self.assertIn("raid_incoming", situation.build_threats(alerts))
+        self.assertEqual(situation.classify_phase({"days_passed": 5}, alerts), "crisis")
+
+
 if __name__ == "__main__":
     unittest.main()

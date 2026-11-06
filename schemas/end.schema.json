@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smartrim.local/schemas/end.schema.json",
+  "title": "Run-end marker",
+  "description": "Written once when a run ends. Definitive endings (run_length, colony_death) are written by the monitor; inconclusive closes (manual_close, monitor_abort) are written by smartrim.runmarker when a run is abandoned mid-run.",
+  "type": "object",
+  "required": ["run_id", "stop_reason"],
+  "properties": {
+    "run_id": { "type": "string", "pattern": "^run-\\d+" },
+    "created_by": { "type": ["string", "null"], "description": "smartrim.monitor | smartrim.runmarker | (absent on markers written before 2026-11-06)" },
+    "arm": { "type": ["string", "null"], "enum": ["on", "off", "reflex", null] },
+    "observe_only": { "type": ["boolean", "null"] },
+    "run_days": { "type": ["integer", "null"], "minimum": 1 },
+    "days_passed": { "type": ["integer", "null"], "minimum": 0 },
+    "stop_reason": {
+      "type": "string",
+      "enum": ["run_length", "colony_death", "manual_close", "monitor_abort"]
+    },
+    "stop_reason_detail": { "type": ["string", "null"] },
+    "inconclusive": {
+      "type": "boolean",
+      "description": "True = run ended outside the protocol; excluded from evaluation by default. Absent on monitor-written markers (derived from stop_reason)."
+    },
+    "urgent_alerts": { "type": ["integer", "null"], "minimum": 0 },
+    "auto_pauses": { "type": ["integer", "null"], "minimum": 0 },
+    "reflex_snapshots": { "type": ["integer", "null"], "minimum": 0 },
+    "difficulty": { "type": ["string", "null"] },
+    "storyteller": { "type": ["string", "null"] },
+    "protocol": {
+      "type": ["object", "null"],
+      "description": "Fingerprint of the evaluation protocol (storyteller, difficulty, run_days as reported by the game); evaluate compare refuses mismatched definitive markers.",
+      "properties": {
+        "storyteller": { "type": ["string", "null"] },
+        "difficulty": { "type": ["string", "null"] },
+        "run_days": { "type": ["integer", "null"], "minimum": 1 }
+      },
+      "additionalProperties": false
+    },
+    "ended_at": { "type": "string", "format": "date-time" },
+    "snapshots_dir": { "type": ["string", "null"] },
+    "final_snapshot": { "type": ["string", "null"] }
+  }
+}

@@ -47,7 +47,7 @@ Day counting: the run starts on the 1st day (`daysPassed` = 0). Ten full days mu
 
 ## End
 
-1. The monitor pauses the game at 10 days, writes the final snapshot, and writes `runtime/<run-id>/end.json`. Confirm the marker exists.
+1. The monitor pauses the game at 10 days, writes the final snapshot, and writes `runtime/<run-id>/end.json`. Confirm the marker exists. If the run was abandoned mid-run instead, it is closed as **inconclusive** (`python -m smartrim.runmarker close <id>` or automatically at the next monitor start) and excluded from `evaluate compare` by default — it does not count as a comparison datapoint.
 2. Update the advice log outcomes for any open records.
 3. **Record event causes.** The bundle can see symptoms but not causes. Tag the incidents before generating it:
    - `python sidecar/advice_log.py cause-match <run-id> fire "raider arson"` (one tag covers the whole burst)
@@ -65,6 +65,13 @@ Day counting: the run starts on the 1st day (`daysPassed` = 0). Ten full days mu
 - Colonists alive at day 10, lowest mood reached, and whether any downed or mental break happened.
 - Days until the first low-food and first medicine alerts.
 - Number of urgent alerts and auto-pauses, and how many advice records were marked helped or failed.
+
+Every end.json carries a `protocol` fingerprint (storyteller, difficulty, run_days as the
+game reports them). `evaluate summarize` / `compare` exclude runs without a definitive
+ending (`manual_close` / `monitor_abort`) **and** definitive runs whose fingerprint violates
+the protocol, printing what was excluded; `--include-inconclusive` / `--include-any-protocol`
+opt back in. Runs with no protocol fingerprint (pre-2026-11 markers) are treated as
+mismatches — markers written by the current monitor are always stamped.
 
 These are the only metrics defined so far. Phase 2's evaluation harness (`PHASE2-PLAN.md`) will use them.
 

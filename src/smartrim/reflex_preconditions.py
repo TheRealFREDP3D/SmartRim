@@ -39,7 +39,7 @@ def _alert_text(alert):
 def has_raid_alert(game_state) -> bool:
     """Raid/enemy/attack keyword in any alert label or message."""
     text = " ".join(_alert_text(a) for a in _alerts(game_state))
-    return any(kw in text for kw in ("raid", "enemy", "attack"))
+    return any(kw in text for kw in ("raid", "enem", "attack", "hostile"))
 
 
 def has_fire_alert(game_state) -> bool:
